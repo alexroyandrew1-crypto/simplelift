@@ -1,6 +1,6 @@
 # Simple Lift
 
-A free, simple workout tracker. Static PWA with no build step and no external libraries. Works offline and can be installed on Android ("Add to Home screen").
+A free, simple workout tracker. Static PWA with no build step and no CDN. The only bundled library is tesseract.js (self-hosted in `ocr/`), used for reading pictures. Works offline and can be installed on Android ("Add to Home screen").
 
 ## Run locally
     python3 -m http.server 8000   # then open http://localhost:8000
@@ -16,7 +16,9 @@ A free, simple workout tracker. Static PWA with no build step and no external li
 - `changes.js`: `requestPlanChanges(plan,text)` / `applyChangeRequest` is **the change-request hook** (swap X for Y, remove X, add X to day N, more/less chest, add abs, shorter/longer, more/fewer sets, heavier/lighter). Replace it with an AI call and keep the same return shape: `{plan, changes, notUnderstood}`.
 - `oldimport.js`: imports the original workout app's history (`wlog_v1`) and plan (`wplan_v1`, or `../workout/plan.json`) from the same origin. It only reads those keys, never writes them, and skips anything already imported.
 - `app.js`: screens (Home, Plans/editor, Build with AI, Workout, History, Progress, Settings)
-- `sw.js`: offline cache. **Bump `C` whenever you change files.**
+- `ocr.js`: `imageToText(file,onProgress)` is **the picture-reading hook**. It runs tesseract.js on the device after shrinking the image and boosting contrast (dark screenshots get inverted). Swap in an AI vision model later and keep the same return value (plain text).
+- `ocr/`: self-hosted tesseract.js v5 (worker, WASM cores, English model `eng.traineddata.gz`, about 13 MB, Apache-2.0). It downloads only the first time someone reads a picture, then stays cached for offline use.
+- `sw.js`: network-first for app files, so updates show up as soon as you are online, with a cache fallback offline. `ocr/` is cache-first in its own cache. Uses `skipWaiting` + `clients.claim`. Bump `C` (and `APP_VERSION` in config.js) on each release.
 - `manifest.json`, `icon.svg`, `icon-192.png`, `icon-512.png`
 
 ## Data shape
@@ -34,3 +36,11 @@ A free, simple workout tracker. Static PWA with no build step and no external li
 - Recommended weight uses the same rules as the old app's `sug()`. No history: start weight ("Starting estimate", or "Bodyweight" if there's no start weight). Top of the rep range hit on every set: +5 lb (upper/db) or +10 lb (lower). Otherwise: repeat the weight, aim for more reps.
 - Background: 8 built-in CSS gradients, a photo from the phone (shrunk to 1080 px and saved as JPEG in localStorage), or none, with a dim slider. Included in export/import.
 - No ads, no trackers, no external scripts or requests.
+
+## Features added in v5
+- "+ New plan" (on the workout screen, the Plans tab, and empty Home) opens a chooser: Build my own plan / Build with AI / Copy a workout from text or picture.
+- Copy a workout: paste text, or Choose a picture / Take a photo. The text is read on the phone (nothing is uploaded), shown in the editable box, then parsed into the preview editor.
+- Updates: when a new version activates, a "Simple Lift was updated. Tap to reload" bar appears. Settings → About shows the version (`APP_VERSION`).
+
+## Changes in v6
+- The paste parser reads article and chat-style plans: the exercise name on one line and "4 sets × 8–10 reps" on the next, parenthetical alternatives and "A OR B" kept in the note, "Focus:"/"Time:" lines as notes, and "Rest 45–60 seconds between sets" as the default rest. It skips intro text, equipment, time breakdowns, warm-up, cool-down, tips, scaling and closing chatter, and adds an optional finisher (for example "Push-up Drop Set", 2 rounds). It also handles markdown (**bold**, ### headings, numbered or bulleted lists, "Name: 3x10", and tables). The title's parenthetical goes to plan notes, and a single-day plan is named from the title (Push, Pull, Legs and so on).

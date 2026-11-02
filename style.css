@@ -67,3 +67,4 @@ body.hasbg header{background:rgba(10,12,16,.7)}
 .bgopt{aspect-ratio:3/4;border-radius:12px;border:2px solid #2e3340;background:var(--card2);color:var(--txt);font-size:11px;display:flex;align-items:flex-end;justify-content:center;padding:4px;overflow:hidden;text-transform:capitalize}
 .bgopt span{background:#0009;border-radius:6px;padding:1px 4px}
 .bgopt.on{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc)}
+.updbar{position:fixed;left:16px;right:16px;top:calc(60px + env(safe-area-inset-top));max-width:608px;margin:0 auto;z-index:30;background:var(--acc);color:#06240f;border:0;border-radius:14px;padding:14px;font-weight:700;font-size:15px;box-shadow:0 8px 24px #0008}

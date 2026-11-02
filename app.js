@@ -15,11 +15,11 @@ function back(){route=stack.pop()||{v:'home',p:{}};render()}
 $('#back').onclick=back;
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{if(db().active&&b.dataset.tab==='home'){tab('home');return}tab(b.dataset.tab)});
 
-const TITLES={home:'Simple Lift',plans:'My Plans',editor:'Edit Plan',day:'Edit Day',ai:'Build with AI',paste:'Paste a Plan',session:'Workout',history:'History',hist:'Workout',progress:'Progress',settings:'Settings'};
+const TITLES={home:'Simple Lift',plans:'My Plans',editor:'Edit Plan',day:'Edit Day',ai:'Build with AI',paste:'Copy a Workout',chooser:'New Plan',session:'Workout',history:'History',hist:'Workout',progress:'Progress',settings:'Settings'};
 function render(){
   const v=route.v;$('#title').textContent=TITLES[v]||'Simple Lift';
   $('#back').style.visibility=stack.length?'visible':'hidden';
-  const root={home:'home',plans:'plans',editor:'plans',day:'plans',ai:'home',paste:'home',session:'home',history:'history',hist:'history',progress:'progress',settings:'settings'}[v];
+  const root={home:'home',plans:'plans',editor:'plans',day:'plans',ai:'home',paste:'home',chooser:'home',session:'home',history:'history',hist:'history',progress:'progress',settings:'settings'}[v];
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===root));
   const m=$('#view');m.style.animation='none';m.offsetHeight;m.style.animation='';
   m.innerHTML=VIEWS[v](route.p);
@@ -34,6 +34,7 @@ const restTxt=s=>s>=60?`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`:`${
 
 /* ---------- views ---------- */
 const VIEWS={
+chooser(){return chooserHTML()},
 home(){
   const a=db().active;const plan=Store.activePlan();let h='';
   if(a)h+=`<button class="big acc" data-act="resume">Resume workout<small>${esc(a.dayName)} · in progress</small></button>`;
@@ -46,9 +47,9 @@ home(){
     h+=`<div class="card"><div class="between"><h3>${esc(plan.name)}</h3><button class="btn sm" data-act="editActive">Edit</button></div>
       <div class="chips" style="margin-top:6px">${plan.days.map((d,j)=>`<button class="chip ${j===i?'on':''}" data-act="start" data-i="${j}" ${d.rest||!d.exercises.length?'disabled':''}>${esc(d.name)}</button>`).join('')}</div>
       <div class="mut" style="margin-top:8px">Tap any day to start it instead.</div></div>`}
-  h+=`<button class="big" data-act="newPlan">✎ Build my own plan<small>Pick your days and exercises</small></button>
+  h+=`<h2 style="margin:8px 0 0">Create your plan</h2><button class="big" data-act="newPlan">✎ Build my own plan<small>Pick your days and exercises</small></button>
       <button class="big" data-act="ai">✦ Build with AI<small>Answer a few questions, get a plan made for you</small></button>
-      <button class="big" data-act="paste">⎘ Paste a plan from text<small>Copied a plan from ChatGPT, Grok or a coach? Paste it in</small></button>`;
+      <button class="big" data-act="paste">📷 Copy a workout from text or picture<small>Paste text or snap a photo or screenshot of a plan</small></button>`;
   return h;
 },
 plans(){
@@ -57,7 +58,9 @@ plans(){
     ${p.id===db().activePlanId?'<span class="tag">Active</span>':`<button class="btn sm" data-act="activate" data-id="${p.id}">Use</button>`}</div>
     <div class="row" style="margin-top:10px"><button class="btn grow" data-act="edit" data-id="${p.id}">Edit</button><button class="btn" data-act="dup" data-id="${p.id}">Copy</button><button class="btn bad" data-act="delPlan" data-id="${p.id}">Delete</button></div></div>`).join('')
     :`<div class="card mut">No plans yet. Create one below.</div>`)+
-    `<button class="big" data-act="newPlan">✎ Build my own plan</button><button class="big" data-act="ai">✦ Build with AI</button><button class="big" data-act="paste">⎘ Paste a plan from text</button>`;
+    `<h3 style="margin:18px 0 0">+ New plan</h3><button class="big" data-act="newPlan">✎ Build my own plan<small>Pick your days and exercises</small></button>
+      <button class="big" data-act="ai">✦ Build with AI<small>Answer a few questions, get a plan made for you</small></button>
+      <button class="big" data-act="paste">📷 Copy a workout from text or picture<small>Paste text or snap a photo or screenshot of a plan</small></button>`;
 },
 editor(){
   const p=draft;
@@ -110,7 +113,10 @@ ai(){
   ${s.multi||s.text?`<button class="btn acc" data-act="aiNext">${ai.step===S.length-1?'Build my plan':'Next'}</button>`:''}</div>`;
 },
 paste(){
-  return `<div class="mut">Paste a workout plan copied from anywhere. Day headings like "Day 1 - Push" or "Monday: Legs" and lines like "Bench press 4x8-10" work best. You'll see a preview before anything is saved.</div>
+  return `<div class="row" style="gap:8px;margin-bottom:10px"><button class="btn grow" data-act="pickPic">🖼 Choose a picture</button><button class="btn grow" data-act="takePic">📷 Take a photo</button></div>
+  <input type="file" id="picFile" accept="image/*" hidden><input type="file" id="camFile" accept="image/*" capture="environment" hidden>
+  <div id="ocrBox" class="card" hidden><div class="between"><b id="ocrMsg">Reading text…</b><span id="ocrPct" class="mut"></span></div><div class="progress"><i id="ocrBar" style="width:0"></i></div><div class="mut">Reading happens on your phone. Nothing is uploaded.</div></div>
+  <div class="mut">Or paste a workout plan copied from anywhere. Day headings like "Day 1 - Push" or "Monday: Legs" and lines like "Bench press 4x8-10" work best. You'll see a preview before anything is saved. After reading a picture, check the text below and fix any mistakes.</div>
   <textarea id="pasteText" rows="14" style="margin-top:12px" placeholder="Day 1 - Push&#10;Bench press 4x8-10&#10;Overhead press 3 sets of 8-12, rest 90s&#10;&#10;Day 2 - Rest&#10;&#10;Day 3 - Legs&#10;Squats 3x8-12">${esc(route.p.text||'')}</textarea>
   <button class="btn acc full" data-act="parse">Make my plan</button>`;
 },
@@ -178,7 +184,7 @@ settings(){
   <button class="btn full" data-act="importOld">Import history from my old workout app</button>
   <div class="mut" style="margin-top:6px">Works only on the same phone and browser where you used the old app. Your old app's data is never changed.</div>
   <button class="btn bad full" data-act="reset">Reset all data</button></div>
-  <div class="card"><h3>About</h3><div class="mut">Simple Lift v1 · free. No ads, no tracking, no account needed. Works offline. Add it to your home screen from your browser menu.</div></div>
+  <div class="card"><h3>About</h3><div class="mut">Simple Lift v${esc(APP_VERSION)} · free. No ads, no tracking, no account needed. Works offline. Add it to your home screen from your browser menu.</div></div>
   <div class="card" id="support" style="background:transparent;border:1px solid #262a33"><h3 style="font-size:16px">Support</h3><div class="mut">I made Simple Lift to be completely free, with no ads, and I'm trying to keep it free forever. If you ever want to chip in, it's totally optional and appreciated, but never expected.</div>
   ${/^https:\/\//.test(DONATE_URL)?`<a class="btn sm" style="display:inline-block;margin-top:10px;text-decoration:none" href="${esc(DONATE_URL)}" target="_blank" rel="noopener">Donate (optional)</a>`:''}</div>`;
 }};
@@ -223,14 +229,13 @@ function workoutHome(plan){
   const tabs=`<div class="daytabs">${plan.days.map((x,j)=>`<button class="daytab ${j===sel?'on':''}" style="--dc:${esc(dayColor(x))}" data-act="selDay" data-i="${j}">${esc(x.name)}${x.rest?' 💤':''}</button>`).join('')}</div>`;
   if(!d)return tabs;
   let body=`<div class="card" style="border-top:4px solid ${esc(c)}"><div class="between"><div><div class="mut">${esc(plan.name)}${j0(plan,sel)}</div><h2 style="margin:2px 0">${esc(d.name)}</h2></div>
-    <button class="btn sm" data-act="editWorkout" data-i="${sel}">✎ Edit workout</button></div>`;
+    <div style="display:flex;flex-direction:column;gap:6px"><button class="btn sm" data-act="editWorkout" data-i="${sel}">✎ Edit workout</button><button class="btn sm" data-act="chooser">+ New plan</button></div></div>`;
   if(d.rest)body+=`<div style="text-align:center;padding:24px 0"><div style="font-size:44px">💤</div><h3>Rest day</h3><div class="mut">Recover, stretch, go for a walk. Next workout tomorrow.</div></div></div>`;
   else if(!d.exercises.length)body+=`<div class="mut" style="padding:12px 0">No exercises yet. Tap "Edit workout" to add some.</div></div>`;
   else body+=`<div class="mut">${d.exercises.length} exercises · ${d.exercises.reduce((s,e)=>s+(+e.sets||0),0)} sets</div>
     <div style="margin:10px 0">${d.exercises.map(e=>{const g=suggest(e);return `<div class="between" style="padding:7px 0;border-bottom:1px solid #262a33"><span>${esc(e.name)}<br><small class="mut">${esc(g.t)}</small></span><span style="text-align:right">${e.sets}×${repTxt(e)}<br><small style="color:${esc(c)}">${g.w?esc(g.w)+' '+U():''}</small></span></div>`}).join('')}</div>
     <button class="btn full" style="background:${esc(c)};color:#0b0d10" data-act="start" data-i="${sel}">Start workout</button></div>`;
-  return tabs+body+`<details class="card"><summary class="mut">Make or add another plan</summary>
-    <button class="big" data-act="newPlan">✎ Build my own plan</button><button class="big" data-act="ai">✦ Build with AI</button><button class="big" data-act="paste">⎘ Paste a plan from text</button></details>`;
+  return tabs+body+`<button class="btn full" data-act="chooser">+ New plan</button>`;
 }
 function j0(plan,sel){return sel===nextDayIndex(plan)?' · up next':''}
 // Recommended weight: same rules as the original app's sug(): no history -> start weight ("Starting estimate" / "Bodyweight");
@@ -241,6 +246,12 @@ function suggest(e){const l=Store.lastFor(e.name,e.oldId);const start=e.weight==
   const w=Math.max(...l.sets.map(s=>+s.w||0));const top=l.sets.length>=+e.sets&&l.sets.every(s=>+s.r>=+e.repMax);
   if(top&&w>0){const inc=step(exType(e)==='lower');return{w:w+inc,t:`Hit top of range last time → +${inc} ${U()}`,last:l,up:1}}
   return{w,t:'Repeat weight, aim for more reps',last:l}}
+const chooserHTML=()=>`<div class="mut">Pick how you want to make your new plan. Your current plans stay saved.</div>`+`<button class="big" data-act="newPlan">✎ Build my own plan<small>Pick your days and exercises</small></button>
+      <button class="big" data-act="ai">✦ Build with AI<small>Answer a few questions, get a plan made for you</small></button>
+      <button class="big" data-act="paste">📷 Copy a workout from text or picture<small>Paste text or snap a photo or screenshot of a plan</small></button>`;
+async function runOCR(file){const box=$('#ocrBox');box.hidden=false;const set=(p,m)=>{$('#ocrBar').style.width=Math.round(p*100)+'%';$('#ocrPct').textContent=Math.round(p*100)+'%';$('#ocrMsg').textContent=m+'…'};
+  try{const t=await imageToText(file,set);const ta=$('#pasteText');ta.value=(ta.value.trim()?ta.value.trim()+'\n\n':'')+t;route.p.text=ta.value;$('#ocrMsg').textContent='Done. Check the text below, then tap "Make my plan".';$('#ocrPct').textContent='';ta.focus()}
+  catch(e){box.hidden=true;alert('Picture reading failed: '+(e&&e.message||e))}}
 /* ---------- data helpers ---------- */
 const vol=w=>w.exercises.reduce((s,e)=>s+e.sets.reduce((a,x)=>a+(+x.w||0)*(+x.r||0),0),0);
 const sets=w=>w.exercises.reduce((s,e)=>s+e.sets.length,0);
@@ -313,10 +324,13 @@ const ACT={
  bgPhoto:()=>{const f=$('#bgFile');f.value='';f.onchange=async()=>{try{const u=await loadBgFile(f.files[0]);try{localStorage.setItem(BG_KEY,u)}catch(e){throw new Error('Not enough space on this device to save that picture. Try a smaller one.')}setBg({kind:'custom'});toast('Background set');render()}catch(e){alert(e.message)}};f.click()},
  importOld:async()=>{const r=await importOldApp();showOldResult(r,true)},
  paste:()=>go('paste'),
+ chooser:()=>go('chooser'),
+ pickPic:()=>{const f=$('#picFile');f.value='';f.onchange=()=>f.files[0]&&runOCR(f.files[0]);f.click()},
+ takePic:()=>{const f=$('#camFile');f.value='';f.onchange=()=>f.files[0]&&runOCR(f.files[0]);f.click()},
  applyCR:async()=>{const t=$('#crText').value;if(!t.trim()){toast('Type a change first');return}const r=await requestPlanChanges(draft,t);
    const keep={_new:draft._new,_issues:draft._issues};draft=Object.assign(r.plan,keep);draft._cr={changes:r.changes,notUnderstood:r.notUnderstood};render();
    setTimeout(()=>document.querySelector('#crText')?.closest('.card').scrollIntoView({block:'start'}),30)},
- parse:async()=>{const t=$('#pasteText').value;if(!t.trim()){toast('Paste a plan first');return}route.p.text=t;
+ parse:async()=>{const t=$('#pasteText').value;if(!t.trim()){toast('Paste text or choose a picture first');return}route.p.text=t;
    const r=await parseTextPlan(t);if(!r.plan.days.length){alert("I couldn't find any exercises in that text. Try lines like 'Bench press 4x8-10'.");return}
    draft=r.plan;draft._new=1;draft._issues={unparsed:r.unparsed,skipped:r.skipped,days:r.plan.days.filter(d=>!d.rest).length,count:r.plan.days.reduce((s,d)=>s+d.exercises.length,0)};go('editor')},
  ai:()=>{ai={step:0,a:{injuries:'',focus:[]}};go('ai')},
@@ -376,4 +390,6 @@ applyBg();
 if(db().active)route={v:'home',p:{}};
 if(!db().oldImportChecked&&oldHasData())importOldApp().then(r=>showOldResult(r,false));
 render();
-if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker' in navigator){const had=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js').then(r=>r.update()).catch(()=>{});
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!had||$('#updbar'))return;const b=document.createElement('button');b.id='updbar';b.className='updbar';b.textContent='Simple Lift was updated. Tap to reload';b.onclick=()=>location.reload();document.body.appendChild(b)})}
