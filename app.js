@@ -189,6 +189,7 @@ progress({off=0}){
 settings(){
   return `<div class="card"><h3>Units</h3><div class="chips"><button class="chip ${U()==='lb'?'on':''}" data-act="units" data-v="lb">lb</button><button class="chip ${U()==='kg'?'on':''}" data-act="units" data-v="kg">kg</button></div>
   <div class="mut" style="margin-top:6px">Changes labels and progression steps. Saved numbers are not converted.</div></div>
+  <div class="card"><div class="between"><div><h3 style="margin:0">Copy weight to later sets</h3><div class="mut">Changing a set's weight also fills in the sets after it that aren't done yet.</div></div><button class="chip ${db().settings.copyWeight!==false?'on':''}" data-act="copyW">${db().settings.copyWeight!==false?'On':'Off'}</button></div></div>
   <div class="card"><h3>Background</h3><div class="mut">Pick one of ours or use a photo from your phone.</div>
    <div class="bggrid"><button class="bgopt ${bgSettings().kind==='none'?'on':''}" data-act="bgNone">None</button>
    ${Object.entries(BGS).map(([k,v])=>`<button class="bgopt ${bgSettings().kind==='preset'&&bgSettings().id===k?'on':''}" style="background:${v}" data-act="bgPreset" data-id="${k}" aria-label="${k}"><span>${k}</span></button>`).join('')}
@@ -366,7 +367,7 @@ const ACT={
  stp:(b,e,mult=1)=>{if(e&&e.type==='click'&&holdUntil>Date.now())return; // pointer already handled it
    const s=db().active.exercises[+b.dataset.j].sets[+b.dataset.k],f=b.dataset.f,d=+b.dataset.d;
    const inc=(f==='w'?(U()==='kg'?2.5:5):1)*mult;s[f]=Math.max(0,Math.round(((+s[f]||0)+d*inc)*10)/10);Store.save();
-   b.parentNode.querySelector('input').value=s[f]},
+   b.parentNode.querySelector('input').value=s[f];if(f==='w'){cascadeW(+b.dataset.j,+b.dataset.k);Store.save()}},
  setDone:b=>{const e=db().active.exercises[+b.dataset.j],s=e.sets[+b.dataset.k];s.done=!s.done;Store.save();render();if(s.done)startTimer(e.rest)},
  setAdd:b=>{const e=db().active.exercises[+b.dataset.j],l=e.sets[e.sets.length-1];e.sets.push({w:l.w,r:l.r,done:false});Store.save();render()},
  setDel:b=>{db().active.exercises[+b.dataset.j].sets.pop();Store.save();render()},
@@ -376,6 +377,7 @@ const ACT={
  openHist:b=>go('hist',{id:b.dataset.id}),
  delHist:b=>{if(confirm('Delete this workout from history?')){Store.deleteHistory(b.dataset.id);back()}},
  wk:b=>{route.p.off=Math.max(0,+b.dataset.o);render()},
+ copyW:()=>{db().settings.copyWeight=db().settings.copyWeight===false;Store.save();render()},
  units:b=>{db().settings.units=b.dataset.v;db().settings.unitsChosen=true;Store.save();render()},
  export:()=>{const blob=new Blob([Store.exportJSON()],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`simplelift-backup-${new Date().toISOString().slice(0,10)}.json`;a.click()},
  import:()=>{const f=$('#file');f.onchange=()=>{const r=new FileReader();r.onload=()=>{try{Store.importJSON(r.result);applyBg();toast('Data imported');tab('home')}catch(e){alert('Import failed: '+e.message)}};r.readAsText(f.files[0])};f.click()},
@@ -407,8 +409,11 @@ document.addEventListener('input',e=>{
   else if(parts[0]==='day')draft.days[route.p.i].name=v;
   else if(parts[0]==='ex'){const ex=draft.days[route.p.i].exercises[+parts[1]],f=parts[2];ex[f]=['sets','repMin','repMax','rest'].includes(f)?(v===''?'':+v):f==='weight'?(v===''?'':+v):v;
     if(f==='name')showAC(+parts[1],v)}
-  else if(parts[0]==='set'){const s=db().active.exercises[+parts[1]].sets[+parts[2]];s[parts[3]]=v===''?'':+v;Store.save()}
+  else if(parts[0]==='set'){const s=db().active.exercises[+parts[1]].sets[+parts[2]];s[parts[3]]=v===''?'':+v;if(parts[3]==='w')cascadeW(+parts[1],+parts[2]);Store.save()}
 });
+// Copy a set's weight to all LATER sets of the same exercise that aren't marked done (Settings toggle, default on).
+function cascadeW(j,k){if(db().settings.copyWeight===false)return;const ex=db().active.exercises[j],w=ex.sets[k].w;
+  for(let i=k+1;i<ex.sets.length;i++){if(ex.sets[i].done)continue;ex.sets[i].w=w;const inp=document.querySelector(`[data-bind="set.${j}.${i}.w"]`);if(inp)inp.value=w}}
 function showAC(j,q){const box=$('#ac'+j);q=q.trim().toLowerCase();
   if(!q){box.hidden=true;return}
   const words=q.split(/\s+/);

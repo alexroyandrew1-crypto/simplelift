@@ -53,3 +53,6 @@ A free, simple workout tracker. Static PWA with no build step and no CDN. The on
 ## Changes in v8
 - Build with AI → final step offers **⚡ Quick build** (built-in rules) or **💬 Use my own AI chat (free)**. The second writes a prompt from your answers (`buildAIPrompt()` in generator.js), with optional "[Changes I want]". You copy it into any chat AI, then paste the AI's answer into the "Paste AI Answer" screen, which uses the normal paste parser and review screen. The prompt asks for "Plan: …", "Day N: Name" and "Exercise — 3 sets x 8-10 reps — rest 90s" lines. No server and no key, and the app sends nothing.
 - The parser now picks up a "Plan: name" line anywhere as the plan title.
+
+## Changes in v9
+- During a workout, changing a set's weight (typing, +/−, or press-and-hold) copies it to every later set of that exercise that isn't marked done. Earlier sets and done sets never change, and reps aren't copied. Turn it off in Settings → "Copy weight to later sets" (`settings.copyWeight`, on by default).
