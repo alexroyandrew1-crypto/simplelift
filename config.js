@@ -2,4 +2,4 @@
 // optional Donate button in Settings → Support. While it's empty, only the message is shown.
 const DONATE_URL='';
 // Shown in Settings > About. Bump together with the cache name in sw.js.
-const APP_VERSION='9';
+const APP_VERSION='10';

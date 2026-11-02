@@ -56,3 +56,7 @@ A free, simple workout tracker. Static PWA with no build step and no CDN. The on
 
 ## Changes in v9
 - During a workout, changing a set's weight (typing, +/−, or press-and-hold) copies it to every later set of that exercise that isn't marked done. Earlier sets and done sets never change, and reps aren't copied. Turn it off in Settings → "Copy weight to later sets" (`settings.copyWeight`, on by default).
+
+## Changes in v10
+- Suggested or recommended weights in a workout show in gray (#7d8590). Once you set a set's weight (typing, +/−, hold, or marking the set done), it turns white.
+- Each set tracks `ws`: `s` = suggested (gray), `c` = copied from your edit of an earlier set (white, can still be overwritten), `m` = set by you (white, protected). Editing set N marks it `m` and copies the value to later sets that aren't `m` or done. Clearing a box doesn't copy the empty value down.

@@ -146,7 +146,7 @@ session(){
     ${e.note?`<div class="mut">${esc(e.note)}</div>`:''}${e.last?`<div class="mut">Last: ${esc(e.last)}</div>`:''}${e.sugg?`<div class="sugg">↑ ${esc(e.sugg)}</div>`:''}
     <div class="set mut" style="font-size:12px;margin-bottom:-4px"><span>Set</span><span>${U()}</span><span>Reps</span><span></span></div>
     ${e.sets.map((s,k)=>`<div class="set"><span class="mut">${k+1}</span>
-      <div class="step"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="w" data-d="-1">−</button><input type="number" inputmode="decimal" data-bind="set.${j}.${k}.w" value="${esc(s.w)}"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="w" data-d="1">+</button></div>
+      <div class="step"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="w" data-d="-1">−</button><input type="number" inputmode="decimal" data-bind="set.${j}.${k}.w" class="${s.ws==='s'?'sugw':''}" value="${esc(s.w)}"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="w" data-d="1">+</button></div>
       <div class="step"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="r" data-d="-1">−</button><input type="number" inputmode="numeric" data-bind="set.${j}.${k}.r" value="${esc(s.r)}"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="r" data-d="1">+</button></div>
       <button class="done ${s.done?'on':''}" data-act="setDone" data-j="${j}" data-k="${k}" aria-label="Mark set done">✓</button></div>`).join('')}
     <div class="row"><button class="btn sm" data-act="setAdd" data-j="${j}">+ Set</button>${e.sets.length>1?`<button class="btn sm" data-act="setDel" data-j="${j}">− Set</button>`:''}</div></div>`).join('')}
@@ -286,7 +286,7 @@ function startWorkout(i){
     const g=suggest(e),last=g.last,lower=exType(e)==='lower';
     const w=g.w||'',r=g.up||!last?(+e.repMin||8):(+last.sets[0].r||+e.repMin||8);
     const lastTxt=last?last.sets.map(s=>`${s.w||0}×${s.r}`).join(', '):'',sugg=g.guess&&g.w?`Suggested start: ${g.w} ${U()} · a beginner estimate, edit if too light or heavy`:`Recommended: ${g.w?g.w+' '+U():'bodyweight'} · ${g.t}`;
-    return{oldId:e.oldId,type:e.type,name:e.name,lower,repMin:+e.repMin,repMax:+e.repMax,rest:+e.rest||60,note:e.note,last:lastTxt,sugg,sets:[...Array(Math.max(1,+e.sets||1))].map(()=>({w,r,done:false}))}});
+    return{oldId:e.oldId,type:e.type,name:e.name,lower,repMin:+e.repMin,repMax:+e.repMax,rest:+e.rest||60,note:e.note,last:lastTxt,sugg,sets:[...Array(Math.max(1,+e.sets||1))].map(()=>({w,r,done:false,ws:'s'}))}});
   if(!ex.length){toast('Add exercises to this day first');return}
   db().active={id:Store.uid(),planId:plan.id,planName:plan.name,dayIndex:i,dayName:d.name,started:Date.now(),exercises:ex};Store.save();go('session');
 }
@@ -367,9 +367,9 @@ const ACT={
  stp:(b,e,mult=1)=>{if(e&&e.type==='click'&&holdUntil>Date.now())return; // pointer already handled it
    const s=db().active.exercises[+b.dataset.j].sets[+b.dataset.k],f=b.dataset.f,d=+b.dataset.d;
    const inc=(f==='w'?(U()==='kg'?2.5:5):1)*mult;s[f]=Math.max(0,Math.round(((+s[f]||0)+d*inc)*10)/10);Store.save();
-   b.parentNode.querySelector('input').value=s[f];if(f==='w'){cascadeW(+b.dataset.j,+b.dataset.k);Store.save()}},
- setDone:b=>{const e=db().active.exercises[+b.dataset.j],s=e.sets[+b.dataset.k];s.done=!s.done;Store.save();render();if(s.done)startTimer(e.rest)},
- setAdd:b=>{const e=db().active.exercises[+b.dataset.j],l=e.sets[e.sets.length-1];e.sets.push({w:l.w,r:l.r,done:false});Store.save();render()},
+   b.parentNode.querySelector('input').value=s[f];if(f==='w'){s.ws='m';b.parentNode.querySelector('input').classList.remove('sugw');cascadeW(+b.dataset.j,+b.dataset.k);Store.save()}},
+ setDone:b=>{const e=db().active.exercises[+b.dataset.j],s=e.sets[+b.dataset.k];s.done=!s.done;if(s.done&&s.ws==='s')s.ws='m';Store.save();render();if(s.done)startTimer(e.rest)},
+ setAdd:b=>{const e=db().active.exercises[+b.dataset.j],l=e.sets[e.sets.length-1];e.sets.push({w:l.w,r:l.r,done:false,ws:l.ws==='s'?'s':'c'});Store.save();render()},
  setDel:b=>{db().active.exercises[+b.dataset.j].sets.pop();Store.save();render()},
  finish:finishWorkout,
  discard:()=>{if(confirm('Discard this workout? Nothing will be saved.')){db().active=null;Store.save();stopTimer();tab('home')}},
@@ -409,11 +409,12 @@ document.addEventListener('input',e=>{
   else if(parts[0]==='day')draft.days[route.p.i].name=v;
   else if(parts[0]==='ex'){const ex=draft.days[route.p.i].exercises[+parts[1]],f=parts[2];ex[f]=['sets','repMin','repMax','rest'].includes(f)?(v===''?'':+v):f==='weight'?(v===''?'':+v):v;
     if(f==='name')showAC(+parts[1],v)}
-  else if(parts[0]==='set'){const s=db().active.exercises[+parts[1]].sets[+parts[2]];s[parts[3]]=v===''?'':+v;if(parts[3]==='w')cascadeW(+parts[1],+parts[2]);Store.save()}
+  else if(parts[0]==='set'){const s=db().active.exercises[+parts[1]].sets[+parts[2]];s[parts[3]]=v===''?'':+v;if(parts[3]==='w'){s.ws='m';e.target.classList.remove('sugw');if(v!=='')cascadeW(+parts[1],+parts[2])}Store.save()}
 });
-// Copy a set's weight to all LATER sets of the same exercise that aren't marked done (Settings toggle, default on).
+// Set weight state ws: 's' suggested (gray), 'c' copied from an edit (white, can be overwritten), 'm' set by the user (white, protected).
+// Copy a set's weight to all LATER sets of the same exercise that aren't marked done or set by the user (Settings toggle, default on).
 function cascadeW(j,k){if(db().settings.copyWeight===false)return;const ex=db().active.exercises[j],w=ex.sets[k].w;
-  for(let i=k+1;i<ex.sets.length;i++){if(ex.sets[i].done)continue;ex.sets[i].w=w;const inp=document.querySelector(`[data-bind="set.${j}.${i}.w"]`);if(inp)inp.value=w}}
+  for(let i=k+1;i<ex.sets.length;i++){const t=ex.sets[i];if(t.done||t.ws==='m')continue;t.w=w;t.ws='c';const inp=document.querySelector(`[data-bind="set.${j}.${i}.w"]`);if(inp){inp.value=w;inp.classList.remove('sugw')}}}
 function showAC(j,q){const box=$('#ac'+j);q=q.trim().toLowerCase();
   if(!q){box.hidden=true;return}
   const words=q.split(/\s+/);
