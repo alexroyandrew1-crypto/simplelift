@@ -4,7 +4,9 @@ const Store=(()=>{
   const KEY='simplelift_v1';
   const blank=()=>({version:1,settings:{units:'lb'},plans:[],activePlanId:null,history:[],active:null});
   let db;
-  function load(){try{db=Object.assign(blank(),JSON.parse(localStorage.getItem(KEY))||{})}catch(e){db=blank()}return db}
+  function load(){try{db=Object.assign(blank(),JSON.parse(localStorage.getItem(KEY))||{})}catch(e){db=blank()}
+    // lb is the default; only an explicit tap on the Settings unit toggle (unitsChosen) keeps kg
+    if(!db.settings||typeof db.settings!=='object')db.settings={};if(!db.settings.unitsChosen)db.settings.units='lb';return db}
   function save(){localStorage.setItem(KEY,JSON.stringify(db))}
   const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
   load();

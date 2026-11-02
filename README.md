@@ -44,3 +44,8 @@ A free, simple workout tracker. Static PWA with no build step and no CDN. The on
 
 ## Changes in v6
 - The paste parser reads article and chat-style plans: the exercise name on one line and "4 sets × 8–10 reps" on the next, parenthetical alternatives and "A OR B" kept in the note, "Focus:"/"Time:" lines as notes, and "Rest 45–60 seconds between sets" as the default rest. It skips intro text, equipment, time breakdowns, warm-up, cool-down, tips, scaling and closing chatter, and adds an optional finisher (for example "Push-up Drop Set", 2 rounds). It also handles markdown (**bold**, ### headings, numbered or bulleted lists, "Name: 3x10", and tables). The title's parenthetical goes to plan notes, and a single-day plan is named from the title (Push, Pull, Legs and so on).
+
+## Changes in v7
+- lb is the default unit. kg only sticks after you choose it in Settings → Units (saved as `settings.unitsChosen`).
+- Suggested starting weights: an exercise with no history and no typed weight gets a conservative beginner estimate from `startWeight()` in library.js (lb; dumbbells per hand; bodyweight moves show "Bodyweight"), labelled "Suggested start". Once there's history (including the old app's), the old app's `sug()` rules apply.
+- Press and hold the weight or rep +/− buttons to repeat. Repeats start after 350 ms, speed up over time, and step double after 3 s. A tap is still one step.

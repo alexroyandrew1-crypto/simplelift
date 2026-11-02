@@ -242,7 +242,8 @@ function j0(plan,sel){return sel===nextDayIndex(plan)?' · up next':''}
 // last session hit top of rep range on all planned sets -> +5 (upper/db) or +10 (lower) lb; otherwise repeat weight.
 function exType(e){return e.type||(isLower(e.name)?'lower':'upper')}
 function suggest(e){const l=Store.lastFor(e.name,e.oldId);const start=e.weight===''||e.weight==null?0:+e.weight;
-  if(!l||!l.sets.length)return{w:start,t:start?'Starting estimate':'Bodyweight',last:null};
+  if(!l||!l.sets.length){if(start)return{w:start,t:'Starting estimate',last:null};
+    const g=startWeight(e.name,U());return{w:g,t:g?'Suggested start':'Bodyweight',last:null,guess:1}}
   const w=Math.max(...l.sets.map(s=>+s.w||0));const top=l.sets.length>=+e.sets&&l.sets.every(s=>+s.r>=+e.repMax);
   if(top&&w>0){const inc=step(exType(e)==='lower');return{w:w+inc,t:`Hit top of range last time → +${inc} ${U()}`,last:l,up:1}}
   return{w,t:'Repeat weight, aim for more reps',last:l}}
@@ -266,7 +267,7 @@ function startWorkout(i){
   const ex=d.exercises.filter(e=>e.name.trim()).map(e=>{
     const g=suggest(e),last=g.last,lower=exType(e)==='lower';
     const w=g.w||'',r=g.up||!last?(+e.repMin||8):(+last.sets[0].r||+e.repMin||8);
-    const lastTxt=last?last.sets.map(s=>`${s.w||0}×${s.r}`).join(', '):'',sugg=`Recommended: ${g.w?g.w+' '+U():'bodyweight'} · ${g.t}`;
+    const lastTxt=last?last.sets.map(s=>`${s.w||0}×${s.r}`).join(', '):'',sugg=g.guess&&g.w?`Suggested start: ${g.w} ${U()} · a beginner estimate, edit if too light or heavy`:`Recommended: ${g.w?g.w+' '+U():'bodyweight'} · ${g.t}`;
     return{oldId:e.oldId,type:e.type,name:e.name,lower,repMin:+e.repMin,repMax:+e.repMax,rest:+e.rest||60,note:e.note,last:lastTxt,sugg,sets:[...Array(Math.max(1,+e.sets||1))].map(()=>({w,r,done:false}))}});
   if(!ex.length){toast('Add exercises to this day first');return}
   db().active={id:Store.uid(),planId:plan.id,planName:plan.name,dayIndex:i,dayName:d.name,started:Date.now(),exercises:ex};Store.save();go('session');
@@ -340,8 +341,9 @@ const ACT={
  aiPrev:()=>{const tx=$('#aiText');if(tx)ai.a[AI_STEPS[ai.step].key]=tx.value;ai.step--;render()},
  aiNext:async()=>{const tx=$('#aiText');if(tx)ai.a[AI_STEPS[ai.step].key]=tx.value;if(ai.step<AI_STEPS.length-1){ai.step++;render();return}
    draft=await generatePlan(ai.a);draft._new=1;stack=[{v:'home',p:{}}];go('editor',{},false);toast('Plan ready. Tweak anything, then save.')},
- stp:b=>{const s=db().active.exercises[+b.dataset.j].sets[+b.dataset.k],f=b.dataset.f,d=+b.dataset.d;
-   const inc=f==='w'?(U()==='kg'?2.5:5):1;s[f]=Math.max(0,Math.round(((+s[f]||0)+d*inc)*10)/10);Store.save();
+ stp:(b,e,mult=1)=>{if(e&&e.type==='click'&&holdUntil>Date.now())return; // pointer already handled it
+   const s=db().active.exercises[+b.dataset.j].sets[+b.dataset.k],f=b.dataset.f,d=+b.dataset.d;
+   const inc=(f==='w'?(U()==='kg'?2.5:5):1)*mult;s[f]=Math.max(0,Math.round(((+s[f]||0)+d*inc)*10)/10);Store.save();
    b.parentNode.querySelector('input').value=s[f]},
  setDone:b=>{const e=db().active.exercises[+b.dataset.j],s=e.sets[+b.dataset.k];s.done=!s.done;Store.save();render();if(s.done)startTimer(e.rest)},
  setAdd:b=>{const e=db().active.exercises[+b.dataset.j],l=e.sets[e.sets.length-1];e.sets.push({w:l.w,r:l.r,done:false});Store.save();render()},
@@ -352,11 +354,20 @@ const ACT={
  openHist:b=>go('hist',{id:b.dataset.id}),
  delHist:b=>{if(confirm('Delete this workout from history?')){Store.deleteHistory(b.dataset.id);back()}},
  wk:b=>{route.p.off=Math.max(0,+b.dataset.o);render()},
- units:b=>{db().settings.units=b.dataset.v;Store.save();render()},
+ units:b=>{db().settings.units=b.dataset.v;db().settings.unitsChosen=true;Store.save();render()},
  export:()=>{const blob=new Blob([Store.exportJSON()],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`simplelift-backup-${new Date().toISOString().slice(0,10)}.json`;a.click()},
  import:()=>{const f=$('#file');f.onchange=()=>{const r=new FileReader();r.onload=()=>{try{Store.importJSON(r.result);applyBg();toast('Data imported');tab('home')}catch(e){alert('Import failed: '+e.message)}};r.readAsText(f.files[0])};f.click()},
  reset:()=>{if(confirm('Erase ALL plans, history and settings on this device?')&&confirm('Are you sure? This cannot be undone.')){Store.reset();localStorage.removeItem(BG_KEY);applyBg();stopTimer();tab('home');toast('All data reset')}}
 };
+// Press-and-hold on +/- : one step on press, repeat after 350ms every 120ms, faster over time, double step after 3s.
+let holdUntil=0,holdT=null;
+function holdStop(){if(holdT){clearTimeout(holdT);holdT=null}}
+document.addEventListener('pointerdown',e=>{const b=e.target.closest('[data-act="stp"]');if(!b||e.button>0)return;
+  e.preventDefault();holdStop();const t0=Date.now();ACT.stp(b,null);holdUntil=Date.now()+1e9;
+  const tick=()=>{const el=Date.now()-t0;ACT.stp(b,null,el>3000?2:1);holdT=setTimeout(tick,Math.max(60,120-Math.floor((el-350)/1000)*25))};
+  holdT=setTimeout(tick,350)});
+['pointerup','pointercancel','pointerleave'].forEach(t=>document.addEventListener(t,e=>{if(holdT||holdUntil>Date.now()){holdStop();holdUntil=Date.now()+400}},true));
+document.addEventListener('contextmenu',e=>{if(e.target.closest('[data-act="stp"]'))e.preventDefault()});
 document.addEventListener('click',e=>{
   const pick=e.target.closest('[data-pick]');
   if(pick){const j=+pick.dataset.pick,ex=draft.days[route.p.i].exercises[j],L=libFind(pick.dataset.name);ex.name=L.name;

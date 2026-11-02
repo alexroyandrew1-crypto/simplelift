@@ -107,3 +107,25 @@ function parseInjuries(text){const t=String(text||'');if(/^\s*(none|no|n\/a|noth
   const r=INJURY_WORDS.filter(([,, re])=>re.test(t));return{codes:r.map(x=>x[0]),words:r.map(x=>x[1])}}
 function libFuzzyName(n){const k=String(n||'').toLowerCase().replace(/\bdb\b/g,'dumbbell').replace(/\bbb\b/g,'barbell').replace(/s\b/g,'').trim();if(!k)return null;
   return LIBRARY.find(x=>x.name.toLowerCase()===k)||LIBRARY.find(x=>{const y=x.name.toLowerCase().replace(/s\b/g,'');return y===k||y.endsWith(' '+k)})||LIBRARY.find(x=>x.name.toLowerCase().replace(/s\b/g,'').includes(k))}
+
+// ===== Suggested starting weight (lb) for a brand-new exercise with no history and no weight typed in =====
+// Conservative beginner numbers; dumbbells are per hand. Returns 0 for bodyweight moves. Edit START_RULES to tune.
+const START_RULES=[ // [regex on name, barbell, dumbbell, machine/cable]
+ [/romanian|rdl|stiff/,95,30,60],[/deadlift/,135,40,90],[/hip thrust|glute bridge/,95,40,90],[/front squat/,65,25,90],[/squat|hack/,95,25,90],
+ [/leg press/,140,140,140],[/lunge|split squat|step[\s-]?up/,65,20,60],[/leg (curl|extension)|hamstring curl/,50,20,50],[/calf/,95,30,90],
+ [/incline.*(press|bench)|(press|bench).*incline/,75,25,60],[/bench|chest press|floor press/,95,30,60],[/fly|flye|pec deck|crossover/,40,15,40],
+ [/overhead|shoulder press|military|arnold|ohp/,65,20,50],[/lateral|rear delt|reverse fly/,30,10,20],[/face pull/,30,15,30],[/upright row|shrug/,65,30,50],
+ [/pulldown|pull-down/,70,25,70],[/row/,75,30,70],[/curl/,40,20,30],[/skull|tricep|triceps|pushdown|kickback|extension/,40,15,35],
+ [/woodchop|pallof|crunch|ab /,0,15,30]];
+const BW_RE=/push[\s-]?ups?|pull[\s-]?ups?|chin[\s-]?ups?|\bdips?\b|plank|crunch|sit[\s-]?ups?|leg raise|burpee|mountain|bodyweight|air squat|hanging|dead bug|bird dog|superman|jumping|drop set/;
+function startWeight(name,units){
+  const n=String(name||'').toLowerCase();if(!n.trim())return 0;
+  const L=libFind(name)||libFuzzyName(name);
+  let eq=/\b(db|dumbbells?|kettlebell|kb)\b/.test(n)?'dumbbell':/\b(barbell|bb|smith|ez)\b/.test(n)?'barbell':/\b(cable|machine|band|pulldown|leg press|pec deck)\b/.test(n)?'machine':L?L.equip:'';
+  if(eq==='bodyweight'||(BW_RE.test(n)&&!/weighted|cable|machine|assisted/.test(n)))return 0;
+  if(eq==='cable')eq='machine';
+  const r=START_RULES.find(x=>x[0].test(n));
+  let lb=r?(eq==='dumbbell'?r[2]:eq==='machine'?r[3]:eq==='barbell'?r[1]:r[1]||r[2]):(eq==='dumbbell'?20:eq==='barbell'?65:eq==='machine'?50:0);
+  if(!r&&!eq)lb=0;
+  if(!lb)return 0;
+  return units==='kg'?Math.max(2.5,Math.round(lb*0.4536/2.5)*2.5):lb}
