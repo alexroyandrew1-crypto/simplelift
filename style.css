@@ -49,3 +49,21 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 #toast{position:fixed;left:50%;top:calc(64px + env(safe-area-inset-top));transform:translateX(-50%);background:#2b303b;padding:10px 16px;border-radius:999px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
 #toast.show{opacity:1}
 .progress{height:6px;background:var(--card2);border-radius:9px;overflow:hidden;margin:8px 0 16px}.progress i{display:block;height:100%;background:var(--acc)}
+.daytabs{display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px;margin:0 -16px;padding-left:16px;padding-right:16px;scrollbar-width:none;scroll-snap-type:x proximity}
+.daytabs::-webkit-scrollbar{display:none}
+.daytab{flex:none;scroll-snap-align:center;border:1px solid #2e3340;background:var(--card);color:var(--txt);border-radius:999px;padding:10px 16px;font-size:15px;white-space:nowrap;border-bottom:3px solid var(--dc)}
+.daytab.on{background:var(--dc);color:#0b0d10;font-weight:700;border-color:var(--dc)}
+.swatch{width:40px;height:40px;border-radius:50%;border:3px solid transparent;padding:0;position:relative;overflow:hidden;display:inline-block}
+.swatch.on{border-color:#fff}
+.swatch.custom::after{content:'+';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#0b0d10;font-weight:800;font-size:20px;pointer-events:none}
+.swatch input{opacity:0;position:absolute;inset:0;width:100%;height:100%;cursor:pointer}
+details summary{cursor:pointer;padding:4px 0}
+#bg{position:fixed;inset:0;z-index:-1;pointer-events:none}
+#bg::after{content:'';position:absolute;inset:0;background:rgba(5,6,9,var(--dim,0))}
+body.hasbg{background:transparent}
+body.hasbg .card,body.hasbg .big:not(.acc),body.hasbg .ex,body.hasbg .daytab:not(.on){background:rgba(22,25,32,.78);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+body.hasbg header{background:rgba(10,12,16,.7)}
+.bggrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px}
+.bgopt{aspect-ratio:3/4;border-radius:12px;border:2px solid #2e3340;background:var(--card2);color:var(--txt);font-size:11px;display:flex;align-items:flex-end;justify-content:center;padding:4px;overflow:hidden;text-transform:capitalize}
+.bgopt span{background:#0009;border-radius:6px;padding:1px 4px}
+.bgopt.on{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc)}

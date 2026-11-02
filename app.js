@@ -15,11 +15,11 @@ function back(){route=stack.pop()||{v:'home',p:{}};render()}
 $('#back').onclick=back;
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{if(db().active&&b.dataset.tab==='home'){tab('home');return}tab(b.dataset.tab)});
 
-const TITLES={home:'Simple Lift',plans:'My Plans',editor:'Edit Plan',day:'Edit Day',ai:'Build with AI',session:'Workout',history:'History',hist:'Workout',progress:'Progress',settings:'Settings'};
+const TITLES={home:'Simple Lift',plans:'My Plans',editor:'Edit Plan',day:'Edit Day',ai:'Build with AI',paste:'Paste a Plan',session:'Workout',history:'History',hist:'Workout',progress:'Progress',settings:'Settings'};
 function render(){
   const v=route.v;$('#title').textContent=TITLES[v]||'Simple Lift';
   $('#back').style.visibility=stack.length?'visible':'hidden';
-  const root={home:'home',plans:'plans',editor:'plans',day:'plans',ai:'home',session:'home',history:'history',hist:'history',progress:'progress',settings:'settings'}[v];
+  const root={home:'home',plans:'plans',editor:'plans',day:'plans',ai:'home',paste:'home',session:'home',history:'history',hist:'history',progress:'progress',settings:'settings'}[v];
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===root));
   const m=$('#view');m.style.animation='none';m.offsetHeight;m.style.animation='';
   m.innerHTML=VIEWS[v](route.p);
@@ -37,7 +37,8 @@ const VIEWS={
 home(){
   const a=db().active;const plan=Store.activePlan();let h='';
   if(a)h+=`<button class="big acc" data-act="resume">Resume workout<small>${esc(a.dayName)} · in progress</small></button>`;
-  else if(plan){const i=nextDayIndex(plan);
+  if(plan)return h+workoutHome(plan);
+  if(0){const i=nextDayIndex(plan);
     if(i>=0){const d=plan.days[i];h+=`<div class="card"><div class="mut">Next workout · ${esc(plan.name)}</div><h2>${esc(d.name)}</h2>
       <div class="mut">${d.exercises.length} exercises · ${d.exercises.reduce((s,e)=>s+(+e.sets||0),0)} sets</div>
       <div style="margin:10px 0">${d.exercises.map(e=>`<div class="between"><span>${esc(e.name)}</span><span class="mut">${e.sets}×${repTxt(e)}</span></div>`).join('')}</div>
@@ -46,7 +47,8 @@ home(){
       <div class="chips" style="margin-top:6px">${plan.days.map((d,j)=>`<button class="chip ${j===i?'on':''}" data-act="start" data-i="${j}" ${d.rest||!d.exercises.length?'disabled':''}>${esc(d.name)}</button>`).join('')}</div>
       <div class="mut" style="margin-top:8px">Tap any day to start it instead.</div></div>`}
   h+=`<button class="big" data-act="newPlan">✎ Build my own plan<small>Pick your days and exercises</small></button>
-      <button class="big" data-act="ai">✦ Build with AI<small>Answer a few questions, get a plan made for you</small></button>`;
+      <button class="big" data-act="ai">✦ Build with AI<small>Answer a few questions, get a plan made for you</small></button>
+      <button class="big" data-act="paste">⎘ Paste a plan from text<small>Copied a plan from ChatGPT, Grok or a coach? Paste it in</small></button>`;
   return h;
 },
 plans(){
@@ -55,11 +57,19 @@ plans(){
     ${p.id===db().activePlanId?'<span class="tag">Active</span>':`<button class="btn sm" data-act="activate" data-id="${p.id}">Use</button>`}</div>
     <div class="row" style="margin-top:10px"><button class="btn grow" data-act="edit" data-id="${p.id}">Edit</button><button class="btn" data-act="dup" data-id="${p.id}">Copy</button><button class="btn bad" data-act="delPlan" data-id="${p.id}">Delete</button></div></div>`).join('')
     :`<div class="card mut">No plans yet. Create one below.</div>`)+
-    `<button class="big" data-act="newPlan">✎ Build my own plan</button><button class="big" data-act="ai">✦ Build with AI</button>`;
+    `<button class="big" data-act="newPlan">✎ Build my own plan</button><button class="big" data-act="ai">✦ Build with AI</button><button class="big" data-act="paste">⎘ Paste a plan from text</button>`;
 },
 editor(){
   const p=draft;
-  return `<label>Plan name</label><input data-bind="name" value="${esc(p.name)}" placeholder="My plan">
+  const I=p._issues;const iss=I?`<div class="card" style="border:1px solid ${I.unparsed.length?'#7c5a1d':'#24492f'}"><b>${I.count} exercises found in ${I.days} day${I.days===1?'':'s'}.</b> Check them below, fix anything, then save.
+    ${I.unparsed.length?`<div style="margin-top:8px;color:#fbbf24">I couldn't understand ${I.unparsed.length} line${I.unparsed.length===1?'':'s'}:</div><ul class="mut" style="margin:4px 0;padding-left:18px">${I.unparsed.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><div class="mut">Add those yourself with "+ Add exercise" if you need them.</div>`:''}
+    ${I.skipped.length?`<div class="mut" style="margin-top:6px">Skipped ${I.skipped.length} warm-up, cool-down or tips line${I.skipped.length===1?'':'s'}.</div>`:''}</div>`:'';
+  const CR=p._cr;const req=`<div class="card"><h3>Request changes</h3><div class="mut">Tell me what to change in plain words, e.g. "swap squats for leg press, add abs, make it shorter, add hammer curls to day 2". Or edit anything by hand below.</div>
+    <textarea id="crText" rows="3" style="margin-top:10px" placeholder="e.g. replace bench press with dumbbell press, more chest, no calf raises"></textarea><button class="btn acc full" data-act="applyCR">Apply changes</button>
+    ${CR?`<div style="margin-top:10px">${CR.changes.length?`<b>What changed:</b><ul style="margin:4px 0;padding-left:18px">${CR.changes.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:'<b>Nothing was changed.</b>'}
+    ${CR.notUnderstood.length?`<div style="color:#fbbf24">I couldn't understand or do:</div><ul class="mut" style="margin:4px 0;padding-left:18px">${CR.notUnderstood.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><div class="mut">Try "swap X for Y", "remove X", "add X to day 2", "more chest", "make it shorter".</div>`:''}</div>`:''}</div>`;
+  return iss+req+`<label>Plan name</label><input data-bind="name" value="${esc(p.name)}" placeholder="My plan">
+  <label>Plan notes</label><textarea data-bind="notes" rows="2" placeholder="Optional">${esc(p.notes||'')}</textarea>
   <h3 style="margin:18px 0 4px">Days</h3><div class="mut">Tap a day to edit its exercises. Use arrows to reorder.</div>
   ${p.days.map((d,i)=>`<div class="card"><div class="row"><div class="grow" data-act="openDay" data-i="${i}" style="cursor:pointer">
     <h3>${esc(d.name)} ${d.rest?'<span class="tag">Rest</span>':''}</h3>
@@ -82,8 +92,11 @@ day({i}){
     <label>Note</label><input data-bind="ex.${j}.note" value="${esc(e.note)}" placeholder="Optional">
     <div class="row" style="margin-top:10px"><button class="btn sm" data-act="exUp" data-j="${j}">▲</button><button class="btn sm" data-act="exDown" data-j="${j}">▼</button><span class="grow"></span><button class="btn sm bad" data-act="exDel" data-j="${j}">Remove</button></div></div>`).join('')}
   ${d.rest?'':'<button class="btn full" data-act="exAdd">+ Add exercise</button>'}
+  ${route.p.direct?`<div class="card"><h3>Day color</h3><div class="chips">${COLORS.map(c=>`<button class="swatch ${dayColor(d)===c?'on':''}" style="background:${c}" data-act="setColor" data-c="${c}" aria-label="Color ${c}"></button>`).join('')}
+    <label class="swatch custom" title="Custom color" style="background:${esc(dayColor(d))}"><input type="color" id="customColor" value="${esc(dayColor(d))}"></label></div>
+    <button class="btn full" data-act="colorAll">Apply this color to all days</button></div>`:''}
   <div class="grid2" style="margin-top:10px"><button class="btn" data-act="dayDup">Duplicate day</button><button class="btn bad" data-act="dayDel">Delete day</button></div>
-  <button class="btn acc full" data-act="back">Done</button>`;
+  <button class="btn acc full" data-act="${route.p.direct?'saveDay':'back'}">${route.p.direct?'Save workout':'Done'}</button>`;
 },
 ai(){
   const S=AI_STEPS,s=S[ai.step];
@@ -91,9 +104,15 @@ ai(){
   const on=v=>s.multi?(val||[]).includes(v):val==v;
   return `<div class="mut">Step ${ai.step+1} of ${S.length}</div><div class="progress"><i style="width:${(ai.step+1)/S.length*100}%"></i></div>
   <h2>${esc(s.q)}</h2>${s.hint?`<div class="mut">${esc(s.hint)}</div>`:''}
-  <div style="margin-top:12px">${s.opts.map(([v,l,d])=>`<button class="big ${on(v)?'acc':''}" style="padding:16px 18px;font-size:17px" data-act="aiPick" data-v="${esc(v)}">${esc(l)}${d?`<small>${esc(d)}</small>`:''}</button>`).join('')}</div>
+  ${s.text?`<textarea id="aiText" rows="4" style="margin-top:12px" placeholder="e.g. bad right shoulder, lower back pain">${esc(val||'')}</textarea><div id="injHint" class="mut" style="margin-top:6px">${injHint(val)}</div>`:''}
+  <div style="margin-top:12px;${s.grid?'display:grid;grid-template-columns:1fr 1fr;column-gap:8px':''}">${s.opts.map(([v,l,d])=>`<button class="big ${on(v)?'acc':''}" style="padding:16px 18px;font-size:17px" data-act="aiPick" data-v="${esc(v)}">${esc(l)}${d?`<small>${esc(d)}</small>`:''}</button>`).join('')}</div>
   <div class="grid2">${ai.step?'<button class="btn" data-act="aiPrev">Back</button>':'<span></span>'}
-  ${s.multi?`<button class="btn acc" data-act="aiNext">${ai.step===S.length-1?'Build my plan':'Next'}</button>`:''}</div>`;
+  ${s.multi||s.text?`<button class="btn acc" data-act="aiNext">${ai.step===S.length-1?'Build my plan':'Next'}</button>`:''}</div>`;
+},
+paste(){
+  return `<div class="mut">Paste a workout plan copied from anywhere. Day headings like "Day 1 - Push" or "Monday: Legs" and lines like "Bench press 4x8-10" work best. You'll see a preview before anything is saved.</div>
+  <textarea id="pasteText" rows="14" style="margin-top:12px" placeholder="Day 1 - Push&#10;Bench press 4x8-10&#10;Overhead press 3 sets of 8-12, rest 90s&#10;&#10;Day 2 - Rest&#10;&#10;Day 3 - Legs&#10;Squats 3x8-12">${esc(route.p.text||'')}</textarea>
+  <button class="btn acc full" data-act="parse">Make my plan</button>`;
 },
 session(){
   const a=db().active;if(!a)return'<div class="card">No workout in progress.</div>';
@@ -147,22 +166,81 @@ progress({off=0}){
 settings(){
   return `<div class="card"><h3>Units</h3><div class="chips"><button class="chip ${U()==='lb'?'on':''}" data-act="units" data-v="lb">lb</button><button class="chip ${U()==='kg'?'on':''}" data-act="units" data-v="kg">kg</button></div>
   <div class="mut" style="margin-top:6px">Changes labels and progression steps. Saved numbers are not converted.</div></div>
+  <div class="card"><h3>Background</h3><div class="mut">Pick one of ours or use a photo from your phone.</div>
+   <div class="bggrid"><button class="bgopt ${bgSettings().kind==='none'?'on':''}" data-act="bgNone">None</button>
+   ${Object.entries(BGS).map(([k,v])=>`<button class="bgopt ${bgSettings().kind==='preset'&&bgSettings().id===k?'on':''}" style="background:${v}" data-act="bgPreset" data-id="${k}" aria-label="${k}"><span>${k}</span></button>`).join('')}
+   <button class="bgopt ${bgSettings().kind==='custom'?'on':''}" data-act="bgPhoto" ${localStorage.getItem(BG_KEY)?`style="background:center/cover url('${localStorage.getItem(BG_KEY)}')"`:''}><span>📷 My photo</span></button></div>
+   <input type="file" id="bgFile" accept="image/*" hidden>
+   <label>Dim background: <b id="dimv">${Math.round(bgSettings().dim*100)}%</b></label><input type="range" id="dim" min="0" max="85" value="${Math.round(bgSettings().dim*100)}" style="padding:0">
+  </div>
   <div class="card"><h3>Your data</h3><div class="mut">Everything is stored on this device only. Back it up to move it to another phone.</div>
   <button class="btn full" data-act="export">Export data (JSON)</button><button class="btn full" data-act="import">Import data</button><input type="file" id="file" accept="application/json,.json" hidden>
+  <button class="btn full" data-act="importOld">Import history from my old workout app</button>
+  <div class="mut" style="margin-top:6px">Works only on the same phone and browser where you used the old app. Your old app's data is never changed.</div>
   <button class="btn bad full" data-act="reset">Reset all data</button></div>
-  <div class="card"><h3>About</h3><div class="mut">Simple Lift v1 · free, no ads, no account needed. Works offline. Add it to your home screen from your browser menu.</div></div>`;
+  <div class="card"><h3>About</h3><div class="mut">Simple Lift v1 · free. No ads, no tracking, no account needed. Works offline. Add it to your home screen from your browser menu.</div></div>
+  <div class="card" id="support" style="background:transparent;border:1px solid #262a33"><h3 style="font-size:16px">Support</h3><div class="mut">I made Simple Lift to be completely free, with no ads, and I'm trying to keep it free forever. If you ever want to chip in, it's totally optional and appreciated, but never expected.</div>
+  ${/^https:\/\//.test(DONATE_URL)?`<a class="btn sm" style="display:inline-block;margin-top:10px;text-decoration:none" href="${esc(DONATE_URL)}" target="_blank" rel="noopener">Donate (optional)</a>`:''}</div>`;
 }};
 
+const BGS={
+ aurora:'radial-gradient(ellipse at 20% 10%,#1f7a4d 0,transparent 55%),radial-gradient(ellipse at 80% 30%,#1e3a8a 0,transparent 50%),linear-gradient(160deg,#0b1020,#05070c)',
+ sunset:'linear-gradient(170deg,#3b0d2e 0%,#7c2d12 45%,#f59e0b 100%)',
+ ocean:'radial-gradient(circle at 70% 20%,#0ea5e9 0,transparent 45%),linear-gradient(180deg,#082f49,#020617)',
+ steel:'repeating-linear-gradient(135deg,#1c2028 0 14px,#171a21 14px 28px)',
+ forest:'radial-gradient(circle at 30% 80%,#166534 0,transparent 50%),linear-gradient(200deg,#052e16,#0a0f0a)',
+ ember:'radial-gradient(circle at 50% 110%,#dc2626 0,transparent 55%),radial-gradient(circle at 10% 0,#7c2d12 0,transparent 40%),#0c0a09',
+ grape:'linear-gradient(135deg,#2e1065,#701a75 55%,#0f0a1a)',
+ grid:'linear-gradient(#ffffff0d 1px,transparent 1px) 0 0/32px 32px,linear-gradient(90deg,#ffffff0d 1px,transparent 1px) 0 0/32px 32px,linear-gradient(180deg,#111827,#030712)'};
+const BG_KEY='simplelift_bg_img';
+function bgSettings(){return db().settings.bg||{kind:'none',dim:.45}}
+function applyBg(){const b=bgSettings();let el=$('#bg');if(!el){el=document.createElement('div');el.id='bg';document.body.prepend(el)}
+  let css='';if(b.kind==='preset'&&BGS[b.id])css=BGS[b.id];else if(b.kind==='custom'){const u=localStorage.getItem(BG_KEY);if(u)css=`center/cover no-repeat url("${u}")`}
+  el.style.background=css;el.style.setProperty('--dim',css?b.dim:0);document.body.classList.toggle('hasbg',!!css)}
+function setBg(o){db().settings.bg=Object.assign(bgSettings(),o);Store.save();applyBg()}
+function loadBgFile(file){return new Promise((res,rej)=>{if(!file||!/^image\//.test(file.type))return rej(new Error("That file isn't a picture."));
+  if(file.size>25e6)return rej(new Error('That picture is too big (over 25 MB). Pick a smaller one.'));
+  const img=new Image();img.onload=()=>{const sc=Math.min(1,1080/img.width);const c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);let q=.8,u=c.toDataURL('image/jpeg',q);while(u.length>1.4e6&&q>.35){q-=.15;u=c.toDataURL('image/jpeg',q)}
+    URL.revokeObjectURL(img.src);if(u.length>1.8e6)return rej(new Error('That picture is still too big after shrinking it. Try another one.'));res(u)};
+  img.onerror=()=>rej(new Error("Couldn't read that picture."));img.src=URL.createObjectURL(file)})}
+const COLORS=['#4ade80','#60a5fa','#f472b6','#facc15','#fb923c','#a78bfa','#2dd4bf','#f87171'];
 const AI_STEPS=[
  {key:'goal',q:'What is your main goal?',opts:[['muscle','Build muscle','Size and shape'],['strength','Get stronger','Lift heavier'],['general','General fitness','Feel good, stay healthy'],['fatloss','Lose fat','Keep muscle, burn more']]},
  {key:'experience',q:'How long have you been lifting?',opts:[['beginner','Beginner','Under 1 year'],['intermediate','Intermediate','1–3 years'],['advanced','Advanced','3+ years']]},
- {key:'days',q:'How many days a week can you train?',opts:[[2,'2 days'],[3,'3 days'],[4,'4 days'],[5,'5 days'],[6,'6 days']]},
- {key:'minutes',q:'How long is each session?',opts:[[30,'30 minutes'],[45,'45 minutes'],[60,'60 minutes'],[75,'75 minutes']]},
+ {key:'days',q:'How many days a week can you train?',hint:'7 days includes a light active-recovery day.',opts:[[2,'2 days'],[3,'3 days'],[4,'4 days'],[5,'5 days'],[6,'6 days'],[7,'7 days']]},
+ {key:'minutes',q:'How long is each session?',grid:1,opts:[[20,'20 min'],[30,'30 min'],[45,'45 min'],[60,'60 min'],[75,'75 min'],[90,'90 min'],[105,'105 min'],[120,'2 hours']]},
  {key:'equipment',q:'What equipment do you have?',opts:[['full','Full gym'],['machines','Machines & cables only'],['dumbbells','Dumbbells only'],['bodyweight','Bodyweight only']]},
- {key:'avoid',multi:1,q:'Any injuries or areas to avoid?',hint:'Pick all that apply, or none.',opts:[['shoulder','Shoulder'],['back','Lower back'],['knee','Knee'],['none','None']]},
+ {key:'injuries',text:1,q:'Any injuries or areas to avoid?',hint:'List any injuries or areas to avoid, or leave blank. e.g. "sore left knee, herniated disc"',opts:[]},
  {key:'focus',multi:1,q:'Any muscles you want to focus on?',hint:'Optional. Pick up to 3.',opts:[['chest','Chest'],['back','Back'],['shoulders','Shoulders'],['biceps','Arms (biceps)'],['triceps','Arms (triceps)'],['quads','Legs (quads)'],['glutes','Glutes'],['core','Core']]}
 ];
 
+function injHint(t){const r=parseInjuries(t);return t&&t.trim()?(r.words.length?`Understood: <b style="color:var(--acc)">${r.words.map(esc).join(', ')}</b>. Exercises that load these areas will be left out.`:"I didn't recognize a body part. Try words like shoulder, back, knee, hip, elbow, wrist, neck or ankle."):''}
+function dayColor(d){return d&&d.color||'#4ade80'}
+function workoutHome(plan){
+  let sel=route.p.sel;if(sel==null||!plan.days[sel]){sel=nextDayIndex(plan);if(sel<0)sel=0}
+  const d=plan.days[sel],c=dayColor(d);
+  const tabs=`<div class="daytabs">${plan.days.map((x,j)=>`<button class="daytab ${j===sel?'on':''}" style="--dc:${esc(dayColor(x))}" data-act="selDay" data-i="${j}">${esc(x.name)}${x.rest?' 💤':''}</button>`).join('')}</div>`;
+  if(!d)return tabs;
+  let body=`<div class="card" style="border-top:4px solid ${esc(c)}"><div class="between"><div><div class="mut">${esc(plan.name)}${j0(plan,sel)}</div><h2 style="margin:2px 0">${esc(d.name)}</h2></div>
+    <button class="btn sm" data-act="editWorkout" data-i="${sel}">✎ Edit workout</button></div>`;
+  if(d.rest)body+=`<div style="text-align:center;padding:24px 0"><div style="font-size:44px">💤</div><h3>Rest day</h3><div class="mut">Recover, stretch, go for a walk. Next workout tomorrow.</div></div></div>`;
+  else if(!d.exercises.length)body+=`<div class="mut" style="padding:12px 0">No exercises yet. Tap "Edit workout" to add some.</div></div>`;
+  else body+=`<div class="mut">${d.exercises.length} exercises · ${d.exercises.reduce((s,e)=>s+(+e.sets||0),0)} sets</div>
+    <div style="margin:10px 0">${d.exercises.map(e=>{const g=suggest(e);return `<div class="between" style="padding:7px 0;border-bottom:1px solid #262a33"><span>${esc(e.name)}<br><small class="mut">${esc(g.t)}</small></span><span style="text-align:right">${e.sets}×${repTxt(e)}<br><small style="color:${esc(c)}">${g.w?esc(g.w)+' '+U():''}</small></span></div>`}).join('')}</div>
+    <button class="btn full" style="background:${esc(c)};color:#0b0d10" data-act="start" data-i="${sel}">Start workout</button></div>`;
+  return tabs+body+`<details class="card"><summary class="mut">Make or add another plan</summary>
+    <button class="big" data-act="newPlan">✎ Build my own plan</button><button class="big" data-act="ai">✦ Build with AI</button><button class="big" data-act="paste">⎘ Paste a plan from text</button></details>`;
+}
+function j0(plan,sel){return sel===nextDayIndex(plan)?' · up next':''}
+// Recommended weight: same rules as the original app's sug(): no history -> start weight ("Starting estimate" / "Bodyweight");
+// last session hit top of rep range on all planned sets -> +5 (upper/db) or +10 (lower) lb; otherwise repeat weight.
+function exType(e){return e.type||(isLower(e.name)?'lower':'upper')}
+function suggest(e){const l=Store.lastFor(e.name,e.oldId);const start=e.weight===''||e.weight==null?0:+e.weight;
+  if(!l||!l.sets.length)return{w:start,t:start?'Starting estimate':'Bodyweight',last:null};
+  const w=Math.max(...l.sets.map(s=>+s.w||0));const top=l.sets.length>=+e.sets&&l.sets.every(s=>+s.r>=+e.repMax);
+  if(top&&w>0){const inc=step(exType(e)==='lower');return{w:w+inc,t:`Hit top of range last time → +${inc} ${U()}`,last:l,up:1}}
+  return{w,t:'Repeat weight, aim for more reps',last:l}}
 /* ---------- data helpers ---------- */
 const vol=w=>w.exercises.reduce((s,e)=>s+e.sets.reduce((a,x)=>a+(+x.w||0)*(+x.r||0),0),0);
 const sets=w=>w.exercises.reduce((s,e)=>s+e.sets.length,0);
@@ -175,18 +253,16 @@ const swap=(a,i,j)=>{if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]]};
 function startWorkout(i){
   const plan=Store.activePlan(),d=plan.days[i];
   const ex=d.exercises.filter(e=>e.name.trim()).map(e=>{
-    const last=Store.lastFor(e.name),lower=isLower(e.name);
-    let w=e.weight===''||e.weight==null?'':+e.weight,r=+e.repMin||8,sugg='',lastTxt='';
-    if(last&&last.sets.length){const top=Math.max(...last.sets.map(s=>+s.w||0));w=top;r=+last.sets[0].r||r;
-      lastTxt=last.sets.map(s=>`${s.w||0}×${s.r}`).join(', ');
-      if(last.sets.length>=+e.sets&&last.sets.every(s=>+s.r>=+e.repMax)&&top>0){w=top+step(lower);r=+e.repMin;sugg=`You hit ${e.repMax} reps on every set last time. Try ${w} ${U()}.`}}
-    return{name:e.name,lower,repMin:+e.repMin,repMax:+e.repMax,rest:+e.rest||60,note:e.note,last:lastTxt,sugg,sets:[...Array(Math.max(1,+e.sets||1))].map(()=>({w,r,done:false}))}});
+    const g=suggest(e),last=g.last,lower=exType(e)==='lower';
+    const w=g.w||'',r=g.up||!last?(+e.repMin||8):(+last.sets[0].r||+e.repMin||8);
+    const lastTxt=last?last.sets.map(s=>`${s.w||0}×${s.r}`).join(', '):'',sugg=`Recommended: ${g.w?g.w+' '+U():'bodyweight'} · ${g.t}`;
+    return{oldId:e.oldId,type:e.type,name:e.name,lower,repMin:+e.repMin,repMax:+e.repMax,rest:+e.rest||60,note:e.note,last:lastTxt,sugg,sets:[...Array(Math.max(1,+e.sets||1))].map(()=>({w,r,done:false}))}});
   if(!ex.length){toast('Add exercises to this day first');return}
   db().active={id:Store.uid(),planId:plan.id,planName:plan.name,dayIndex:i,dayName:d.name,started:Date.now(),exercises:ex};Store.save();go('session');
 }
 function finishWorkout(){
   const a=db().active;
-  const exs=a.exercises.map(e=>({name:e.name,lower:e.lower,sets:e.sets.filter(s=>s.done).map(s=>({w:+s.w||0,r:+s.r||0}))})).filter(e=>e.sets.length);
+  const exs=a.exercises.map(e=>({name:e.name,oldId:e.oldId,type:e.type,lower:e.lower,sets:e.sets.filter(s=>s.done).map(s=>({w:+s.w||0,r:+s.r||0}))})).filter(e=>e.sets.length);
   if(!exs.length&&!confirm('No sets are marked done. Finish anyway? Nothing will be saved.'))return;
   if(exs.length)Store.addHistory({id:a.id,date:Date.now(),planId:a.planId,planName:a.planName,dayName:a.dayName,units:U(),minutes:Math.round((Date.now()-a.started)/6e4),exercises:exs});
   const p=Store.plan(a.planId);if(p){p.next=(a.dayIndex+1)%p.days.length;Store.upsertPlan(p)}
@@ -219,7 +295,7 @@ const ACT={
  addRest:()=>{draft.days.push({id:Store.uid(),name:'Rest',rest:true,exercises:[]});render()},
  savePlan:()=>{if(!draft.name.trim())draft.name='My Plan';draft.days.forEach(d=>d.exercises=d.exercises.filter(e=>e.name.trim()));
    if(!draft.days.length){toast('Add at least one day');return}
-   const isNew=draft._new;delete draft._new;Store.upsertPlan(draft);if(isNew)Store.setActive(draft.id);toast('Plan saved');stack=[];go(isNew?'home':'plans',{},false)},
+   const isNew=draft._new;delete draft._new;delete draft._issues;delete draft._cr;Store.upsertPlan(draft);if(isNew)Store.setActive(draft.id);toast('Plan saved');stack=[];go(isNew?'home':'plans',{},false)},
  toggleRest:()=>{const d=draft.days[route.p.i];d.rest=!d.rest;if(!d.rest&&!d.exercises.length)d.exercises.push(newEx());render()},
  exAdd:()=>{draft.days[route.p.i].exercises.push(newEx());render();const ins=document.querySelectorAll('[data-ac]');ins[ins.length-1]?.focus()},
  exDel:b=>{draft.days[route.p.i].exercises.splice(+b.dataset.j,1);render()},
@@ -227,12 +303,28 @@ const ACT={
  dayDup:()=>{const d=clone(draft.days[route.p.i]);d.id=Store.uid();d.name+=' copy';d.exercises.forEach(e=>e.id=Store.uid());draft.days.splice(route.p.i+1,0,d);back()},
  dayDel:()=>{if(confirm('Delete this day?')){draft.days.splice(route.p.i,1);back()}},
  back:()=>back(),
- ai:()=>{ai={step:0,a:{avoid:[],focus:[]}};go('ai')},
+ selDay:b=>{route.p.sel=+b.dataset.i;render();document.querySelector('.daytab.on')?.scrollIntoView({inline:'center',block:'nearest'})},
+ editWorkout:b=>{draft=clone(Store.activePlan());go('day',{i:+b.dataset.i,direct:1})},
+ setColor:b=>{draft.days[route.p.i].color=b.dataset.c;render()},
+ colorAll:()=>{const c=dayColor(draft.days[route.p.i]);draft.days.forEach(d=>d.color=c);toast('Color applied to all days')},
+ saveDay:()=>{draft.days.forEach(d=>d.exercises=d.exercises.filter(e=>e.name.trim()));Store.upsertPlan(draft);toast('Workout saved');const i=route.p.i;back();route.p.sel=Math.min(i,draft.days.length-1);render();scrollTo(0,0)},
+ bgNone:()=>{setBg({kind:'none'});render()},
+ bgPreset:b=>{setBg({kind:'preset',id:b.dataset.id});render()},
+ bgPhoto:()=>{const f=$('#bgFile');f.value='';f.onchange=async()=>{try{const u=await loadBgFile(f.files[0]);try{localStorage.setItem(BG_KEY,u)}catch(e){throw new Error('Not enough space on this device to save that picture. Try a smaller one.')}setBg({kind:'custom'});toast('Background set');render()}catch(e){alert(e.message)}};f.click()},
+ importOld:async()=>{const r=await importOldApp();showOldResult(r,true)},
+ paste:()=>go('paste'),
+ applyCR:async()=>{const t=$('#crText').value;if(!t.trim()){toast('Type a change first');return}const r=await requestPlanChanges(draft,t);
+   const keep={_new:draft._new,_issues:draft._issues};draft=Object.assign(r.plan,keep);draft._cr={changes:r.changes,notUnderstood:r.notUnderstood};render();
+   setTimeout(()=>document.querySelector('#crText')?.closest('.card').scrollIntoView({block:'start'}),30)},
+ parse:async()=>{const t=$('#pasteText').value;if(!t.trim()){toast('Paste a plan first');return}route.p.text=t;
+   const r=await parseTextPlan(t);if(!r.plan.days.length){alert("I couldn't find any exercises in that text. Try lines like 'Bench press 4x8-10'.");return}
+   draft=r.plan;draft._new=1;draft._issues={unparsed:r.unparsed,skipped:r.skipped,days:r.plan.days.filter(d=>!d.rest).length,count:r.plan.days.reduce((s,d)=>s+d.exercises.length,0)};go('editor')},
+ ai:()=>{ai={step:0,a:{injuries:'',focus:[]}};go('ai')},
  aiPick:async b=>{const s=AI_STEPS[ai.step];let v=b.dataset.v;if(typeof s.opts[0][0]==='number')v=+v;
    if(s.multi){let arr=ai.a[s.key];if(v==='none')arr=[];else{arr=arr.includes(v)?arr.filter(x=>x!==v):[...arr,v];if(s.key==='focus'&&arr.length>3)arr.shift()}ai.a[s.key]=arr;render();return}
    ai.a[s.key]=v;ai.step++;render()},
- aiPrev:()=>{ai.step--;render()},
- aiNext:async()=>{if(ai.step<AI_STEPS.length-1){ai.step++;render();return}
+ aiPrev:()=>{const tx=$('#aiText');if(tx)ai.a[AI_STEPS[ai.step].key]=tx.value;ai.step--;render()},
+ aiNext:async()=>{const tx=$('#aiText');if(tx)ai.a[AI_STEPS[ai.step].key]=tx.value;if(ai.step<AI_STEPS.length-1){ai.step++;render();return}
    draft=await generatePlan(ai.a);draft._new=1;stack=[{v:'home',p:{}}];go('editor',{},false);toast('Plan ready. Tweak anything, then save.')},
  stp:b=>{const s=db().active.exercises[+b.dataset.j].sets[+b.dataset.k],f=b.dataset.f,d=+b.dataset.d;
    const inc=f==='w'?(U()==='kg'?2.5:5):1;s[f]=Math.max(0,Math.round(((+s[f]||0)+d*inc)*10)/10);Store.save();
@@ -248,8 +340,8 @@ const ACT={
  wk:b=>{route.p.off=Math.max(0,+b.dataset.o);render()},
  units:b=>{db().settings.units=b.dataset.v;Store.save();render()},
  export:()=>{const blob=new Blob([Store.exportJSON()],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`simplelift-backup-${new Date().toISOString().slice(0,10)}.json`;a.click()},
- import:()=>{const f=$('#file');f.onchange=()=>{const r=new FileReader();r.onload=()=>{try{Store.importJSON(r.result);toast('Data imported');tab('home')}catch(e){alert('Import failed: '+e.message)}};r.readAsText(f.files[0])};f.click()},
- reset:()=>{if(confirm('Erase ALL plans, history and settings on this device?')&&confirm('Are you sure? This cannot be undone.')){Store.reset();stopTimer();tab('home');toast('All data reset')}}
+ import:()=>{const f=$('#file');f.onchange=()=>{const r=new FileReader();r.onload=()=>{try{Store.importJSON(r.result);applyBg();toast('Data imported');tab('home')}catch(e){alert('Import failed: '+e.message)}};r.readAsText(f.files[0])};f.click()},
+ reset:()=>{if(confirm('Erase ALL plans, history and settings on this device?')&&confirm('Are you sure? This cannot be undone.')){Store.reset();localStorage.removeItem(BG_KEY);applyBg();stopTimer();tab('home');toast('All data reset')}}
 };
 document.addEventListener('click',e=>{
   const pick=e.target.closest('[data-pick]');
@@ -257,9 +349,13 @@ document.addEventListener('click',e=>{
     if(!ex.rest||ex.rest===90)ex.rest=L.compound?120:60;render();return}
   if(!e.target.closest('.ac'))document.querySelectorAll('.aclist').forEach(x=>x.hidden=true);
   const b=e.target.closest('[data-act]');if(b&&!b.disabled&&ACT[b.dataset.act])ACT[b.dataset.act](b,e)});
+document.addEventListener('change',e=>{if(e.target.id==='customColor'){draft.days[route.p.i].color=e.target.value;render()}});
 document.addEventListener('input',e=>{
+  if(e.target.id==='dim'){const v=+e.target.value;$('#dimv').textContent=v+'%';setBg({dim:v/100});return}
+  if(e.target.id==='aiText'){$('#injHint').innerHTML=injHint(e.target.value);return}
   const k=e.target.dataset.bind;if(!k)return;const v=e.target.value,parts=k.split('.');
   if(parts[0]==='name')draft.name=v;
+  else if(parts[0]==='notes')draft.notes=v;
   else if(parts[0]==='day')draft.days[route.p.i].name=v;
   else if(parts[0]==='ex'){const ex=draft.days[route.p.i].exercises[+parts[1]],f=parts[2];ex[f]=['sets','repMin','repMax','rest'].includes(f)?(v===''?'':+v):f==='weight'?(v===''?'':+v):v;
     if(f==='name')showAC(+parts[1],v)}
@@ -272,6 +368,12 @@ function showAC(j,q){const box=$('#ac'+j);q=q.trim().toLowerCase();
   if(!m.length||(m.length===1&&m[0].name.toLowerCase()===q)){box.hidden=true;return}
   box.innerHTML=m.map(x=>`<div data-pick="${j}" data-name="${esc(x.name)}">${esc(x.name)} <small>· ${esc(x.muscle)} · ${esc(x.equip)}</small></div>`).join('');box.hidden=false}
 
+function showOldResult(r,manual){
+  if(r.workouts||r.plan)alert(`Imported from your old workout app: ${r.workouts} workout${r.workouts===1?'':'s'} (${r.sets} sets)${r.plan?' and your original plan':''}. Your last weights and recommendations now use this history.`);
+  else if(manual)alert(r.found?'Everything from your old workout app is already imported. Nothing new to add.':"No history from the old workout app was found in this browser. It can only be read on the same phone and browser where you used the old app (at alexroyandrew1-crypto.github.io/workout). If you used it on another phone, open Simple Lift there and import it on that phone.");
+  render()}
+applyBg();
 if(db().active)route={v:'home',p:{}};
+if(!db().oldImportChecked&&oldHasData())importOldApp().then(r=>showOldResult(r,false));
 render();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});

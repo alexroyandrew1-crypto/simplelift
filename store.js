@@ -17,9 +17,9 @@ const Store=(()=>{
     setActive(id){db.activePlanId=id;save()},
     addHistory(w){db.history.push(w);save()},
     deleteHistory(id){db.history=db.history.filter(h=>h.id!==id);save()},
-    lastFor(name){const k=name.toLowerCase();const h=db.history.slice().sort((a,b)=>b.date-a.date);for(const w of h){const e=w.exercises.find(x=>x.name.toLowerCase()===k);if(e)return e}return null},
-    exportJSON(){return JSON.stringify(db,null,2)},
-    importJSON(t){const d=JSON.parse(t);if(!d||!Array.isArray(d.plans)||!Array.isArray(d.history))throw new Error('Not a Simple Lift backup');db=Object.assign(blank(),d);save()},
+    lastFor(name,oldId){const k=name.toLowerCase();const h=db.history.slice().sort((a,b)=>b.date-a.date);for(const w of h){const e=w.exercises.find(x=>x.name.toLowerCase()===k||(oldId&&x.oldId===oldId));if(e)return e}return null},
+    exportJSON(){const o=Object.assign({},db);const bg=localStorage.getItem('simplelift_bg_img');if(bg)o.bgImage=bg;return JSON.stringify(o,null,2)},
+    importJSON(t){const d=JSON.parse(t);if(!d||!Array.isArray(d.plans)||!Array.isArray(d.history))throw new Error('Not a Simple Lift backup');if(d.bgImage){try{localStorage.setItem('simplelift_bg_img',d.bgImage)}catch(e){}}delete d.bgImage;db=Object.assign(blank(),d);save()},
     reset(){localStorage.removeItem(KEY);load()}
   };
 })();

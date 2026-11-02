@@ -86,3 +86,24 @@ Bicycle Crunch|core|bodyweight|0|`;
 const LOWER=['quads','hamstrings','glutes','calves'];
 const LIBRARY=LIB_RAW.split('\n').map(l=>{const[n,m,e,c,x]=l.split('|');return{name:n,muscle:m,equip:e,compound:c==='1',avoid:x||'',lower:LOWER.includes(m)}});
 function libFind(name){const k=(name||'').trim().toLowerCase();return LIBRARY.find(x=>x.name.toLowerCase()===k)}
+// Extra joint tags (h=hip, e=elbow, w=wrist, n=neck, a=ankle) added on top of s/b/k above.
+const EXTRA_AVOID={h:['Barbell Back Squat','Front Squat','Goblet Squat','Deadlift','Romanian Deadlift','Dumbbell Romanian Deadlift','Hip Thrust','Dumbbell Hip Thrust','Bulgarian Split Squat','Dumbbell Lunge','Walking Lunge','Step-Up','Leg Press','Hack Squat','Hip Abduction Machine','Cable Pull-Through'],
+ e:['Skull Crusher','Dips','Bench Dip','Close-Grip Bench Press','Dumbbell Overhead Triceps Extension','Overhead Cable Triceps Extension','Barbell Curl','EZ-Bar Curl','Chin-Up','Diamond Push-Up','Machine Preacher Curl'],
+ w:['Push-Up','Incline Push-Up','Diamond Push-Up','Pike Push-Up','Barbell Curl','Front Squat','Dips','Bench Dip','Plank','Ab Wheel Rollout','Skull Crusher','Barbell Bench Press','Close-Grip Bench Press'],
+ n:['Barbell Overhead Press','Barbell Back Squat','Deadlift','Rack Pull','Pull-Up','Cable Crunch','Bicycle Crunch'],
+ a:['Barbell Back Squat','Front Squat','Goblet Squat','Bulgarian Split Squat','Dumbbell Lunge','Walking Lunge','Step-Up','Standing Calf Raise','Seated Calf Raise','Dumbbell Calf Raise','Bodyweight Calf Raise','Hack Squat','Bodyweight Squat']};
+for(const[c,names]of Object.entries(EXTRA_AVOID))names.forEach(n=>{const x=libFind(n);if(x&&!x.avoid.includes(c))x.avoid+=c});
+// Free-text injury keywords -> joint codes
+const INJURY_WORDS=[
+ ['s','shoulder',/\b(shoulders?|rotator|cuff|labrum|ac joint|delts?|impingement|frozen)\b/i],
+ ['b','back',/\b(back|spine|spinal|disc|discs|lumbar|sciatica|herniat\w*|bulging|si joint|lower back|slipped)\b/i],
+ ['k','knee',/\b(knees?|acl|mcl|pcl|meniscus|patella\w*|kneecap|jumper'?s knee)\b/i],
+ ['h','hip',/\b(hips?|groin|hip flexor|labral|pelvis|it band)\b/i],
+ ['e','elbow',/\b(elbows?|tennis elbow|golfer'?s elbow|tendonitis in (my )?elbow|forearm)\b/i],
+ ['w','wrist',/\b(wrists?|carpal|hand)\b/i],
+ ['n','neck',/\b(neck|cervical|whiplash|trap strain)\b/i],
+ ['a','ankle',/\b(ankles?|achilles|foot|feet|plantar|shin splints?)\b/i]];
+function parseInjuries(text){const t=String(text||'');if(/^\s*(none|no|n\/a|nothing|nope)?\s*\.?\s*$/i.test(t))return{codes:[],words:[]};
+  const r=INJURY_WORDS.filter(([,, re])=>re.test(t));return{codes:r.map(x=>x[0]),words:r.map(x=>x[1])}}
+function libFuzzyName(n){const k=String(n||'').toLowerCase().replace(/\bdb\b/g,'dumbbell').replace(/\bbb\b/g,'barbell').replace(/s\b/g,'').trim();if(!k)return null;
+  return LIBRARY.find(x=>x.name.toLowerCase()===k)||LIBRARY.find(x=>{const y=x.name.toLowerCase().replace(/s\b/g,'');return y===k||y.endsWith(' '+k)})||LIBRARY.find(x=>x.name.toLowerCase().replace(/s\b/g,'').includes(k))}
