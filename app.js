@@ -15,11 +15,11 @@ function back(){route=stack.pop()||{v:'home',p:{}};render()}
 $('#back').onclick=back;
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{if(db().active&&b.dataset.tab==='home'){tab('home');return}tab(b.dataset.tab)});
 
-const TITLES={home:'Simple Lift',plans:'My Plans',editor:'Edit Plan',day:'Edit Day',ai:'Build with AI',paste:'Copy a Workout',chooser:'New Plan',session:'Workout',history:'History',hist:'Workout',progress:'Progress',settings:'Settings'};
+const TITLES={home:'Simple Lift',plans:'My Plans',editor:'Edit Plan',day:'Edit Day',ai:'Build with AI',aiprompt:'Use My Own AI',aipaste:'Paste AI Answer',paste:'Copy a Workout',chooser:'New Plan',session:'Workout',history:'History',hist:'Workout',progress:'Progress',settings:'Settings'};
 function render(){
   const v=route.v;$('#title').textContent=TITLES[v]||'Simple Lift';
   $('#back').style.visibility=stack.length?'visible':'hidden';
-  const root={home:'home',plans:'plans',editor:'plans',day:'plans',ai:'home',paste:'home',chooser:'home',session:'home',history:'history',hist:'history',progress:'progress',settings:'settings'}[v];
+  const root={home:'home',plans:'plans',editor:'plans',day:'plans',ai:'home',aiprompt:'home',aipaste:'home',paste:'home',chooser:'home',session:'home',history:'history',hist:'history',progress:'progress',settings:'settings'}[v];
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===root));
   const m=$('#view');m.style.animation='none';m.offsetHeight;m.style.animation='';
   m.innerHTML=VIEWS[v](route.p);
@@ -110,8 +110,25 @@ ai(){
   ${s.text?`<textarea id="aiText" rows="4" style="margin-top:12px" placeholder="e.g. bad right shoulder, lower back pain">${esc(val||'')}</textarea><div id="injHint" class="mut" style="margin-top:6px">${injHint(val)}</div>`:''}
   <div style="margin-top:12px;${s.grid?'display:grid;grid-template-columns:1fr 1fr;column-gap:8px':''}">${s.opts.map(([v,l,d])=>`<button class="big ${on(v)?'acc':''}" style="padding:16px 18px;font-size:17px" data-act="aiPick" data-v="${esc(v)}">${esc(l)}${d?`<small>${esc(d)}</small>`:''}</button>`).join('')}</div>
   <div class="grid2">${ai.step?'<button class="btn" data-act="aiPrev">Back</button>':'<span></span>'}
-  ${s.multi||s.text?`<button class="btn acc" data-act="aiNext">${ai.step===S.length-1?'Build my plan':'Next'}</button>`:''}</div>`;
+  ${s.multi||s.text?(ai.step===S.length-1?'<span></span>':`<button class="btn acc" data-act="aiNext">Next</button>`):''}</div>
+  ${ai.step===S.length-1?`<h3 style="margin-top:18px">How should I make your plan?</h3>
+  <button class="big acc" data-act="aiNext">⚡ Quick build<small>Made instantly on your phone from built-in rules</small></button>
+  <button class="big" data-act="aiOwn">💬 Use my own AI chat (free)<small>Copy a ready-made prompt into ChatGPT, Grok, Gemini or any chat AI, then paste its answer back</small></button>`:''}`;
 },
+aiprompt(){const pr=buildAIPrompt(ai.a,ai.changes||'');
+  return `<div class="card"><b>3 quick steps</b><ol style="margin:8px 0 0 18px;padding:0;line-height:1.6"><li>Tap <b>Copy prompt</b>.</li><li>Paste it into ChatGPT, Grok, Gemini or any chat AI.</li><li>Copy its whole answer and paste it back here on the next screen.</li></ol></div>
+  <label class="mut" for="aiChanges">Any changes you want? (optional)</label>
+  <textarea id="aiChanges" rows="2" placeholder="e.g. no deadlifts, more arms, Fridays short">${esc(ai.changes||'')}</textarea>
+  <label class="mut" for="aiPrompt" style="display:block;margin-top:10px">Your prompt</label>
+  <textarea id="aiPrompt" rows="12" readonly style="font-size:13px">${esc(pr)}</textarea>
+  <button class="btn acc full" data-act="aiCopy">📋 Copy prompt</button>
+  <button class="btn full" data-act="aiToPaste">Next: paste the AI's answer →</button>
+  <div class="mut" style="margin-top:10px"><b>How it works:</b> Simple Lift sends nothing anywhere. Your AI chat only sees what you paste into it. There's no account or key, and it's free on any chat AI's free plan.</div>`},
+aipaste(){
+  return `<div class="mut">Paste the AI's whole answer below. You'll see your plan next and can fix anything before saving.</div>
+  <textarea id="pasteText" rows="16" style="margin-top:10px" placeholder="Plan: My Plan&#10;Day 1: Push&#10;Barbell Bench Press — 3 sets x 8-10 reps — rest 90s&#10;...">${esc(route.p.text||'')}</textarea>
+  <button class="btn acc full" data-act="parse">Make my plan</button>
+  <button class="btn full" data-act="back">← Back to the prompt</button>`},
 paste(){
   return `<div class="row" style="gap:8px;margin-bottom:10px"><button class="btn grow" data-act="pickPic">🖼 Choose a picture</button><button class="btn grow" data-act="takePic">📷 Take a photo</button></div>
   <input type="file" id="picFile" accept="image/*" hidden><input type="file" id="camFile" accept="image/*" capture="environment" hidden>
@@ -335,6 +352,11 @@ const ACT={
    const r=await parseTextPlan(t);if(!r.plan.days.length){alert("I couldn't find any exercises in that text. Try lines like 'Bench press 4x8-10'.");return}
    draft=r.plan;draft._new=1;draft._issues={unparsed:r.unparsed,skipped:r.skipped,days:r.plan.days.filter(d=>!d.rest).length,count:r.plan.days.reduce((s,d)=>s+d.exercises.length,0)};go('editor')},
  ai:()=>{ai={step:0,a:{injuries:'',focus:[]}};go('ai')},
+ aiOwn:()=>{const tx=$('#aiText');if(tx)ai.a[AI_STEPS[ai.step].key]=tx.value;go('aiprompt')},
+ aiCopy:async()=>{const ta=$('#aiPrompt');ta.focus();ta.select();ta.setSelectionRange(0,ta.value.length);let ok=false;
+   try{await navigator.clipboard.writeText(ta.value);ok=true}catch(e){try{ok=document.execCommand('copy')}catch(_){}}
+   toast(ok?'Prompt copied. Paste it into your AI chat.':'Text selected. Long-press it and tap Copy.')},
+ aiToPaste:()=>go('aipaste'),
  aiPick:async b=>{const s=AI_STEPS[ai.step];let v=b.dataset.v;if(typeof s.opts[0][0]==='number')v=+v;
    if(s.multi){let arr=ai.a[s.key];if(v==='none')arr=[];else{arr=arr.includes(v)?arr.filter(x=>x!==v):[...arr,v];if(s.key==='focus'&&arr.length>3)arr.shift()}ai.a[s.key]=arr;render();return}
    ai.a[s.key]=v;ai.step++;render()},
@@ -376,6 +398,7 @@ document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(b&&!b.disabled&&ACT[b.dataset.act])ACT[b.dataset.act](b,e)});
 document.addEventListener('change',e=>{if(e.target.id==='customColor'){draft.days[route.p.i].color=e.target.value;render()}});
 document.addEventListener('input',e=>{
+  if(e.target.id==='aiChanges'){ai.changes=e.target.value;const p=$('#aiPrompt');if(p)p.value=buildAIPrompt(ai.a,ai.changes);return}
   if(e.target.id==='dim'){const v=+e.target.value;$('#dimv').textContent=v+'%';setBg({dim:v/100});return}
   if(e.target.id==='aiText'){$('#injHint').innerHTML=injHint(e.target.value);return}
   const k=e.target.dataset.bind;if(!k)return;const v=e.target.value,parts=k.split('.');

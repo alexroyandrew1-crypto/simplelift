@@ -49,3 +49,7 @@ A free, simple workout tracker. Static PWA with no build step and no CDN. The on
 - lb is the default unit. kg only sticks after you choose it in Settings → Units (saved as `settings.unitsChosen`).
 - Suggested starting weights: an exercise with no history and no typed weight gets a conservative beginner estimate from `startWeight()` in library.js (lb; dumbbells per hand; bodyweight moves show "Bodyweight"), labelled "Suggested start". Once there's history (including the old app's), the old app's `sug()` rules apply.
 - Press and hold the weight or rep +/− buttons to repeat. Repeats start after 350 ms, speed up over time, and step double after 3 s. A tap is still one step.
+
+## Changes in v8
+- Build with AI → final step offers **⚡ Quick build** (built-in rules) or **💬 Use my own AI chat (free)**. The second writes a prompt from your answers (`buildAIPrompt()` in generator.js), with optional "[Changes I want]". You copy it into any chat AI, then paste the AI's answer into the "Paste AI Answer" screen, which uses the normal paste parser and review screen. The prompt asks for "Plan: …", "Day N: Name" and "Exercise — 3 sets x 8-10 reps — rest 90s" lines. No server and no key, and the app sends nothing.
+- The parser now picks up a "Plan: name" line anywhere as the plan title.

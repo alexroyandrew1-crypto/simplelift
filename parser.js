@@ -45,6 +45,7 @@ function ruleParse(text){
     const wasFirst=first;first=false;
     const head=l.replace(/[:\-–]+\s*$/,'').trim(),hp=noParen(head),short=hp.split(' ').length<=7&&hp.length<70&&!/:\s*\S/.test(head);
     let sm=null;for(const r of SETS){sm=l.match(r);if(sm)break}
+    if(!sm&&!title){const pm=l.match(/^(?:plan|program|routine)\s*(?:name)?\s*:\s*(.{2,60})$/i);if(pm){title=noParen(pm[1]);first=false;continue}}
     if(!sm&&CHATTER.test(l)){flush();skipped.push(l);continue}
     if(!sm&&DAYWORDS.test(head)){flush();newDay(head,/\b(rest|off|recovery)\b/i.test(head));mode='main';continue}
     if(!sm&&/^(rest|off|recovery)(\s*day)?\s*:?$/i.test(l)){flush();newDay('Rest',true);mode='main';continue}
@@ -68,7 +69,7 @@ function ruleParse(text){
       let lo=+sm[2],hi=+(sm[3]||sm[2]);if(hi<lo)[lo,hi]=[hi,lo];
       const note=after.replace(/^[\s,.;:)\-]+|[\s,.;:(\-]+$/g,'').replace(/^reps?\b\s*/i,'').trim();
       mk(name,+sm[1],lo,hi,r?r.sec:null,note.slice(0,140));continue}
-    if(wasFirst&&l.length<100){title=noParen(head);const p=head.match(/\(([^)]*)\)/);if(p)titleNote=p[1];continue} // first line = plan title
+    if(wasFirst&&l.length<100){title=noParen(head).replace(/^(plan|program|routine)\s*(name)?\s*:\s*/i,'');const p=head.match(/\(([^)]*)\)/);if(p)titleNote=p[1];continue} // first line = plan title
     if(/^rest\b/i.test(l)&&restSec(l)){flush();defRest=restSec(l).sec;continue} // "Rest 45-60 seconds between sets"
     if(/^total\b/i.test(l)){skipped.push(l);continue}
     if(NOTELINE.test(l)){flush();if(last)addNote(last,l);else skipped.push(l);continue}
