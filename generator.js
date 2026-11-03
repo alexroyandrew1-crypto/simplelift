@@ -45,6 +45,8 @@ function rulePlan(a){
     else r=c?[3,8,12,90]:[3,10,15,60];
     r[0]=Math.max(2,r[0]+(baseSets-3));if(mins<=30)r[3]=Math.min(r[3],60);return r};
   const mk=(x,i)=>{let[s,lo,hi,r]=scheme(x.compound);
+    // Per-exercise library default; strength goal never shortens it, fat-loss never lengthens it, short sessions cap at 60s.
+    const bank=restFor(x.name);r=a.goal==='strength'?Math.max(r,bank):a.goal==='fatloss'?Math.min(r,bank):bank;if(mins<=30)r=Math.min(r,60);
     if(a.experience==='beginner')s=Math.max(2,s-1);if(a.experience==='advanced'&&x.compound)s++;
     if(x.equip==='bodyweight'&&x.muscle!=='core'){lo=Math.max(lo,8);hi=Math.max(hi,15)}
     if(x.name==='Plank'){lo=30;hi=60}

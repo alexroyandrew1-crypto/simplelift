@@ -9,7 +9,7 @@ async function oldPlan(){try{const p=JSON.parse(localStorage.getItem('wplan_v1')
 function oldDate(s,i){if(/^\d{4}-\d{2}-\d{2}$/.test(s))return new Date(s+'T12:00').getTime();
   let m=String(s).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(m)return new Date(+m[3],+m[1]-1,+m[2],12).getTime(); // en-US M/D/YYYY (the old app's usual format)
   const t=Date.parse(s);return isNaN(t)?Date.now()-i*864e5:t}
-const restToSec=r=>{const m=String(r||'').match(/(\d+(?:\.\d+)?)\s*(s|sec|min|m)?/i);if(!m)return 90;const v=+m[1];return Math.round(/^s/i.test(m[2]||'')?v:v*60)};
+const restToSec=r=>{const m=String(r||'').match(/(\d+(?:\.\d+)?)\s*(s|sec|min|m)?/i);if(!m)return null;const v=+m[1];return Math.round(/^s/i.test(m[2]||'')?v:v*60)};
 async function importOldApp(){
   let log;try{log=JSON.parse(localStorage.getItem('wlog_v1')||'{}')}catch(e){log={}}
   const res={found:false,workouts:0,sets:0,plan:false};
@@ -20,7 +20,7 @@ async function importOldApp(){
   // copy the old plan once, so its start weights, rep ranges and ids carry over
   if(plan&&!db.plans.some(p=>p.fromOld)){
     const np={id:Store.uid(),name:'My original plan',fromOld:true,created:Date.now(),next:0,notes:plan.notes||'',days:plan.days.map(d=>({id:Store.uid(),name:d.name,rest:!(d.exercises||[]).length,
-      exercises:(d.exercises||[]).map(e=>({id:Store.uid(),oldId:e.id,name:e.name,type:e.type,sets:+e.sets||3,repMin:+(e.reps||[])[0]||8,repMax:+(e.reps||[])[1]||12,weight:e.start||'',rest:restToSec(e.rest),note:e.note||''}))}))};
+      exercises:(d.exercises||[]).map(e=>({id:Store.uid(),oldId:e.id,name:e.name,type:e.type,sets:+e.sets||3,repMin:+(e.reps||[])[0]||8,repMax:+(e.reps||[])[1]||12,weight:e.start||'',rest:restToSec(e.rest),note:e.note||''})).map(fillRest)}))};
     db.plans.push(np);if(!db.activePlanId)db.activePlanId=np.id;res.plan=true}
   const groups={};let i=0;
   for(const[id,entries]of Object.entries(log)){if(!Array.isArray(entries))continue;res.found=res.found||entries.length>0;

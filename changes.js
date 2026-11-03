@@ -14,7 +14,7 @@ function matchEx(plan,q){const qw=norm(q).filter(w=>!['the','my','a','an','all',
 function dayRef(plan,s){if(!s)return null;s=s.trim().toLowerCase();let m=s.match(/day\s*(\d+)/);if(m){const w=plan.days.filter(d=>!d.rest);return w[+m[1]-1]||plan.days[+m[1]-1]||null}
   return plan.days.find(d=>d.name.toLowerCase().includes(s.replace(/^(the|my)\s+/,'').replace(/\s*day$/,'')))||null}
 function exFromName(n,muscleHint){const L=libFind(n)||libFuzzyName(n);const name=L?L.name:n.trim().replace(/\b\w/g,c=>c.toUpperCase());
-  return{id:Store.uid(),name,sets:3,repMin:L&&L.compound?8:10,repMax:L&&L.compound?12:15,weight:'',rest:L&&L.compound?120:60,note:''}}
+  return{id:Store.uid(),name,sets:3,repMin:L&&L.compound?8:10,repMax:L&&L.compound?12:15,weight:'',rest:restFor(n),restAuto:true,note:''}}
 function pickFor(plan,muscle){const have=new Set(plan.days.flatMap(d=>d.exercises.map(e=>e.name)));
   const eqUsed=new Set(plan.days.flatMap(d=>d.exercises.map(e=>libFind(e.name)?.equip).filter(Boolean)));
   const av=plan.avoid||[];const c=LIBRARY.filter(x=>x.muscle===muscle&&!have.has(x.name)&&!av.some(k=>x.avoid.includes(k)));return c.find(x=>!eqUsed.size||eqUsed.has(x.equip))||c[0]||null}

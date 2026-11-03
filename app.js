@@ -15,11 +15,11 @@ function back(){route=stack.pop()||{v:'home',p:{}};render()}
 $('#back').onclick=back;
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{if(db().active&&b.dataset.tab==='home'){tab('home');return}tab(b.dataset.tab)});
 
-const TITLES={home:'Simple Lift',plans:'My Plans',editor:'Edit Plan',day:'Edit Day',ai:'Build with AI',aiprompt:'Use My Own AI',aipaste:'Paste AI Answer',paste:'Copy a Workout',chooser:'New Plan',session:'Workout',history:'History',hist:'Workout',progress:'Progress',settings:'Settings'};
+const TITLES={home:'Simple Lift',plans:'My Plans',editor:'Edit Plan',day:'Edit Day',ai:'Build with AI',aiprompt:'Use My Own AI',aipaste:'Paste AI Answer',paste:'Copy a Workout',watch:'Watch',account:'Account',pair:'Pair watch',chooser:'New Plan',session:'Workout',history:'History',hist:'Workout',progress:'Progress',settings:'Settings'};
 function render(){
   const v=route.v;$('#title').textContent=TITLES[v]||'Simple Lift';
   $('#back').style.visibility=stack.length?'visible':'hidden';
-  const root={home:'home',plans:'plans',editor:'plans',day:'plans',ai:'home',aiprompt:'home',aipaste:'home',paste:'home',chooser:'home',session:'home',history:'history',hist:'history',progress:'progress',settings:'settings'}[v];
+  const root={home:'home',plans:'plans',editor:'plans',day:'plans',ai:'home',aiprompt:'home',aipaste:'home',watch:'home',account:'settings',pair:'settings',paste:'home',chooser:'home',session:'home',history:'history',hist:'history',progress:'progress',settings:'settings'}[v];
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===root));
   const m=$('#view');m.style.animation='none';m.offsetHeight;m.style.animation='';
   m.innerHTML=VIEWS[v](route.p);
@@ -91,7 +91,7 @@ day({i}){
     <div><label>Reps min</label><input type="number" inputmode="numeric" data-bind="ex.${j}.repMin" value="${esc(e.repMin)}"></div>
     <div><label>Reps max</label><input type="number" inputmode="numeric" data-bind="ex.${j}.repMax" value="${esc(e.repMax)}"></div></div>
     <div class="grid2"><div><label>Start weight (${U()}) · optional</label><input type="number" inputmode="decimal" data-bind="ex.${j}.weight" value="${esc(e.weight)}"></div>
-    <div><label>Rest (seconds)</label><input type="number" inputmode="numeric" data-bind="ex.${j}.rest" value="${esc(e.rest)}"></div></div>
+    <div><label>Rest (seconds)</label><input type="number" inputmode="numeric" data-bind="ex.${j}.rest" value="${esc(e.rest)}" placeholder="${restFor(e.name)}"></div></div>
     <label>Note</label><input data-bind="ex.${j}.note" value="${esc(e.note)}" placeholder="Optional">
     <div class="row" style="margin-top:10px"><button class="btn sm" data-act="exUp" data-j="${j}">▲</button><button class="btn sm" data-act="exDown" data-j="${j}">▼</button><span class="grow"></span><button class="btn sm bad" data-act="exDel" data-j="${j}">Remove</button></div></div>`).join('')}
   ${d.rest?'':'<button class="btn full" data-act="exAdd">+ Add exercise</button>'}
@@ -124,6 +124,43 @@ aiprompt(){const pr=buildAIPrompt(ai.a,ai.changes||'');
   <button class="btn acc full" data-act="aiCopy">📋 Copy prompt</button>
   <button class="btn full" data-act="aiToPaste">Next: paste the AI's answer →</button>
   <div class="mut" style="margin-top:10px"><b>How it works:</b> Simple Lift sends nothing anywhere. Your AI chat only sees what you paste into it. There's no account or key, and it's free on any chat AI's free plan.</div>`},
+account(){const m=route.p.mode||'in',up=m==='up',a=Sync.a,em=esc(route.p.email||a.email||'');
+  const note=route.p.note?`<div class="mut" style="margin-top:8px" id="acNote">${esc(route.p.note)}</div>`:'<div class="mut" style="margin-top:8px" id="acNote"></div>';
+  const codeIn=`<label class="mut" style="display:block;margin-top:8px">6-digit code</label><input id="acCode" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" style="font-size:22px;letter-spacing:4px">`;
+  if(m==='verify')return `<div class="card"><h3 style="margin-top:0">Check your email</h3><div>Enter the 6-digit code we emailed you.</div><div class="mut">Sent to ${esc(a.email||'')}. It expires in 15 minutes. Check your spam folder too.</div>${codeIn}
+  <button class="btn acc full" data-act="acVerify" style="margin-top:10px">Verify</button>
+  <div class="row" style="gap:8px;margin-top:8px"><button class="btn" data-act="acResend">Resend code</button><button class="btn" data-act="acOut">Sign out</button></div>${note}</div>
+  <div class="mut">Until you verify, your account can't sync or pair a watch. Everything still works on this device.</div>`;
+  if(m==='forgot')return `<div class="card"><h3 style="margin-top:0">Forgot password</h3><div class="mut">Enter your account email. We'll email you a 6-digit code to set a new password.</div>
+  <label class="mut" style="display:block;margin-top:8px">Email</label><input id="acEmail" type="email" autocomplete="email" placeholder="you@example.com" value="${em}">
+  <button class="btn acc full" data-act="acForgot" style="margin-top:10px">Send code</button>
+  <button class="btn full" data-act="account" data-mode="in">Back to sign in</button>${note}</div>`;
+  if(m==='reset')return `<div class="card"><h3 style="margin-top:0">Set a new password</h3><div class="mut">If ${em||'that email'} has an account, we emailed it a 6-digit code. It expires in 15 minutes.</div>${codeIn}
+  <label class="mut" style="display:block;margin-top:8px">New password (8+ characters)</label><input id="acPw" type="password" autocomplete="new-password">
+  <button class="btn acc full" data-act="acReset" data-email="${em}" style="margin-top:10px">Save new password</button>
+  <div class="row" style="gap:8px;margin-top:8px"><button class="btn" data-act="acForgot" data-email="${em}">Resend code</button><button class="btn" data-act="account" data-mode="in">Back to sign in</button></div>${note}</div>
+  <div class="mut">Saving a new password signs out your other devices and your watch. Pair the watch again afterwards.</div>`;
+  return `<div class="card"><h3 style="margin-top:0">${up?'Create an account':'Sign in'}</h3>
+  <label class="mut">Email</label><input id="acEmail" type="email" autocomplete="email" placeholder="you@example.com" value="${em}">
+  <label class="mut" style="display:block;margin-top:8px">Password${up?' (8+ characters)':''}</label><input id="acPw" type="password" autocomplete="${up?'new-password':'current-password'}">
+  <button class="btn acc full" data-act="acSubmit" data-mode="${up?'up':'in'}" style="margin-top:10px">${up?'Create account':'Sign in'}</button>
+  ${up?'':'<div style="text-align:right;margin:6px 0"><button type="button" data-act="acForgotGo" style="background:none;border:0;color:inherit;opacity:.85;text-decoration:underline;padding:4px 0;font:inherit">Forgot password?</button></div>'}
+  <button class="btn full" data-act="account" data-mode="${up?'in':'up'}">${up?'I already have an account':'Create a new account instead'}</button></div>
+  <div class="mut"><b>What's stored online:</b> your email, a salted password hash, and your Simple Lift data (plans, history, settings). No ads, no trackers, and nothing is shared or sold.${up?' We email you a 6-digit code to confirm your address. Your email is only used for that and for password resets.':''}</div>`},
+pair(){return `<div class="card" style="text-align:center"><h3 style="margin-top:0">⌚ Pair your watch</h3><div id="pairCode" style="font-size:44px;letter-spacing:6px;font-weight:800;margin:10px 0">······</div><div class="mut" id="pairNote">Getting a code…</div></div>
+  <div class="card"><ol class="mut" style="margin:0 0 0 18px;padding:0;line-height:1.5"><li>On your phone, open Garmin Connect (or the Connect IQ app): your watch → Activities &amp; Apps → Simple Lift → Settings.</li><li>Enter this code in <b>Pairing code</b> and save.</li><li>Open Simple Lift on the watch while your phone is nearby. It pairs, then downloads your next workout every time it opens and sends your sets back when you finish.</li></ol>
+  <div class="mut" style="margin-top:8px">The code works once and expires in 10 minutes. Manual codes (⌚ Send to watch) still work as a backup.</div></div>`},
+watch(){const plan=Store.plan(route.p.planId)||Store.activePlan();if(!plan)return '<div class="mut">No plan yet.</div>';const i=Math.min(route.p.i|0,plan.days.length-1),c=watchCode(plan,i);
+  db().watch={planId:plan.id,dayIndex:i,title:c.title,at:Date.now()};Store.save();
+  return `<div class="card"><h3 style="margin-top:0">⌚ Send "${esc(plan.days[i].name)}" to your watch</h3>
+  <textarea id="watchCode" rows="4" readonly style="font-size:13px;font-family:monospace">${esc(c.code)}</textarea>
+  <button class="btn acc full" data-act="watchCopy">📋 Copy code</button>
+  <ol class="mut" style="margin:8px 0 0 18px;padding:0;line-height:1.5"><li>Copy the code.</li><li>On your phone, open Garmin Connect (or the Connect IQ app): your watch → Activities &amp; Apps → Simple Lift → Settings → <b>Workout code</b>, paste it, and save.</li><li>The watch picks it up on its next sync. Open Simple Lift on the watch.</li></ol>
+  <div class="mut" style="margin-top:6px">Weights are in lb${U()==='kg'?' (converted from kg)':''}${db().active?'. Includes the weights from your workout in progress':''}.</div></div>
+  <div class="card"><h3 style="margin-top:0">↩ Import from watch</h3><div class="mut">When you finish on the watch it shows a result code starting with <b>SR1~</b> (and puts it in the app's settings as "Last result"). Type or paste it here to bring the checked sets and weights back.</div>
+  <textarea id="watchRes" rows="3" placeholder="SR1~Push~4@95/95/105/105~3@65" style="margin-top:8px;font-family:monospace"></textarea>
+  <button class="btn full" data-act="watchImport">Import result</button></div>
+  <div class="mut"><b>How the link works:</b> right now it's manual copy and paste. Simple Lift has no server and can't talk to the watch directly. Changes carry over each time you send a new code or import a result. An automatic link would need a native Android app later.</div>`},
 aipaste(){
   return `<div class="mut">Paste the AI's whole answer below. You'll see your plan next and can fix anything before saving.</div>
   <textarea id="pasteText" rows="16" style="margin-top:10px" placeholder="Plan: My Plan&#10;Day 1: Push&#10;Barbell Bench Press — 3 sets x 8-10 reps — rest 90s&#10;...">${esc(route.p.text||'')}</textarea>
@@ -150,6 +187,8 @@ session(){
       <div class="step"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="r" data-d="-1">−</button><input type="number" inputmode="numeric" data-bind="set.${j}.${k}.r" value="${esc(s.r)}"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="r" data-d="1">+</button></div>
       <button class="done ${s.done?'on':''}" data-act="setDone" data-j="${j}" data-k="${k}" aria-label="Mark set done">✓</button></div>`).join('')}
     <div class="row"><button class="btn sm" data-act="setAdd" data-j="${j}">+ Set</button>${e.sets.length>1?`<button class="btn sm" data-act="setDel" data-j="${j}">− Set</button>`:''}</div></div>`).join('')}
+  <button class="btn full" data-act="watch" data-i="${a.dayIndex}">⌚ Watch: send or import</button>
+  <button class="btn full" data-act="completeAll">✅ Complete workout (check all remaining sets)</button>
   <button class="btn acc full" data-act="finish">Finish workout</button><button class="btn bad full" data-act="discard">Discard workout</button>`;
 },
 history(){
@@ -187,7 +226,7 @@ progress({off=0}){
     return `<div class="between" style="padding:6px 0;border-bottom:1px solid #262a33"><span>${esc(n)}</span><span>${b.w} × ${b.r} · ${ch}</span></div>`}).join(''):'<div class="mut">No workouts logged this week.</div>'}</div>`;
 },
 settings(){
-  return `<div class="card"><h3>Units</h3><div class="chips"><button class="chip ${U()==='lb'?'on':''}" data-act="units" data-v="lb">lb</button><button class="chip ${U()==='kg'?'on':''}" data-act="units" data-v="kg">kg</button></div>
+  return accountCard()+`<div class="card"><h3>Units</h3><div class="chips"><button class="chip ${U()==='lb'?'on':''}" data-act="units" data-v="lb">lb</button><button class="chip ${U()==='kg'?'on':''}" data-act="units" data-v="kg">kg</button></div>
   <div class="mut" style="margin-top:6px">Changes labels and progression steps. Saved numbers are not converted.</div></div>
   <div class="card"><div class="between"><div><h3 style="margin:0">Copy weight to later sets</h3><div class="mut">Changing a set's weight also fills in the sets after it that aren't done yet.</div></div><button class="chip ${db().settings.copyWeight!==false?'on':''}" data-act="copyW">${db().settings.copyWeight!==false?'On':'Off'}</button></div></div>
   <div class="card"><h3>Background</h3><div class="mut">Pick one of ours or use a photo from your phone.</div>
@@ -204,7 +243,8 @@ settings(){
   <button class="btn bad full" data-act="reset">Reset all data</button></div>
   <div class="card"><h3>About</h3><div class="mut">Simple Lift v${esc(APP_VERSION)} · free. No ads, no tracking, no account needed. Works offline. Add it to your home screen from your browser menu.</div></div>
   <div class="card" id="support" style="background:transparent;border:1px solid #262a33"><h3 style="font-size:16px">Support</h3><div class="mut">I made Simple Lift to be completely free, with no ads, and I'm trying to keep it free forever. If you ever want to chip in, it's totally optional and appreciated, but never expected.</div>
-  ${/^https:\/\//.test(DONATE_URL)?`<a class="btn sm" style="display:inline-block;margin-top:10px;text-decoration:none" href="${esc(DONATE_URL)}" target="_blank" rel="noopener">Donate (optional)</a>`:''}</div>`;
+  ${/^https:\/\//.test(DONATE_URL)?`<a class="btn sm" style="display:inline-block;margin-top:10px;text-decoration:none" href="${esc(DONATE_URL)}" target="_blank" rel="noopener noreferrer">Donate via PayPal (optional)</a>`:''}
+  ${/^[^@\s]+@[^@\s]+$/.test(SUPPORT_EMAIL)?`<a class="btn sm" style="display:inline-block;margin-top:10px;margin-left:8px;text-decoration:none" href="mailto:${esc(SUPPORT_EMAIL)}?subject=Simple%20Lift%20support">Email support</a><div class="mut" style="margin-top:6px">Bugs and questions: ${esc(SUPPORT_EMAIL)}</div>`:''}</div>`;
 }};
 
 const BGS={
@@ -247,7 +287,7 @@ function workoutHome(plan){
   const tabs=`<div class="daytabs">${plan.days.map((x,j)=>`<button class="daytab ${j===sel?'on':''}" style="--dc:${esc(dayColor(x))}" data-act="selDay" data-i="${j}">${esc(x.name)}${x.rest?' 💤':''}</button>`).join('')}</div>`;
   if(!d)return tabs;
   let body=`<div class="card" style="border-top:4px solid ${esc(c)}"><div class="between"><div><div class="mut">${esc(plan.name)}${j0(plan,sel)}</div><h2 style="margin:2px 0">${esc(d.name)}</h2></div>
-    <div style="display:flex;flex-direction:column;gap:6px"><button class="btn sm" data-act="editWorkout" data-i="${sel}">✎ Edit workout</button><button class="btn sm" data-act="chooser">+ New plan</button></div></div>`;
+    <div style="display:flex;flex-direction:column;gap:6px"><button class="btn sm" data-act="editWorkout" data-i="${sel}">✎ Edit workout</button><button class="btn sm" data-act="chooser">+ New plan</button>${d.rest?'':`<button class="btn sm" data-act="watch" data-i="${sel}">⌚ Send to watch</button>`}</div></div>`;
   if(d.rest)body+=`<div style="text-align:center;padding:24px 0"><div style="font-size:44px">💤</div><h3>Rest day</h3><div class="mut">Recover, stretch, go for a walk. Next workout tomorrow.</div></div></div>`;
   else if(!d.exercises.length)body+=`<div class="mut" style="padding:12px 0">No exercises yet. Tap "Edit workout" to add some.</div></div>`;
   else body+=`<div class="mut">${d.exercises.length} exercises · ${d.exercises.reduce((s,e)=>s+(+e.sets||0),0)} sets</div>
@@ -258,6 +298,14 @@ function workoutHome(plan){
 function j0(plan,sel){return sel===nextDayIndex(plan)?' · up next':''}
 // Recommended weight: same rules as the original app's sug(): no history -> start weight ("Starting estimate" / "Bodyweight");
 // last session hit top of rep range on all planned sets -> +5 (upper/db) or +10 (lower) lb; otherwise repeat weight.
+function accountCard(){if(typeof API_URL!=='string'||!API_URL)return '';const a=Sync.a;
+  if(!a.token)return `<div class="card"><h3>Account &amp; sync</h3><div class="mut">Optional. Sign in to back up your plans and history online, use them on other devices, and sync your Garmin watch automatically. Without an account, everything stays on this device and nothing is sent anywhere.</div>
+  <div class="row" style="gap:8px;margin-top:8px"><button class="btn acc" data-act="account" data-mode="up">Sign up</button><button class="btn" data-act="account" data-mode="in">Sign in</button></div></div>`;
+  if(a.verified===false)return `<div class="card"><h3>Account &amp; sync</h3><div>${esc(a.email||'')}</div><div class="mut">⚠ Email not verified yet. Enter the 6-digit code we emailed you to turn on sync and watch pairing.</div>
+  <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn sm acc" data-act="account" data-mode="verify">Enter code</button><button class="btn sm" data-act="acOut">Sign out</button></div></div>`;
+  return `<div class="card"><h3>Account &amp; sync</h3><div>${esc(a.email||'')}</div><div class="mut" id="syncStatus">${esc(Sync.status())}</div>
+  <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn sm" data-act="acSync">⟳ Sync now</button><button class="btn sm" data-act="pair">⌚ Pair watch</button><button class="btn sm" data-act="acOut">Sign out</button></div>
+  <div class="mut" style="margin-top:6px">Syncs when the app opens and a few seconds after changes. It works offline and catches up later. Stored online: email, password hash, plans, history, settings.</div></div>`}
 function exType(e){return e.type||(isLower(e.name)?'lower':'upper')}
 function suggest(e){const l=Store.lastFor(e.name,e.oldId);const start=e.weight===''||e.weight==null?0:+e.weight;
   if(!l||!l.sets.length){if(start)return{w:start,t:'Starting estimate',last:null};
@@ -275,7 +323,9 @@ async function runOCR(file){const box=$('#ocrBox');box.hidden=false;const set=(p
 const vol=w=>w.exercises.reduce((s,e)=>s+e.sets.reduce((a,x)=>a+(+x.w||0)*(+x.r||0),0),0);
 const sets=w=>w.exercises.reduce((s,e)=>s+e.sets.length,0);
 function weekStart(t){const d=new Date(t);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime()}
-const newEx=()=>({id:Store.uid(),name:'',sets:3,repMin:8,repMax:12,weight:'',rest:90,note:''});
+// Fill missing rests from the library; refresh ones that were auto-filled (restAuto) in case the name changed. User-entered rests are untouched.
+function autoRests(p){p.days.forEach(d=>d.exercises.forEach(e=>{if(e.restAuto)e.rest='';fillRest(e)}))}
+const newEx=()=>({id:Store.uid(),name:'',sets:3,repMin:8,repMax:12,weight:'',rest:'',restAuto:true,note:''}); // rest filled from the library when a name is chosen
 const clone=o=>JSON.parse(JSON.stringify(o));
 function blankPlan(){return{id:Store.uid(),name:'My Plan',created:Date.now(),next:0,days:[{id:Store.uid(),name:'Day 1',rest:false,exercises:[newEx()]}]}}
 const swap=(a,i,j)=>{if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]]};
@@ -286,7 +336,7 @@ function startWorkout(i){
     const g=suggest(e),last=g.last,lower=exType(e)==='lower';
     const w=g.w||'',r=g.up||!last?(+e.repMin||8):(+last.sets[0].r||+e.repMin||8);
     const lastTxt=last?last.sets.map(s=>`${s.w||0}×${s.r}`).join(', '):'',sugg=g.guess&&g.w?`Suggested start: ${g.w} ${U()} · a beginner estimate, edit if too light or heavy`:`Recommended: ${g.w?g.w+' '+U():'bodyweight'} · ${g.t}`;
-    return{oldId:e.oldId,type:e.type,name:e.name,lower,repMin:+e.repMin,repMax:+e.repMax,rest:+e.rest||60,note:e.note,last:lastTxt,sugg,sets:[...Array(Math.max(1,+e.sets||1))].map(()=>({w,r,done:false,ws:'s'}))}});
+    return{oldId:e.oldId,type:e.type,name:e.name,lower,repMin:+e.repMin,repMax:+e.repMax,rest:restOf(e),note:e.note,last:lastTxt,sugg,sets:[...Array(Math.max(1,+e.sets||1))].map(()=>({w,r,done:false,ws:'s'}))}});
   if(!ex.length){toast('Add exercises to this day first');return}
   db().active={id:Store.uid(),planId:plan.id,planName:plan.name,dayIndex:i,dayName:d.name,started:Date.now(),exercises:ex};Store.save();go('session');
 }
@@ -323,7 +373,7 @@ const ACT={
  dayUp:b=>{swap(draft.days,+b.dataset.i,+b.dataset.i-1);render()},dayDown:b=>{swap(draft.days,+b.dataset.i,+b.dataset.i+1);render()},
  addDay:()=>{draft.days.push({id:Store.uid(),name:'Day '+(draft.days.filter(d=>!d.rest).length+1),rest:false,exercises:[newEx()]});go('day',{i:draft.days.length-1})},
  addRest:()=>{draft.days.push({id:Store.uid(),name:'Rest',rest:true,exercises:[]});render()},
- savePlan:()=>{if(!draft.name.trim())draft.name='My Plan';draft.days.forEach(d=>d.exercises=d.exercises.filter(e=>e.name.trim()));
+ savePlan:()=>{if(!draft.name.trim())draft.name='My Plan';draft.days.forEach(d=>d.exercises=d.exercises.filter(e=>e.name.trim()));autoRests(draft);
    if(!draft.days.length){toast('Add at least one day');return}
    const isNew=draft._new;delete draft._new;delete draft._issues;delete draft._cr;Store.upsertPlan(draft);if(isNew)Store.setActive(draft.id);toast('Plan saved');stack=[];go(isNew?'home':'plans',{},false)},
  toggleRest:()=>{const d=draft.days[route.p.i];d.rest=!d.rest;if(!d.rest&&!d.exercises.length)d.exercises.push(newEx());render()},
@@ -337,12 +387,42 @@ const ACT={
  editWorkout:b=>{draft=clone(Store.activePlan());go('day',{i:+b.dataset.i,direct:1})},
  setColor:b=>{draft.days[route.p.i].color=b.dataset.c;render()},
  colorAll:()=>{const c=dayColor(draft.days[route.p.i]);draft.days.forEach(d=>d.color=c);toast('Color applied to all days')},
- saveDay:()=>{draft.days.forEach(d=>d.exercises=d.exercises.filter(e=>e.name.trim()));Store.upsertPlan(draft);toast('Workout saved');const i=route.p.i;back();route.p.sel=Math.min(i,draft.days.length-1);render();scrollTo(0,0)},
+ saveDay:()=>{draft.days.forEach(d=>d.exercises=d.exercises.filter(e=>e.name.trim()));autoRests(draft);Store.upsertPlan(draft);toast('Workout saved');const i=route.p.i;back();route.p.sel=Math.min(i,draft.days.length-1);render();scrollTo(0,0)},
  bgNone:()=>{setBg({kind:'none'});render()},
  bgPreset:b=>{setBg({kind:'preset',id:b.dataset.id});render()},
  bgPhoto:()=>{const f=$('#bgFile');f.value='';f.onchange=async()=>{try{const u=await loadBgFile(f.files[0]);try{localStorage.setItem(BG_KEY,u)}catch(e){throw new Error('Not enough space on this device to save that picture. Try a smaller one.')}setBg({kind:'custom'});toast('Background set');render()}catch(e){alert(e.message)}};f.click()},
  importOld:async()=>{const r=await importOldApp();showOldResult(r,true)},
  paste:()=>go('paste'),
+ completeAll:()=>{const a=db().active;if(!a)return;const left=a.exercises.reduce((n,e)=>n+e.sets.filter(x=>!x.done).length,0);
+   if(left&&!confirm(`Check off the ${left} remaining set${left===1?'':'s'} with the weights and reps shown, and finish the workout?`))return;
+   const pl=Store.plan(a.planId),day=pl&&pl.days[a.dayIndex];
+   a.exercises.forEach(le=>{const pe=day&&day.exercises.find(e=>e.name===le.name);
+     le.sets.forEach((st,k)=>{if(st.done)return;
+       if(st.w===''||st.w==null){const prev=k>0?le.sets[k-1].w:'';st.w=prev!==''&&prev!=null?prev:(pe?suggest(pe).w:0);st.ws=st.ws||'s'}
+       if(st.r===''||st.r==null)st.r=pe?(+pe.repMin||8):8;
+       st.done=true})});
+   Store.save();finishWorkout()},
+ account:b=>go('account',{mode:b.dataset.mode||'in'},route.v!=='account'),
+ acSubmit:async b=>{const e=$('#acEmail').value.trim(),p=$('#acPw').value;if(!e||!p){alert('Enter your email and password.');return}
+   b.disabled=true;b.textContent='Working…';try{const j=await Sync.signIn(b.dataset.mode,e,p);
+     if(j.verified===false){go('account',{mode:'verify',note:j.mailError?Sync.msg({error:j.mailError}):''},false);return}
+     toast('Signed in. Your data is syncing.');stack=[];tab('settings')}catch(x){alert(x.message);b.disabled=false;b.textContent=b.dataset.mode==='up'?'Create account':'Sign in'}},
+ acVerify:async b=>{const c=($('#acCode').value||'').replace(/\D/g,'');if(c.length!==6){alert('Enter the 6-digit code from the email.');return}
+   b.disabled=true;b.textContent='Checking…';try{await Sync.verify(c);toast('Email verified. Your data is syncing.');stack=[];tab('settings')}catch(x){$('#acNote').textContent=x.message;b.disabled=false;b.textContent='Verify'}},
+ acResend:async b=>{b.disabled=true;try{await Sync.resend();$('#acNote').textContent='New code sent. Check your email (and spam).'}catch(x){$('#acNote').textContent=x.status===429?'Please wait a minute before asking for another code (max 5 an hour).':x.message}setTimeout(()=>{b.disabled=false},60000)},
+ acForgotGo:b=>{const e=$('#acEmail');go('account',{mode:'forgot',email:e?e.value.trim():''},false)},
+ acForgot:async b=>{const el=$('#acEmail'),e=(el?el.value:b.dataset.email||'').trim();if(!e){alert('Enter your email.');return}
+   b.disabled=true;try{await Sync.forgot(e);go('account',{mode:'reset',email:e,note:route.p.mode==='reset'?'New code sent, if that email has an account.':''},false)}catch(x){const n=$('#acNote');if(n)n.textContent=x.status===429?'Please wait a minute before asking for another code.':x.message;b.disabled=false}},
+ acReset:async b=>{const c=($('#acCode').value||'').replace(/\D/g,''),p=$('#acPw').value;if(c.length!==6){alert('Enter the 6-digit code from the email.');return}
+   if(p.length<8){alert('Your new password needs at least 8 characters.');return}
+   b.disabled=true;b.textContent='Saving…';try{await Sync.reset(b.dataset.email,c,p);toast('Password changed. You are signed in.');stack=[];tab('settings')}catch(x){$('#acNote').textContent=x.message;b.disabled=false;b.textContent='Save new password'}},
+ acOut:async()=>{if(!confirm('Sign out? Your data stays on this device.'))return;await Sync.signOut();if(route.v==='account'){stack=[];tab('settings')}else render()},
+ acSync:async()=>{await Sync.now();toast(Sync.a.err||'Synced')},
+ pair:async()=>{go('pair');try{const j=await Sync.pair();$('#pairCode').textContent=j.code;$('#pairNote').textContent='Expires in 10 minutes'}catch(x){$('#pairNote').textContent='Could not get a code: '+x.message}},
+ watch:b=>go('watch',{i:+b.dataset.i,planId:(db().active&&route.v==='session')?db().active.planId:Store.activePlan()?.id}),
+ watchCopy:async()=>{const ta=$('#watchCode');ta.focus();ta.select();let ok=false;try{await navigator.clipboard.writeText(ta.value);ok=true}catch(e){try{ok=document.execCommand('copy')}catch(_){}}toast(ok?'Code copied':'Code selected. Long-press it and tap Copy.')},
+ watchImport:()=>{const r=parseResult($('#watchRes').value);if(!r){alert('That doesn\'t look like a watch result code. It should start with SR1~');return}
+   try{const o=applyResult(r);toast(o.msg);alert(o.msg);if(o.mode==='live')go('session',{},false);else{stack=[];go('home',{},false)}}catch(e){alert(e.message)}},
  chooser:()=>go('chooser'),
  pickPic:()=>{const f=$('#picFile');f.value='';f.onchange=()=>f.files[0]&&runOCR(f.files[0]);f.click()},
  takePic:()=>{const f=$('#camFile');f.value='';f.onchange=()=>f.files[0]&&runOCR(f.files[0]);f.click()},
@@ -395,7 +475,7 @@ document.addEventListener('contextmenu',e=>{if(e.target.closest('[data-act="stp"
 document.addEventListener('click',e=>{
   const pick=e.target.closest('[data-pick]');
   if(pick){const j=+pick.dataset.pick,ex=draft.days[route.p.i].exercises[j],L=libFind(pick.dataset.name);ex.name=L.name;
-    if(!ex.rest||ex.rest===90)ex.rest=L.compound?120:60;render();return}
+    if(!hasRest(ex.rest)||ex.restAuto){ex.rest=L.rest;ex.restAuto=true}render();return}
   if(!e.target.closest('.ac'))document.querySelectorAll('.aclist').forEach(x=>x.hidden=true);
   const b=e.target.closest('[data-act]');if(b&&!b.disabled&&ACT[b.dataset.act])ACT[b.dataset.act](b,e)});
 document.addEventListener('change',e=>{if(e.target.id==='customColor'){draft.days[route.p.i].color=e.target.value;render()}});
@@ -407,7 +487,7 @@ document.addEventListener('input',e=>{
   if(parts[0]==='name')draft.name=v;
   else if(parts[0]==='notes')draft.notes=v;
   else if(parts[0]==='day')draft.days[route.p.i].name=v;
-  else if(parts[0]==='ex'){const ex=draft.days[route.p.i].exercises[+parts[1]],f=parts[2];ex[f]=['sets','repMin','repMax','rest'].includes(f)?(v===''?'':+v):f==='weight'?(v===''?'':+v):v;
+  else if(parts[0]==='ex'){const ex=draft.days[route.p.i].exercises[+parts[1]],f=parts[2];ex[f]=['sets','repMin','repMax','rest'].includes(f)?(v===''?'':+v):f==='weight'?(v===''?'':+v):v;if(f==='rest')delete ex.restAuto; // user typed it: never auto-replace
     if(f==='name')showAC(+parts[1],v)}
   else if(parts[0]==='set'){const s=db().active.exercises[+parts[1]].sets[+parts[2]];s[parts[3]]=v===''?'':+v;if(parts[3]==='w'){s.ws='m';e.target.classList.remove('sugw');if(v!=='')cascadeW(+parts[1],+parts[2])}Store.save()}
 });
@@ -430,6 +510,7 @@ applyBg();
 if(db().active)route={v:'home',p:{}};
 if(!db().oldImportChecked&&oldHasData())importOldApp().then(r=>showOldResult(r,false));
 render();
+Sync.soon(800); // pull on open (no-op unless signed in)
 if('serviceWorker' in navigator){const had=!!navigator.serviceWorker.controller;
   navigator.serviceWorker.register('sw.js').then(r=>r.update()).catch(()=>{});
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!had||$('#updbar'))return;const b=document.createElement('button');b.id='updbar';b.className='updbar';b.textContent='Simple Lift was updated. Tap to reload';b.onclick=()=>location.reload();document.body.appendChild(b)})}

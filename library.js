@@ -85,6 +85,61 @@ Ab Wheel Rollout|core|bodyweight|0|b
 Bicycle Crunch|core|bodyweight|0|`;
 const LOWER=['quads','hamstrings','glutes','calves'];
 const LIBRARY=LIB_RAW.split('\n').map(l=>{const[n,m,e,c,x]=l.split('|');return{name:n,muscle:m,equip:e,compound:c==='1',avoid:x||'',lower:LOWER.includes(m)}});
+// ===== Per-exercise default rest (seconds) =====
+// Used ONLY when a workout doesn't say a rest for an exercise. An explicit rest (pasted, typed, imported) always wins.
+// Format stays backward compatible: LIB_RAW is unchanged; each entry just gains a `rest` field.
+const REST_FALLBACK=typeof DEFAULT_REST_SEC!=='undefined'?DEFAULT_REST_SEC:120; // global fallback (config.js): 2 min
+const REST_BY_NAME={ // heavy compounds
+ 'Barbell Bench Press':180,'Incline Barbell Bench Press':150,'Close-Grip Bench Press':150,'Barbell Overhead Press':150,'Barbell Row':150,
+ 'Deadlift':210,'Rack Pull':180,'Romanian Deadlift':150,'Barbell Back Squat':210,'Front Squat':180,'Hack Squat':180,'Leg Press':180,
+ 'Hip Thrust':150,'Dumbbell Hip Thrust':120,'Bulgarian Split Squat':120,'Dumbbell Romanian Deadlift':120,'Goblet Squat':90,
+ 'Dumbbell Bench Press':120,'Incline Dumbbell Press':120,'Seated Dumbbell Shoulder Press':120,'Machine Shoulder Press':90,'Machine Chest Press':90,
+ 'Dumbbell Row':90,'Chest-Supported Dumbbell Row':90,'Seated Cable Row':90,'Lat Pulldown':90,'Close-Grip Lat Pulldown':90,'Machine Row':90,
+ 'Assisted Pull-Up':90,'Pull-Up':120,'Chin-Up':120,'Dips':90,'Dumbbell Lunge':90,'Walking Lunge':90,'Step-Up':90,
+ // isolation
+ 'Face Pull':45,'Dumbbell Lateral Raise':45,'Cable Lateral Raise':45,'Machine Lateral Raise':45,'Rear Delt Fly':45,'Reverse Pec Deck':45,
+ 'Standing Calf Raise':60,'Seated Calf Raise':45,'Dumbbell Calf Raise':45,'Bodyweight Calf Raise':45,'Leg Extension':60,'Lying Leg Curl':60,'Seated Leg Curl':60,
+ 'Skull Crusher':75,'Nordic Curl':90
+};
+const restDefaultOf=x=>REST_BY_NAME[x.name]||(x.muscle==='core'?60:x.equip==='bodyweight'?60:x.compound?90:60);
+LIBRARY.forEach(x=>{x.rest=restDefaultOf(x)});
+const REST_ALIASES={ // normalized alias -> bank name
+ 'squat':'Barbell Back Squat','back squat':'Barbell Back Squat','bench press':'Barbell Bench Press','bench':'Barbell Bench Press','flat bench press':'Barbell Bench Press',
+ 'incline bench press':'Incline Barbell Bench Press','incline smith machine press':'Incline Barbell Bench Press','smith machine bench press':'Barbell Bench Press',
+ 'ohp':'Barbell Overhead Press','overhead press':'Barbell Overhead Press','military press':'Barbell Overhead Press','shoulder press':'Seated Dumbbell Shoulder Press',
+ 'bent over row':'Barbell Row','barbell bent over row':'Barbell Row','pendlay row':'Barbell Row','t bar row':'Barbell Row','chest supported t bar row':'Barbell Row','seal row':'Chest-Supported Dumbbell Row',
+ 'rdl':'Romanian Deadlift','barbell romanian deadlift':'Romanian Deadlift','stiff leg deadlift':'Romanian Deadlift','conventional deadlift':'Deadlift',
+ 'barbell hip thrust':'Hip Thrust','glute bridge':'Glute Bridge','split squat':'Bulgarian Split Squat','lunge':'Dumbbell Lunge',
+ 'lat pulldown':'Lat Pulldown','pulldown':'Lat Pulldown','lat focused pulldown':'Lat Pulldown','heavy lat pulldown':'Lat Pulldown','weighted pull up':'Pull-Up','pullup':'Pull-Up','chinup':'Chin-Up',
+ 'single arm cable row':'Seated Cable Row','cable row':'Seated Cable Row','pullover':'Straight-Arm Pulldown','dumbbell pullover':'Straight-Arm Pulldown',
+ 'lateral raise':'Dumbbell Lateral Raise','side raise':'Dumbbell Lateral Raise','upright row':'Dumbbell Lateral Raise','dumbbell upright row':'Dumbbell Lateral Raise','rear delt flye':'Rear Delt Fly','rear delt fly':'Rear Delt Fly',
+ 'calf raise':'Standing Calf Raise','hamstring curl':'Lying Leg Curl','leg curl':'Lying Leg Curl','standing hamstring curl':'Lying Leg Curl','lying hamstring curl':'Lying Leg Curl',
+ 'tricep extension':'Overhead Cable Triceps Extension','overhead cable tricep extension':'Overhead Cable Triceps Extension','overhead rope extension':'Overhead Cable Triceps Extension',
+ 'pushdown':'Triceps Pushdown','tricep pushdown':'Triceps Pushdown','skullcrusher':'Skull Crusher','tricep dip':'Dips','dip':'Dips',
+ 'bicep curl':'Dumbbell Curl','curl':'Dumbbell Curl','standing barbell bicep curl':'Barbell Curl','preacher curl':'Machine Preacher Curl','spider curl':'Dumbbell Curl',
+ 'cable hammer curl':'Hammer Curl','incline dumbbell bicep curl':'Incline Dumbbell Curl','chest press':'Machine Chest Press','seated chest press machine':'Machine Chest Press',
+ 'push up':'Push-Up','pushup':'Push-Up','crunch':'Cable Crunch','sit up':'Bicycle Crunch','leg raise':'Hanging Knee Raise'
+};
+const restNorm=s=>String(s||'').toLowerCase().replace(/\([^)]*\)?/g,' ').replace(/\bdb\b/g,'dumbbell').replace(/\bbb\b/g,'barbell').replace(/\bkb\b/g,'kettlebell')
+  .replace(/\btriceps\b/g,'tricep').replace(/\bbiceps\b/g,'bicep').replace(/[^a-z0-9 ]+/g,' ').split(/\s+/).filter(Boolean)
+  .map(w=>w.length>3&&/[^s]s$/.test(w)?w.slice(0,-1):w).join(' ').trim();
+const _restIdx=(()=>{const m=new Map();LIBRARY.forEach(x=>m.set(restNorm(x.name),x));for(const[a,n]of Object.entries(REST_ALIASES)){const x=LIBRARY.find(y=>y.name===n);if(x&&!m.has(restNorm(a)))m.set(restNorm(a),x)}return m})();
+function restEntry1(k){if(!k)return null;if(_restIdx.has(k))return _restIdx.get(k);
+  const k2=k.replace(/^(seated|standing|lying|incline|decline|single arm|one arm|weighted|heavy|machine|cable|dumbbell|barbell)\s+/,'');if(k2!==k){const r=restEntry1(k2);if(r)return r}
+  const kw=k.split(' ');let best=null,bs=0; // fuzzy: share of bank-name tokens present in query
+  for(const[n,x]of _restIdx){const nw=n.split(' ');const hit=nw.filter(w=>kw.includes(w)).length;if(!hit)continue;const sc=hit/nw.length+hit/kw.length*0.5;if(hit===nw.length&&sc>bs){bs=sc;best=x}}
+  return best}
+// restLookup(name) -> bank entry or null. "A or B" / "A / B": first alternative found in the bank wins.
+function restLookup(name){const alts=String(name||'').replace(/\([^)]*\)?/g,' ').split(/\s+(?:or)\s+|\s*\/\s*/i).map(restNorm).filter(Boolean);
+  for(const a of alts){const r=restEntry1(a);if(r)return r}return null}
+// restFor(name) -> default rest seconds from the bank, else DEFAULT_REST_SEC (120).
+function restFor(name){const x=restLookup(name);return x?x.rest:REST_FALLBACK}
+// hasRest(v): true when a rest value was actually given (0 is a valid explicit value, e.g. supersets).
+const hasRest=v=>v!==null&&v!==undefined&&v!==''&&!Number.isNaN(+v);
+// The ONE place defaults are applied: fills rest only where it's missing. Never touches a given number.
+function fillRest(ex){if(ex&&!hasRest(ex.rest)){ex.rest=restFor(ex.name);ex.restAuto=true}return ex}
+// Read-time: effective rest for timers/watch without mutating stored data.
+const restOf=ex=>hasRest(ex&&ex.rest)?+ex.rest:restFor(ex&&ex.name);
 function libFind(name){const k=(name||'').trim().toLowerCase();return LIBRARY.find(x=>x.name.toLowerCase()===k)}
 // Extra joint tags (h=hip, e=elbow, w=wrist, n=neck, a=ankle) added on top of s/b/k above.
 const EXTRA_AVOID={h:['Barbell Back Squat','Front Squat','Goblet Squat','Deadlift','Romanian Deadlift','Dumbbell Romanian Deadlift','Hip Thrust','Dumbbell Hip Thrust','Bulgarian Split Squat','Dumbbell Lunge','Walking Lunge','Step-Up','Leg Press','Hack Squat','Hip Abduction Machine','Cable Pull-Through'],

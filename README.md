@@ -12,7 +12,7 @@ A free, simple workout tracker. Static PWA with no build step and no CDN. The on
 - `store.js`: **the data layer.** All reads and writes go through `Store` (localStorage key `simplelift_v1`). To add accounts or sync, swap `load()`/`save()` for API calls and keep the same data shape.
 - `generator.js`: `generatePlan(answers)` is **the AI hook**. Today it's rule-based (full body, PPL, upper/lower and so on, filtered by equipment, injuries and session length). Replace its body with a backend call and keep the same return shape.
 - `parser.js`: `parseTextPlan(text)` is **the paste-parser hook**. Rule-based for now: it reads day headings ("Day 1 - Push", "Monday: Legs"), rest days, and lines like "4x8-10", "3 sets of 8-12" or "3 sets × 10–12 reps, rest 60s". Leftover text becomes notes. Warm-up, cool-down and tips sections are skipped, and lines it can't read are reported. Replace it with an AI call and keep the same return shape.
-- `config.js`: `DONATE_URL`. Leave it empty to hide the optional Donate button in Settings → Support (only the message shows).
+- `config.js`: `DONATE_URL`. Currently https://paypal.me/simplelift. Leave it empty to hide the optional Donate button in Settings → Support (only the message shows).
 - `changes.js`: `requestPlanChanges(plan,text)` / `applyChangeRequest` is **the change-request hook** (swap X for Y, remove X, add X to day N, more/less chest, add abs, shorter/longer, more/fewer sets, heavier/lighter). Replace it with an AI call and keep the same return shape: `{plan, changes, notUnderstood}`.
 - `oldimport.js`: imports the original workout app's history (`wlog_v1`) and plan (`wplan_v1`, or `../workout/plan.json`) from the same origin. It only reads those keys, never writes them, and skips anything already imported.
 - `app.js`: screens (Home, Plans/editor, Build with AI, Workout, History, Progress, Settings)
@@ -60,3 +60,20 @@ A free, simple workout tracker. Static PWA with no build step and no CDN. The on
 ## Changes in v10
 - Suggested or recommended weights in a workout show in gray (#7d8590). Once you set a set's weight (typing, +/−, hold, or marking the set done), it turns white.
 - Each set tracks `ws`: `s` = suggested (gray), `c` = copied from your edit of an earlier set (white, can still be overwritten), `m` = set by you (white, protected). Editing set N marks it `m` and copies the value to later sets that aren't `m` or done. Clearing a box doesn't copy the empty value down.
+
+## v11 — Watch link (manual) + Complete workout
+- **⌚ Send to watch** (next to Edit workout, and in the active workout): shows the `SL1~…` code for that day, weights in whole lb, per-set values joined with `/`. Copy it and paste it into Simple Lift's **Workout code** setting in Garmin Connect / Connect IQ on your phone.
+- **↩ Import from watch**: the watch's done screen shows a result code `SR1~Title~N@w1/w2…~…`. There is one item per exercise, N is the number of sets checked, and weights are in lb. The same code is saved to the watch setting "Last result". Paste it into the app. If that day is in progress, the first N sets are checked and their weights are set. Otherwise the result is saved to History, so progression uses it.
+- The link is **manual copy and paste**. There is no automatic sync unless a native Android wrapper is built later.
+- **✅ Complete workout**: after a confirm, it checks every remaining set using the weight and reps shown (gray suggestions become real values). Sets that are already checked or that you edited stay as they are. Then it finishes the workout as usual.
+
+## v12 — Accounts + automatic sync (optional)
+- **Off by default.** `API_URL` in `config.js` is empty, so the Account section is hidden and the app never contacts a server. Set it to the deployed Worker URL (see `/workspace/simplelift-api/README.md`) to turn on Settings → **Account & sync**.
+- **Sign up / Sign in / Sign out**, a status line ("Synced just now"), and **⟳ Sync now**. The app syncs on open, when it comes back online or to the foreground, and 3 s after any change. localStorage stays the source of truth, so the app works fully offline and without an account.
+- **Merge:** the newest copy wins for settings and the active workout. History logs and plans are combined by id, and deletions sync as tombstones (`deleted`).
+- **⌚ Pair watch** shows a single-use 6-digit code (valid 10 min). Enter it in the watch app's **Pairing code** setting. After that the watch downloads the next workout (with the app's progression, sent as `watchCode` on every push) and posts results. Those results are applied on the next sync through the v11 import logic.
+- **Privacy:** stored online are the email, a salted PBKDF2 password hash, and the data blob (plans, history, settings). No ads, no trackers, no third parties. There is no email password reset (the server can't send email); the UI says so and points to Export data.
+- The v11 deployable files were snapshotted to `/workspace/simplelift-v11-snapshot/` before `simplelift-upload/` was updated (there is no git repo).
+
+## v13 — Sync server live
+- `API_URL` = `https://simplelift-api.alexroyandrew1.workers.dev` (Cloudflare Worker + D1 on Alex's account). Accounts and sync now show in Settings. Nothing is sent until the user signs in.
