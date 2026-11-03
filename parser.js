@@ -1,7 +1,56 @@
 // ===== PASTE-PARSER HOOK =====
 // parseTextPlan(text) -> {plan, unparsed:[lines], skipped:[lines]}. Rule-based today.
 // To use a real AI parser later, replace the body with a backend call returning the same shape (caller awaits it).
-async function parseTextPlan(text){return ruleParse(text)}
+// v17: AI first (signed-in + verified accounts, via the Simple Lift server -> xAI Grok API), rule-based fallback on ANY failure.
+async function parseTextPlan(text){
+  const r=await aiRequest('/ai/parse',{text:String(text||'').slice(0,AI_TEXT_MAX)});
+  if(r.ok){const plan=aiToPlan(r.j.plan);if(plan.days.some(d=>d.exercises.length))return{plan,unparsed:r.j.unparsed||[],skipped:[]};lastAI=aiNote(null,'bad')}
+  return ruleParse(text)}
+// v19: photo import with Grok vision (paid accounts). Returns {plan,unparsed,skipped} or null = caller falls back to on-device OCR.
+// lastAI.note is reworded for photos ("...so I read the picture on your phone"). An aborted request (Cancel) returns null with lastAI.cancelled.
+async function parseImagePlan(dataUrl,signal){
+  const r=await aiRequest('/ai/parse-image',{image:dataUrl,mime:'image/jpeg'},signal);
+  if(r.ok){const plan=aiToPlan(r.j.plan);if(plan.days.some(d=>d.exercises.length))return{plan,unparsed:r.j.unparsed||[],skipped:[]};lastAI=aiNote(null,'bad')}
+  if(signal&&signal.aborted){lastAI={ai:false,note:'',cancelled:true};return null}
+  lastAI.note=photoNote(lastAI.note);return null}
+const photoNote=n=>n?n.replace('the built-in builder is free','reading on your phone is free').replace(/so I used the built-in builder/,'so I read the picture on your phone'):'AI could not read the picture, so I read it on your phone.';
+
+// ===== AI client (shared by generatePlan + parseTextPlan) =====
+// lastAI = {ai:true,remaining} after an AI result, or {ai:false,note} after a fallback (note '' = nothing worth showing).
+let lastAI=null;const AI_TEXT_MAX=6000;
+function aiNote(remaining,why){
+  if(why===null)return{ai:true,remaining};
+  const n={signin:'Sign in with a verified email (Settings → Account) to use AI.',verify:'Verify your email to use AI.',limit:'Daily AI limit reached, so I used the built-in builder. It resets at midnight UTC.',
+    offline:'Offline, so I used the built-in builder.',paid:'AI building is a paid extra; the built-in builder is free.',bad:'AI was unavailable, so I used the built-in builder.'}[why]||'';
+  return{ai:false,note:n,remaining:why==='limit'?0:remaining}}
+// '' = AI can be tried; otherwise the reason it can't (none|signin|verify|offline). No network.
+function aiPrecheck(){
+  if(typeof API_URL!=='string'||!API_URL||typeof Sync==='undefined'||typeof fetch!=='function')return 'none';
+  const a=Sync.a;if(!a.token)return 'signin';if(a.verified===false)return 'verify';if(a.plan==='free')return 'paid';
+  if(typeof navigator!=='undefined'&&navigator.onLine===false)return 'offline';return ''}
+async function aiRequest(path,body,signal){
+  lastAI=aiNote(null,'');lastAI.ai=false;
+  try{
+    const why=aiPrecheck();if(why){lastAI=aiNote(null,why);return{ok:false}}
+    const a=Sync.a;
+    const ctl=typeof AbortController==='function'?new AbortController():null;const t=ctl&&setTimeout(()=>ctl.abort(),50000);
+    if(ctl&&signal){if(signal.aborted)ctl.abort();else signal.addEventListener('abort',()=>ctl.abort())}
+    const r=await fetch(API_URL.replace(/\/+$/,'')+path,{method:'POST',signal:ctl&&ctl.signal,headers:{'Content-Type':'application/json',Authorization:'Bearer '+a.token},body:JSON.stringify(body)}).finally(()=>t&&clearTimeout(t));
+    const j=await r.json().catch(()=>({}));
+    if(r.ok&&j&&j.plan&&Array.isArray(j.plan.days)){lastAI=aiNote(j.remaining,null);return{ok:true,j}}
+    if(j.error==='not_paid'&&Sync.set)Sync.set({plan:'free'});lastAI=aiNote(j.remaining,r.status===429&&j.error==='limit'?'limit':j.error==='not_paid'?'paid':j.error==='unverified'?'verify':r.status===401?'signin':j.error==='ai_unavailable'?'':'bad');return{ok:false}
+  }catch(e){lastAI=aiNote(null,typeof navigator!=='undefined'&&navigator.onLine===false?'offline':'bad');return{ok:false}}}
+// Server plan (already validated + clamped there) -> exact Store plan shape. Library names are used when they match; missing rest -> library default.
+function aiToPlan(p,extra){
+  const n=(v,lo,hi,d)=>{v=Math.round(+v);return isFinite(v)?Math.max(lo,Math.min(hi,v)):d};
+  const days=(Array.isArray(p&&p.days)?p.days:[]).slice(0,7).map((d,i)=>{const ex=(Array.isArray(d.exercises)?d.exercises:[]).slice(0,12).filter(e=>e&&typeof e.name==='string'&&e.name.trim()).map(e=>{
+      const nm=String(e.name).trim().slice(0,60),L=libFind(nm)||libFuzzy(nm);
+      return fillRest({id:Store.uid(),name:L?L.name:nm,sets:n(e.sets,1,10,3),repMin:n(e.repMin,1,100,8),repMax:Math.max(n(e.repMin,1,100,8),n(e.repMax,1,100,10)),weight:'',rest:hasRest(e.rest)?n(e.rest,0,600,90):null,note:String(e.note||'').slice(0,200)})});
+    const rest=!!d.rest&&!ex.length;return{id:Store.uid(),name:String(d.name||'').slice(0,40)||(rest?'Rest':'Day '+(i+1)),rest,exercises:rest?[]:ex,_est:rest?0:n(d.estMinutes,0,240,0)}});
+  const est=days.filter(d=>!d.rest&&d._est).map(d=>`${d.name} ~${d._est} min`);days.forEach(d=>delete d._est);
+  const notes=[String(p&&p.notes||'').slice(0,400),est.length?'Estimated time: '+est.join(' · '):''].filter(Boolean).join('\n');
+  const plan=Object.assign({id:Store.uid(),name:String(p&&p.name||'AI plan').slice(0,50),created:Date.now(),next:0},notes?{notes}:{},extra||{},{days});
+  return plan}
 
 const DAYWORDS=/^(day\s*\d+|week\s*\d+|(mon|tues?|wed(nes)?|thu(rs)?|fri|sat(ur)?|sun)(day)?\b|workout\s*[a-z0-9]\b|session\s*\d+|(upper|lower|push|pull|legs?|full[\s-]?body|chest|back|arms|shoulders)(\s+(day|body|[a-z])){0,2}\s*[:\-]?\s*$)/i;
 const SKIPSEC=/^(key\b|principles?\b|guidelines?\b|rules\b|takeaways?\b|important\b|final (notes?|tips?|thoughts?)|general\b|questions?\b|important|warm[\s-]?ups?|cool[\s-]?downs?|stretch(es|ing)?|tips?|notes?|progression|scaling|nutrition|equipment|total\b|time\b|estimated|why\b|summary|benefits|mobility|cardio|form\b|safety|faq|recovery tips|how to|instructions)/i;

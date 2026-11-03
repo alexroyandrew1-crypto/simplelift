@@ -13,7 +13,7 @@ const Sync={
     unverified:'Verify your email first. Enter the 6-digit code we emailed you.',mail_not_configured:'Email is not set up on the server yet, so we could not send a code. Try again later.',
     mail_failed:'We could not send the email right now. Try again in a few minutes.'})[j.error]||j.message||j.error||(st===429?'Too many tries. Wait a minute and try again.':'Server error '+st)},
   async signIn(mode,email,password){const j=await this.req('POST',mode==='up'?'/register':'/login',{email,password});
-    this.set({token:j.token,email:j.email,verified:j.verified!==false,lastSync:0,err:''});if(j.verified!==false)await this.now();return j},
+    this.set({token:j.token,email:j.email,verified:j.verified!==false,plan:j.plan||'free',lastSync:0,err:''});if(j.verified!==false)await this.now();return j},
   async verify(code){const j=await this.req('POST','/auth/verify',{email:this.a.email,code});this.set({verified:true});await this.now();return j},
   async resend(){return this.req('POST','/auth/resend',{},this.a.token)},
   async forgot(email){return this.req('POST','/auth/forgot',{email})},
@@ -27,7 +27,7 @@ const Sync={
   async now(){if(!this.on())return;if(this.busy){this.again=true;return}this.busy=true;
     try{const d=JSON.parse(JSON.stringify(db()));const code=this.nextCode();Store.save(true);
       const j=await this.req('PUT','/data',{data:d,updatedAt:d.updatedAt||0,watchCode:code,ackResults:this.a.acks||[]},this.a.token);
-      this.set({acks:[]});
+      this.set({acks:[]});if(j.plan)this.set({plan:j.plan});
       // keep anything changed locally while the request was in flight
       if(!((db().updatedAt||0)>(d.updatedAt||0)))Store.replace(j.data);else this.again=true;
       const applied=[];for(const r of j.watchResults||[]){const p=parseResult(r.code);try{if(p){const o=applyResult(p);toast('⌚ '+o.msg)}}catch(e){toast('⌚ '+e.message)}applied.push(r.id)}

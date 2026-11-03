@@ -5,7 +5,12 @@
 // (the caller already awaits it). Keep the returned shape identical to Store plans.
 // answers: {goal, experience, days:2-7, minutes:20..120, equipment:'full'|'machines'|'dumbbells'|'bodyweight',
 //           injuries:'free text', focus:['chest',...]}
-async function generatePlan(answers){return rulePlan(answers)}
+// v17: AI first (signed-in + verified accounts, server -> xAI Grok API; see parser.js aiRequest), rule-based fallback on ANY failure.
+async function generatePlan(answers,opts){
+  const a=answers||{};
+  const r=await aiRequest('/ai/plan',{answers:{goal:a.goal,experience:a.experience,days:+a.days||3,minutes:+a.minutes||45,equipment:a.equipment,injuries:String(a.injuries||'').slice(0,500),focus:a.focus||[],changes:String(a.changes||'').slice(0,500)}},opts&&opts.signal);
+  if(r.ok){const plan=aiToPlan(r.j.plan,{avoid:parseInjuries(a.injuries).codes});if(plan.days.some(d=>d.exercises.length))return plan;lastAI=aiNote(null,'bad')}
+  return rulePlan(answers)}
 
 const EQUIP={full:['barbell','dumbbell','machine','cable','bodyweight'],machines:['machine','cable','bodyweight'],dumbbells:['dumbbell','bodyweight'],bodyweight:['bodyweight']};
 const T={

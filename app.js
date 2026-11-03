@@ -15,7 +15,7 @@ function back(){route=stack.pop()||{v:'home',p:{}};render()}
 $('#back').onclick=back;
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{if(db().active&&b.dataset.tab==='home'){tab('home');return}tab(b.dataset.tab)});
 
-const TITLES={home:'Simple Lift',plans:'My Plans',editor:'Edit Plan',day:'Edit Day',ai:'Build with AI',aiprompt:'Use My Own AI',aipaste:'Paste AI Answer',paste:'Copy a Workout',watch:'Watch',account:'Account',pair:'Pair watch',chooser:'New Plan',session:'Workout',history:'History',hist:'Workout',progress:'Progress',settings:'Settings'};
+const TITLES={home:'Simple Lift',plans:'My Plans',editor:'Edit Plan',day:'Edit Day',ai:'New Plan',aiprompt:'Use My Own AI',aipaste:'Paste AI Answer',paste:'Copy a Workout',watch:'Watch',account:'Account',pair:'Pair watch',chooser:'New Plan',session:'Workout',history:'History',hist:'Workout',progress:'Progress',settings:'Settings'};
 function render(){
   const v=route.v;$('#title').textContent=TITLES[v]||'Simple Lift';
   $('#back').style.visibility=stack.length?'visible':'hidden';
@@ -47,9 +47,7 @@ home(){
     h+=`<div class="card"><div class="between"><h3>${esc(plan.name)}</h3><button class="btn sm" data-act="editActive">Edit</button></div>
       <div class="chips" style="margin-top:6px">${plan.days.map((d,j)=>`<button class="chip ${j===i?'on':''}" data-act="start" data-i="${j}" ${d.rest||!d.exercises.length?'disabled':''}>${esc(d.name)}</button>`).join('')}</div>
       <div class="mut" style="margin-top:8px">Tap any day to start it instead.</div></div>`}
-  h+=`<h2 style="margin:8px 0 0">Create your plan</h2><button class="big" data-act="newPlan">✎ Build my own plan<small>Pick your days and exercises</small></button>
-      <button class="big" data-act="ai">✦ Build with AI<small>Answer a few questions, get a plan made for you</small></button>
-      <button class="big" data-act="paste">📷 Copy a workout from text or picture<small>Paste text or snap a photo or screenshot of a plan</small></button>`;
+  h+=`<h2 style="margin:8px 0 4px">Create your plan</h2><div class="mut">Pick how you want to start. You can change anything later.</div>`+createOpts();
   return h;
 },
 plans(){
@@ -58,20 +56,19 @@ plans(){
     ${p.id===db().activePlanId?'<span class="tag">Active</span>':`<button class="btn sm" data-act="activate" data-id="${p.id}">Use</button>`}</div>
     <div class="row" style="margin-top:10px"><button class="btn grow" data-act="edit" data-id="${p.id}">Edit</button><button class="btn" data-act="dup" data-id="${p.id}">Copy</button><button class="btn bad" data-act="delPlan" data-id="${p.id}">Delete</button></div></div>`).join('')
     :`<div class="card mut">No plans yet. Create one below.</div>`)+
-    `<h3 style="margin:18px 0 0">+ New plan</h3><button class="big" data-act="newPlan">✎ Build my own plan<small>Pick your days and exercises</small></button>
-      <button class="big" data-act="ai">✦ Build with AI<small>Answer a few questions, get a plan made for you</small></button>
-      <button class="big" data-act="paste">📷 Copy a workout from text or picture<small>Paste text or snap a photo or screenshot of a plan</small></button>`;
+    `<h3 style="margin:22px 0 0">+ New plan</h3>`+createOpts();
 },
 editor(){
   const p=draft;
   const I=p._issues;const iss=I?`<div class="card" style="border:1px solid ${I.unparsed.length?'#7c5a1d':'#24492f'}"><b>${I.count} exercises found in ${I.days} day${I.days===1?'':'s'}.</b> Check them below, fix anything, then save.
     ${I.unparsed.length?`<div style="margin-top:8px;color:#fbbf24">I couldn't understand ${I.unparsed.length} line${I.unparsed.length===1?'':'s'}:</div><ul class="mut" style="margin:4px 0;padding-left:18px">${I.unparsed.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><div class="mut">Add those yourself with "+ Add exercise" if you need them.</div>`:''}
     ${I.skipped.length?`<div class="mut" style="margin-top:6px">Skipped ${I.skipped.length} warm-up, cool-down or tips line${I.skipped.length===1?'':'s'}.</div>`:''}</div>`:'';
-  const CR=p._cr;const req=`<div class="card"><h3>Request changes</h3><div class="mut">Tell me what to change in plain words, e.g. "swap squats for leg press, add abs, make it shorter, add hammer curls to day 2". Or edit anything by hand below.</div>
+  const CR=p._cr;const req=`<details class="card"${CR?' open':''}><summary><b>Request changes</b> <span class="mut">· optional</span></summary><div class="mut" style="margin-top:6px">Tell me what to change in plain words, e.g. "swap squats for leg press, add abs, make it shorter, add hammer curls to day 2". Or edit anything by hand below.</div>
     <textarea id="crText" rows="3" style="margin-top:10px" placeholder="e.g. replace bench press with dumbbell press, more chest, no calf raises"></textarea><button class="btn acc full" data-act="applyCR">Apply changes</button>
     ${CR?`<div style="margin-top:10px">${CR.changes.length?`<b>What changed:</b><ul style="margin:4px 0;padding-left:18px">${CR.changes.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:'<b>Nothing was changed.</b>'}
-    ${CR.notUnderstood.length?`<div style="color:#fbbf24">I couldn't understand or do:</div><ul class="mut" style="margin:4px 0;padding-left:18px">${CR.notUnderstood.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><div class="mut">Try "swap X for Y", "remove X", "add X to day 2", "more chest", "make it shorter".</div>`:''}</div>`:''}</div>`;
-  return iss+req+`<label>Plan name</label><input data-bind="name" value="${esc(p.name)}" placeholder="My plan">
+    ${CR.notUnderstood.length?`<div style="color:#fbbf24">I couldn't understand or do:</div><ul class="mut" style="margin:4px 0;padding-left:18px">${CR.notUnderstood.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><div class="mut">Try "swap X for Y", "remove X", "add X to day 2", "more chest", "make it shorter".</div>`:''}</div>`:''}</details>`;
+  const A=p._ai;const aiN=A&&(A.ai||A.note)?`<div class="mut" style="margin:0 0 10px;font-size:13px">${A.ai?`<span class="tag" style="background:#2b2f6b;color:#c7d2fe">✦ AI</span> Made with AI (Grok)${A.remaining!=null?` · ${A.remaining} AI plan${A.remaining===1?'':'s'} left today`:''}`:`ⓘ ${esc(A.note)}`}</div>`:'';
+  return aiN+iss+`<label>Plan name</label><input data-bind="name" value="${esc(p.name)}" placeholder="My plan">
   <label>Plan notes</label><textarea data-bind="notes" rows="2" placeholder="Optional">${esc(p.notes||'')}</textarea>
   <h3 style="margin:18px 0 4px">Days</h3><div class="mut">Tap a day to edit its exercises. Use arrows to reorder.</div>
   ${p.days.map((d,i)=>`<div class="card"><div class="row"><div class="grow" data-act="openDay" data-i="${i}" style="cursor:pointer">
@@ -79,7 +76,7 @@ editor(){
     <div class="mut">${d.rest?'Recovery day':d.exercises.length?esc(d.exercises.map(e=>e.name).join(', ')):'No exercises yet'}</div></div>
     <div style="display:flex;flex-direction:column"><button class="icon-btn" style="font-size:18px" data-act="dayUp" data-i="${i}" aria-label="Move up">▲</button><button class="icon-btn" style="font-size:18px" data-act="dayDown" data-i="${i}" aria-label="Move down">▼</button></div></div></div>`).join('')}
   <div class="grid2"><button class="btn" data-act="addDay">+ Workout day</button><button class="btn" data-act="addRest">+ Rest day</button></div>
-  <button class="btn acc full" data-act="savePlan">Save plan</button>`;
+  ${req}${foot('<button class="btn acc" data-act="savePlan">Save plan</button>')}`;
 },
 day({i}){
   const d=draft.days[i];if(!d)return'';
@@ -99,21 +96,23 @@ day({i}){
     <label class="swatch custom" title="Custom color" style="background:${esc(dayColor(d))}"><input type="color" id="customColor" value="${esc(dayColor(d))}"></label></div>
     <button class="btn full" data-act="colorAll">Apply this color to all days</button></div>`:''}
   <div class="grid2" style="margin-top:10px"><button class="btn" data-act="dayDup">Duplicate day</button><button class="btn bad" data-act="dayDel">Delete day</button></div>
-  <button class="btn acc full" data-act="${route.p.direct?'saveDay':'back'}">${route.p.direct?'Save workout':'Done'}</button>`;
+  ${foot(`<button class="btn acc" data-act="${route.p.direct?'saveDay':'back'}">${route.p.direct?'Save workout':'Done'}</button>`)}`;
 },
 ai(){
-  const S=AI_STEPS,s=S[ai.step];
-  const val=ai.a[s.key];
-  const on=v=>s.multi?(val||[]).includes(v):val==v;
-  return `<div class="mut">Step ${ai.step+1} of ${S.length}</div><div class="progress"><i style="width:${(ai.step+1)/S.length*100}%"></i></div>
-  <h2>${esc(s.q)}</h2>${s.hint?`<div class="mut">${esc(s.hint)}</div>`:''}
+  const S=AI_STEPS,N=S.length+1,n=ai.step+1;
+  const head=`<div class="between"><span class="wiz-step">Step ${n} of ${N}</span>${n<N?`<span class="mut">${n===6||n===7?'Optional':''}</span>`:''}</div><div class="progress"><i style="width:${n/N*100}%"></i></div>`;
+  if(ai.step>=S.length){const busy=ai.busy,pc=aiPrecheck();
+    return head+`<h2>Ready when you are</h2><div class="card recap"><div class="mut">Your plan</div><b>${esc(aiGoalLine(ai.a))}</b><div class="mut" style="margin-top:2px">${esc(aiSummary(ai.a))}</div></div>
+    ${busy?`<div class="card" style="text-align:center;padding:22px 16px"><div class="spin"></div><b>Building your plan…</b><div class="mut" style="margin-top:4px">This usually takes 5–20 seconds.</div><button class="btn full" data-act="aiCancel">Cancel</button></div>`
+    :`${ai.msg?`<div class="card note">${esc(ai.msg)}</div>`:''}
+    <button class="big acc" data-act="aiBuild">✨ Build my plan with AI<small>${['paid','signin','verify'].includes(pc)?'Paid extra; tap to learn more':'Tailored to your answers, with sets, reps and rest times'}</small></button>
+    <button class="big ghost" data-act="aiQuick">⚡ Quick build (free)<small>Instant, built into the app</small></button>
+    ${foot('<button class="btn" data-act="aiPrev">Back</button>')}`}`}
+  const s=S[ai.step],val=ai.a[s.key],on=v=>s.multi?(val||[]).includes(v):val==v;
+  return head+`<h2>${esc(s.q)}</h2>${s.hint?`<div class="mut">${esc(s.hint)}</div>`:''}
   ${s.text?`<textarea id="aiText" rows="4" style="margin-top:12px" placeholder="e.g. bad right shoulder, lower back pain">${esc(val||'')}</textarea><div id="injHint" class="mut" style="margin-top:6px">${injHint(val)}</div>`:''}
-  <div style="margin-top:12px;${s.grid?'display:grid;grid-template-columns:1fr 1fr;column-gap:8px':''}">${s.opts.map(([v,l,d])=>`<button class="big ${on(v)?'acc':''}" style="padding:16px 18px;font-size:17px" data-act="aiPick" data-v="${esc(v)}">${esc(l)}${d?`<small>${esc(d)}</small>`:''}</button>`).join('')}</div>
-  <div class="grid2">${ai.step?'<button class="btn" data-act="aiPrev">Back</button>':'<span></span>'}
-  ${s.multi||s.text?(ai.step===S.length-1?'<span></span>':`<button class="btn acc" data-act="aiNext">Next</button>`):''}</div>
-  ${ai.step===S.length-1?`<h3 style="margin-top:18px">How should I make your plan?</h3>
-  <button class="big acc" data-act="aiNext">⚡ Quick build<small>Made instantly on your phone from built-in rules</small></button>
-  <button class="big" data-act="aiOwn">💬 Use my own AI chat (free)<small>Copy a ready-made prompt into ChatGPT, Grok, Gemini or any chat AI, then paste its answer back</small></button>`:''}`;
+  <div class="opts${s.grid?' g2':''}">${s.opts.map(([v,l,d])=>`<button class="big opt ${on(v)?'on':''}" data-act="aiPick" data-v="${esc(v)}" aria-pressed="${on(v)}">${esc(l)}${d?`<small>${esc(d)}</small>`:''}</button>`).join('')}</div>
+  ${foot(`<button class="btn" data-act="aiPrev">${ai.step?'Back':'Cancel'}</button>`,`<button class="btn acc" data-act="aiNext">Next</button>`)}`;
 },
 aiprompt(){const pr=buildAIPrompt(ai.a,ai.changes||'');
   return `<div class="card"><b>3 quick steps</b><ol style="margin:8px 0 0 18px;padding:0;line-height:1.6"><li>Tap <b>Copy prompt</b>.</li><li>Paste it into ChatGPT, Grok, Gemini or any chat AI.</li><li>Copy its whole answer and paste it back here on the next screen.</li></ol></div>
@@ -146,7 +145,7 @@ account(){const m=route.p.mode||'in',up=m==='up',a=Sync.a,em=esc(route.p.email||
   <button class="btn acc full" data-act="acSubmit" data-mode="${up?'up':'in'}" style="margin-top:10px">${up?'Create account':'Sign in'}</button>
   ${up?'':'<div style="text-align:right;margin:6px 0"><button type="button" data-act="acForgotGo" style="background:none;border:0;color:inherit;opacity:.85;text-decoration:underline;padding:4px 0;font:inherit">Forgot password?</button></div>'}
   <button class="btn full" data-act="account" data-mode="${up?'in':'up'}">${up?'I already have an account':'Create a new account instead'}</button></div>
-  <div class="mut"><b>What's stored online:</b> your email, a salted password hash, and your Simple Lift data (plans, history, settings). No ads, no trackers, and nothing is shared or sold.${up?' We email you a 6-digit code to confirm your address. Your email is only used for that and for password resets.':''}</div>`},
+  <div class="mut"><b>What's stored online:</b> your email, a salted password hash, and your Simple Lift data (plans, history, settings). No ads, no trackers, and nothing is shared or sold. If you use the AI plan features, the answers or text you submit are sent to xAI (Grok API) to make your plan, and on paid accounts photos you choose to import with AI are sent to xAI (Grok) to be read; nothing else is sent and Simple Lift doesn't store them.${up?' We email you a 6-digit code to confirm your address. Your email is only used for that and for password resets.':''}</div>`},
 pair(){return `<div class="card" style="text-align:center"><h3 style="margin-top:0">⌚ Pair your watch</h3><div id="pairCode" style="font-size:44px;letter-spacing:6px;font-weight:800;margin:10px 0">······</div><div class="mut" id="pairNote">Getting a code…</div></div>
   <div class="card"><ol class="mut" style="margin:0 0 0 18px;padding:0;line-height:1.5"><li>On your phone, open Garmin Connect (or the Connect IQ app): your watch → Activities &amp; Apps → Simple Lift → Settings.</li><li>Enter this code in <b>Pairing code</b> and save.</li><li>Open Simple Lift on the watch while your phone is nearby. It pairs, then downloads your next workout every time it opens and sends your sets back when you finish.</li></ol>
   <div class="mut" style="margin-top:8px">The code works once and expires in 10 minutes. Manual codes (⌚ Send to watch) still work as a backup.</div></div>`},
@@ -167,12 +166,15 @@ aipaste(){
   <button class="btn acc full" data-act="parse">Make my plan</button>
   <button class="btn full" data-act="back">← Back to the prompt</button>`},
 paste(){
-  return `<div class="row" style="gap:8px;margin-bottom:10px"><button class="btn grow" data-act="pickPic">🖼 Choose a picture</button><button class="btn grow" data-act="takePic">📷 Take a photo</button></div>
+  return `<div class="mut">Copy a plan from a picture or from text. You'll see a preview before anything is saved.</div>
+  <div class="grid2" style="margin-top:12px"><button class="btn" data-act="pickPic">🖼 Choose a picture</button><button class="btn" data-act="takePic">📷 Take a photo</button></div>
   <input type="file" id="picFile" accept="image/*" hidden><input type="file" id="camFile" accept="image/*" capture="environment" hidden>
-  <div id="ocrBox" class="card" hidden><div class="between"><b id="ocrMsg">Reading text…</b><span id="ocrPct" class="mut"></span></div><div class="progress"><i id="ocrBar" style="width:0"></i></div><div class="mut">Reading happens on your phone. Nothing is uploaded.</div></div>
-  <div class="mut">Or paste a workout plan copied from anywhere. Day headings like "Day 1 - Push" or "Monday: Legs" and lines like "Bench press 4x8-10" work best. You'll see a preview before anything is saved. After reading a picture, check the text below and fix any mistakes.</div>
-  <textarea id="pasteText" rows="14" style="margin-top:12px" placeholder="Day 1 - Push&#10;Bench press 4x8-10&#10;Overhead press 3 sets of 8-12, rest 90s&#10;&#10;Day 2 - Rest&#10;&#10;Day 3 - Legs&#10;Squats 3x8-12">${esc(route.p.text||'')}</textarea>
-  <button class="btn acc full" data-act="parse">Make my plan</button>`;
+  ${(()=>{const w=aiPrecheck();return w===''?'<div class="mut" style="margin-top:8px;font-size:13px"><span class="tag" style="background:#2b2f6b;color:#c7d2fe">✦ AI</span> Pictures are read with AI (Grok).</div>':['paid','signin','verify'].includes(w)?'<div class="mut" style="margin-top:8px;font-size:13px">✦ Paid accounts can use AI to read photos.</div>':''})()}
+  <div id="ocrBox" class="card" hidden><div class="between"><b id="ocrMsg">Reading text…</b><span id="ocrPct" class="mut"></span></div><div class="progress"><i id="ocrBar" style="width:0"></i></div><div class="mut" id="ocrSub">Reading happens on your phone. Nothing is uploaded.</div><button class="btn full" id="ocrCancel" data-act="ocrCancel" hidden style="margin-top:8px">Cancel</button></div>
+  <label for="pasteText">Workout text</label>
+  <textarea id="pasteText" rows="14" placeholder="Day 1 - Push&#10;Bench press 4x8-10&#10;Overhead press 3 sets of 8-12, rest 90s&#10;&#10;Day 2 - Rest&#10;&#10;Day 3 - Legs&#10;Squats 3x8-12">${esc(route.p.text||'')}</textarea>
+  <div class="mut" style="margin-top:6px">Tip: day headings like "Day 1 - Push" and lines like "Bench press 4x8-10" work best. After reading a picture, check the text and fix any mistakes.</div>
+  ${foot('<button class="btn acc" data-act="parse">Make my plan</button>')}`;
 },
 session(){
   const a=db().active;if(!a)return'<div class="card">No workout in progress.</div>';
@@ -279,6 +281,10 @@ const AI_STEPS=[
  {key:'focus',multi:1,q:'Any muscles you want to focus on?',hint:'Optional. Pick up to 3.',opts:[['chest','Chest'],['back','Back'],['shoulders','Shoulders'],['biceps','Arms (biceps)'],['triceps','Arms (triceps)'],['quads','Legs (quads)'],['glutes','Glutes'],['core','Core']]}
 ];
 
+function aiGoalLine(a){return[{muscle:'Build muscle',strength:'Get stronger',general:'General fitness',fatloss:'Lose fat'}[a.goal]||'General fitness',{beginner:'Beginner',intermediate:'Intermediate',advanced:'Advanced'}[a.experience]||'Beginner'].join(' · ')}
+function aiSummary(a){const eq={full:'full gym',machines:'machines & cables',dumbbells:'dumbbells only',bodyweight:'bodyweight only'}[a.equipment]||'full gym';
+  const w=parseInjuries(a.injuries).words,f=(a.focus||[]).filter(x=>x!=='none');
+  return [`${+a.days||3} days a week`,`${+a.minutes||45} min`,eq,...(w.length?[w.slice(0,2).join('- and ')+'-friendly']:[]),...(f.length?[f.slice(0,2).join(' & ')+' focus']:[])].join(', ')}
 function injHint(t){const r=parseInjuries(t);return t&&t.trim()?(r.words.length?`Understood: <b style="color:var(--acc)">${r.words.map(esc).join(', ')}</b>. Exercises that load these areas will be left out.`:"I didn't recognize a body part. Try words like shoulder, back, knee, hip, elbow, wrist, neck or ankle."):''}
 function dayColor(d){return d&&d.color||'#4ade80'}
 function workoutHome(plan){
@@ -303,7 +309,7 @@ function accountCard(){if(typeof API_URL!=='string'||!API_URL)return '';const a=
   <div class="row" style="gap:8px;margin-top:8px"><button class="btn acc" data-act="account" data-mode="up">Sign up</button><button class="btn" data-act="account" data-mode="in">Sign in</button></div></div>`;
   if(a.verified===false)return `<div class="card"><h3>Account &amp; sync</h3><div>${esc(a.email||'')}</div><div class="mut">⚠ Email not verified yet. Enter the 6-digit code we emailed you to turn on sync and watch pairing.</div>
   <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn sm acc" data-act="account" data-mode="verify">Enter code</button><button class="btn sm" data-act="acOut">Sign out</button></div></div>`;
-  return `<div class="card"><h3>Account &amp; sync</h3><div>${esc(a.email||'')}</div><div class="mut" id="syncStatus">${esc(Sync.status())}</div>
+  return `<div class="card"><h3>Account &amp; sync</h3><div>${esc(a.email||'')}</div>${a.plan?`<div class="mut">Plan: ${a.plan==='paid'?'Paid (AI building on)':'Free'}</div>`:''}<div class="mut" id="syncStatus">${esc(Sync.status())}</div>
   <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn sm" data-act="acSync">⟳ Sync now</button><button class="btn sm" data-act="pair">⌚ Pair watch</button><button class="btn sm" data-act="acOut">Sign out</button></div>
   <div class="mut" style="margin-top:6px">Syncs when the app opens and a few seconds after changes. It works offline and catches up later. Stored online: email, password hash, plans, history, settings.</div></div>`}
 function exType(e){return e.type||(isLower(e.name)?'lower':'upper')}
@@ -313,11 +319,26 @@ function suggest(e){const l=Store.lastFor(e.name,e.oldId);const start=e.weight==
   const w=Math.max(...l.sets.map(s=>+s.w||0));const top=l.sets.length>=+e.sets&&l.sets.every(s=>+s.r>=+e.repMax);
   if(top&&w>0){const inc=step(exType(e)==='lower');return{w:w+inc,t:`Hit top of range last time → +${inc} ${U()}`,last:l,up:1}}
   return{w,t:'Repeat weight, aim for more reps',last:l}}
-const chooserHTML=()=>`<div class="mut">Pick how you want to make your new plan. Your current plans stay saved.</div>`+`<button class="big" data-act="newPlan">✎ Build my own plan<small>Pick your days and exercises</small></button>
-      <button class="big" data-act="ai">✦ Build with AI<small>Answer a few questions, get a plan made for you</small></button>
-      <button class="big" data-act="paste">📷 Copy a workout from text or picture<small>Paste text or snap a photo or screenshot of a plan</small></button>`;
+const createOpts=()=>`<button class="big" data-act="ai">✨ Guided plan<small>Answer 7 quick questions, then build with AI or free</small></button>
+  <button class="big" data-act="newPlan">✎ Build my own<small>Pick your days and exercises yourself</small></button>
+  <button class="big" data-act="paste">📷 Copy from text or a picture<small>Paste a plan, or snap a photo or screenshot of one</small></button>`;
+const chooserHTML=()=>`<div class="mut">How do you want to make your new plan? Your current plans stay saved.</div>`+createOpts();
+const foot=(...b)=>`<div class="foot${b.length>1?' two':''}">${b.join('')}</div>`;
+// v19: paid + verified + online -> the photo goes to Grok vision (/ai/parse-image) and opens straight in the plan preview.
+// Any AI failure falls back silently to on-device OCR with a short note; Cancel stops the AI request and keeps you on this screen.
+let picCtl=null;
 async function runOCR(file){const box=$('#ocrBox');box.hidden=false;const set=(p,m)=>{$('#ocrBar').style.width=Math.round(p*100)+'%';$('#ocrPct').textContent=Math.round(p*100)+'%';$('#ocrMsg').textContent=m+'…'};
-  try{const t=await imageToText(file,set);const ta=$('#pasteText');ta.value=(ta.value.trim()?ta.value.trim()+'\n\n':'')+t;route.p.text=ta.value;$('#ocrMsg').textContent='Done. Check the text below, then tap "Make my plan".';$('#ocrPct').textContent='';ta.focus()}
+  let note='';
+  if(aiPrecheck()===''){
+    const ctl=picCtl=new AbortController();$('#ocrCancel').hidden=false;$('#ocrSub').textContent='Sending the picture to AI (Grok) to read. It is not stored.';
+    $('#ocrBar').style.width='35%';$('#ocrBar').classList.add('pulse');$('#ocrPct').textContent='';$('#ocrMsg').textContent='Reading your picture with AI…';
+    let r=null;try{r=await parseImagePlan(await imageToJpeg(file),ctl.signal)}catch(e){lastAI={ai:false,note:photoNote('')}}
+    if(picCtl===ctl)picCtl=null;const b=$('#ocrBox');if(!b||route.v!=='paste')return;$('#ocrCancel').hidden=true;$('#ocrBar').classList.remove('pulse');
+    if(r){draft=r.plan;draft._new=1;draft._ai=Object.assign({},lastAI,{photo:true});draft._issues={unparsed:r.unparsed,skipped:r.skipped,days:r.plan.days.filter(d=>!d.rest).length,count:r.plan.days.reduce((s,d)=>s+d.exercises.length,0)};go('editor');toast('Plan read from your picture with AI. Check it, then save.');return}
+    if(ctl.signal.aborted||(lastAI&&lastAI.cancelled)){b.hidden=true;toast('Cancelled');return}
+    note=(lastAI&&lastAI.note)||photoNote('');$('#ocrSub').textContent='Reading happens on your phone. Nothing is uploaded.'}
+  try{const t=await imageToText(file,set);const ta=$('#pasteText');ta.value=(ta.value.trim()?ta.value.trim()+'\n\n':'')+t;route.p.text=ta.value;$('#ocrMsg').textContent='Done. Check the text below, then tap "Make my plan".';$('#ocrPct').textContent='';
+    if(note)$('#ocrSub').textContent='ⓘ '+note;ta.focus()}
   catch(e){box.hidden=true;alert('Picture reading failed: '+(e&&e.message||e))}}
 /* ---------- data helpers ---------- */
 const vol=w=>w.exercises.reduce((s,e)=>s+e.sets.reduce((a,x)=>a+(+x.w||0)*(+x.r||0),0),0);
@@ -375,7 +396,7 @@ const ACT={
  addRest:()=>{draft.days.push({id:Store.uid(),name:'Rest',rest:true,exercises:[]});render()},
  savePlan:()=>{if(!draft.name.trim())draft.name='My Plan';draft.days.forEach(d=>d.exercises=d.exercises.filter(e=>e.name.trim()));autoRests(draft);
    if(!draft.days.length){toast('Add at least one day');return}
-   const isNew=draft._new;delete draft._new;delete draft._issues;delete draft._cr;Store.upsertPlan(draft);if(isNew)Store.setActive(draft.id);toast('Plan saved');stack=[];go(isNew?'home':'plans',{},false)},
+   const isNew=draft._new;delete draft._new;delete draft._issues;delete draft._cr;delete draft._ai;Store.upsertPlan(draft);if(isNew)Store.setActive(draft.id);toast('Plan saved');stack=[];go(isNew?'home':'plans',{},false)},
  toggleRest:()=>{const d=draft.days[route.p.i];d.rest=!d.rest;if(!d.rest&&!d.exercises.length)d.exercises.push(newEx());render()},
  exAdd:()=>{draft.days[route.p.i].exercises.push(newEx());render();const ins=document.querySelectorAll('[data-ac]');ins[ins.length-1]?.focus()},
  exDel:b=>{draft.days[route.p.i].exercises.splice(+b.dataset.j,1);render()},
@@ -424,14 +445,15 @@ const ACT={
  watchImport:()=>{const r=parseResult($('#watchRes').value);if(!r){alert('That doesn\'t look like a watch result code. It should start with SR1~');return}
    try{const o=applyResult(r);toast(o.msg);alert(o.msg);if(o.mode==='live')go('session',{},false);else{stack=[];go('home',{},false)}}catch(e){alert(e.message)}},
  chooser:()=>go('chooser'),
+ ocrCancel:()=>{if(picCtl)picCtl.abort()},
  pickPic:()=>{const f=$('#picFile');f.value='';f.onchange=()=>f.files[0]&&runOCR(f.files[0]);f.click()},
  takePic:()=>{const f=$('#camFile');f.value='';f.onchange=()=>f.files[0]&&runOCR(f.files[0]);f.click()},
  applyCR:async()=>{const t=$('#crText').value;if(!t.trim()){toast('Type a change first');return}const r=await requestPlanChanges(draft,t);
    const keep={_new:draft._new,_issues:draft._issues};draft=Object.assign(r.plan,keep);draft._cr={changes:r.changes,notUnderstood:r.notUnderstood};render();
-   setTimeout(()=>document.querySelector('#crText')?.closest('.card').scrollIntoView({block:'start'}),30)},
+   setTimeout(()=>document.querySelector('#crText')?.closest('details').scrollIntoView({block:'start'}),30)},
  parse:async()=>{const t=$('#pasteText').value;if(!t.trim()){toast('Paste text or choose a picture first');return}route.p.text=t;
    const r=await parseTextPlan(t);if(!r.plan.days.length){alert("I couldn't find any exercises in that text. Try lines like 'Bench press 4x8-10'.");return}
-   draft=r.plan;draft._new=1;draft._issues={unparsed:r.unparsed,skipped:r.skipped,days:r.plan.days.filter(d=>!d.rest).length,count:r.plan.days.reduce((s,d)=>s+d.exercises.length,0)};go('editor')},
+   draft=r.plan;draft._new=1;draft._ai=lastAI;draft._issues={unparsed:r.unparsed,skipped:r.skipped,days:r.plan.days.filter(d=>!d.rest).length,count:r.plan.days.reduce((s,d)=>s+d.exercises.length,0)};go('editor')},
  ai:()=>{ai={step:0,a:{injuries:'',focus:[]}};go('ai')},
  aiOwn:()=>{const tx=$('#aiText');if(tx)ai.a[AI_STEPS[ai.step].key]=tx.value;go('aiprompt')},
  aiCopy:async()=>{const ta=$('#aiPrompt');ta.focus();ta.select();ta.setSelectionRange(0,ta.value.length);let ok=false;
@@ -440,10 +462,19 @@ const ACT={
  aiToPaste:()=>go('aipaste'),
  aiPick:async b=>{const s=AI_STEPS[ai.step];let v=b.dataset.v;if(typeof s.opts[0][0]==='number')v=+v;
    if(s.multi){let arr=ai.a[s.key];if(v==='none')arr=[];else{arr=arr.includes(v)?arr.filter(x=>x!==v):[...arr,v];if(s.key==='focus'&&arr.length>3)arr.shift()}ai.a[s.key]=arr;render();return}
-   ai.a[s.key]=v;ai.step++;render()},
- aiPrev:()=>{const tx=$('#aiText');if(tx)ai.a[AI_STEPS[ai.step].key]=tx.value;ai.step--;render()},
- aiNext:async()=>{const tx=$('#aiText');if(tx)ai.a[AI_STEPS[ai.step].key]=tx.value;if(ai.step<AI_STEPS.length-1){ai.step++;render();return}
-   draft=await generatePlan(ai.a);draft._new=1;stack=[{v:'home',p:{}}];go('editor',{},false);toast('Plan ready. Tweak anything, then save.')},
+   ai.a[s.key]=v;ai.step++;render();scrollTo(0,0)},
+ aiPrev:()=>{if(ai.busy)return;const tx=$('#aiText');if(tx)ai.a[AI_STEPS[ai.step].key]=tx.value;ai.msg='';if(!ai.step){back();return}ai.step--;render();scrollTo(0,0)},
+ aiNext:()=>{const S=AI_STEPS,st=S[ai.step];if(!st)return;const tx=$('#aiText');if(tx)ai.a[st.key]=tx.value;
+   if(!st.multi&&!st.text&&ai.a[st.key]==null){toast('Pick one to continue');return}
+   ai.step++;ai.msg='';render();scrollTo(0,0)},
+ aiQuick:()=>{if(ai.busy)return;ai.msg='';draft=rulePlan(ai.a);draft._new=1;stack=[{v:'home',p:{}}];go('editor',{},false);toast('Plan ready. Tweak anything, then save.')},
+ aiBuild:async()=>{if(ai.busy)return;
+   const why=aiPrecheck();if(why){ai.msg=why==='paid'?'AI building is a paid extra. Quick build is free and works great.':why==='none'?'AI building is not available in this version.':why==='offline'?"You're offline, so AI can't build a plan right now.":why==='verify'?'Verify your email in Settings → Account & sync to use AI.':'AI building is a paid extra for accounts. Sign in with a verified email in Settings → Account & sync, or use Quick build (free).';render();return}
+   const ctl=new AbortController();ai.ctl=ctl;ai.busy=true;ai.msg='';render();
+   const p=await generatePlan(ai.a,{signal:ctl.signal});if(ai.ctl!==ctl||ctl.signal.aborted)return; // cancelled
+   ai.busy=false;ai.ctl=null;draft=p;draft._new=1;draft._ai=lastAI;stack=[{v:'home',p:{}}];go('editor',{},false);
+   toast(lastAI&&lastAI.ai?'AI plan ready. Tweak anything, then save.':lastAI&&lastAI.note?lastAI.note:'Plan ready (built-in builder). Tweak anything, then save.')},
+ aiCancel:()=>{if(ai.ctl)ai.ctl.abort();ai.ctl=null;ai.busy=false;ai.msg='';render();toast('Cancelled')},
  stp:(b,e,mult=1)=>{if(e&&e.type==='click'&&holdUntil>Date.now())return; // pointer already handled it
    const s=db().active.exercises[+b.dataset.j].sets[+b.dataset.k],f=b.dataset.f,d=+b.dataset.d;
    const inc=(f==='w'?(U()==='kg'?2.5:5):1)*mult;s[f]=Math.max(0,Math.round(((+s[f]||0)+d*inc)*10)/10);Store.save();
