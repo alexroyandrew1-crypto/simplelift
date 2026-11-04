@@ -231,7 +231,7 @@ settings(){
   const work=`<div class="card"><h3>${t('set.units')}</h3><div class="chips"><button class="chip ${U()==='lb'?'on':''}" data-act="units" data-v="lb" aria-pressed="${U()==='lb'}">lb</button><button class="chip ${U()==='kg'?'on':''}" data-act="units" data-v="kg" aria-pressed="${U()==='kg'}">kg</button></div>
     <div class="mut mt2">${t('set.unitsHint')}</div></div>
     <div class="card"><div class="between"><div><h3>${t('set.copyW')}</h3><div class="mut">${t('set.copyWHint')}</div></div><button class="chip ${db().settings.copyWeight!==false?'on':''}" data-act="copyW" aria-pressed="${db().settings.copyWeight!==false}">${db().settings.copyWeight!==false?t('on'):t('off')}</button></div></div>`;
-  const look=langCard()+`<div class="card"><h3>${t('set.bg')}</h3><div class="mut">${t('set.bgHint')}</div>
+  const look=langCard()+fsCard()+`<div class="card"><h3>${t('set.bg')}</h3><div class="mut">${t('set.bgHint')}</div>
    <div class="bggrid"><button class="bgopt ${bs.kind==='none'?'on':''}" data-act="bgNone" aria-pressed="${bs.kind==='none'}">${t('set.none')}</button>
    ${Object.entries(BGS).map(([k,v])=>`<button class="bgopt ${bs.kind==='preset'&&bs.id===k?'on':''}" style="background:${v}" data-act="bgPreset" data-id="${k}" aria-label="${tA('bg.'+k)}" aria-pressed="${bs.kind==='preset'&&bs.id===k}"><span>${t('bg.'+k)}</span></button>`).join('')}
    <button class="bgopt ${bs.kind==='custom'?'on':''}" data-act="bgPhoto" ${img?`style="background:center/cover url('${img}')"`:''}><span>📷 ${t('set.photo')}</span></button></div>
@@ -664,6 +664,14 @@ function showOldResult(r,manual){
   if(r.workouts||r.plan)info(t('old.title'),t(r.plan?'old.msgPlan':'old.msg',{w:t('n.workout',{n:r.workouts}),s:t('n.set',{n:r.sets})}));
   else if(manual)info(t('set.old'),r.found?t('old.already'):t('old.none'));
   render()}
+/* ---------- text size (v26) ---------- */
+const FS_KEY='simplelift_fs',FS={s:.86,m:.93,l:1.06,xl:1.16};
+function fsGet(){const v=localStorage.getItem(FS_KEY);return FS[v]?v:'m'}
+function applyFs(){const h=document.documentElement,v=fsGet();h.style.setProperty('--fs',String(FS[v]));for(const k in FS)h.classList.toggle('fs-'+k,k===v)}
+function fsCard(){const c=fsGet();
+  return `<div class="card" id="fsCard"><h3 id="fsT">🔠 ${t('fs.title')}</h3><div class="seg" role="group" aria-labelledby="fsT">${Object.keys(FS).map(k=>`<button data-act="setFs" data-v="${k}" aria-pressed="${k===c}">${t('fs.'+k)}</button>`).join('')}</div><div class="fs-prev" id="fsPrev">${t('fs.preview')}</div></div>`}
+ACT.setFs=b=>{const v=b.dataset.v;if(!FS[v])return;if(v==='m')localStorage.removeItem(FS_KEY);else localStorage.setItem(FS_KEY,v);applyFs();
+  document.querySelectorAll('#fsCard .seg button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.v===v)))};
 /* ---------- language ---------- */
 function langCard(){const cur=I18N.lang();
   return `<div class="card" id="langCard"><h3>🌐 <label for="langSel">${t('lang.title')}</label></h3><div class="sel-wrap"><select id="langSel" class="sel">
@@ -673,7 +681,7 @@ function applyStatic(){const k={home:'today',plans:'plans',history:'history',set
   document.querySelectorAll('#tabs button[data-tab]').forEach(b=>{const s=b.querySelector('span');if(s&&k[b.dataset.tab])s.textContent=t('tab.'+k[b.dataset.tab])});
   const bk=$('#back');if(bk)bk.setAttribute('aria-label',t('back'));const nv=$('#tabs');if(nv)nv.setAttribute('aria-label',t('nav.main'))}
 ACT.setLang=b=>{I18N.choose(b.value||b.dataset.v).then(()=>{applyStatic();render()})};
-applyBg();
+applyFs();applyBg();
 if(db().active)route={v:'home',p:{}};
 I18N.start(()=>{applyStatic();render()},name=>toast(t('lang.set',{name}))).then(()=>{
   applyStatic();

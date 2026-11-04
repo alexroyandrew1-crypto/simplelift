@@ -659,5 +659,11 @@ I18N.add('it',{
 "lg.yours": "La tua accettazione",
 "lg.acceptedOn": "Hai accettato la versione {v} il {d}.",
 "lg.legal": "Note legali",
-"lg.signupNote": "Creando un account accetti i Termini d'uso, l'Informativa sulla privacy e l'Avvertenza sulla salute."
+"lg.signupNote": "Creando un account accetti i Termini d'uso, l'Informativa sulla privacy e l'Avvertenza sulla salute.",
+"fs.title": "Dimensione testo",
+"fs.s": "Piccolo",
+"fs.m": "Predefinito",
+"fs.l": "Grande",
+"fs.xl": "Molto grande",
+"fs.preview": "Panca piana · 3 × 8 · 60 kg"
 });

@@ -701,5 +701,11 @@ I18N.add('pl',{
 "lg.yours": "Twoja akceptacja",
 "lg.acceptedOn": "Zaakceptowano wersję {v} dnia {d}.",
 "lg.legal": "Informacje prawne",
-"lg.signupNote": "Tworząc konto, akceptujesz Warunki korzystania, Politykę prywatności i Zastrzeżenie zdrowotne."
+"lg.signupNote": "Tworząc konto, akceptujesz Warunki korzystania, Politykę prywatności i Zastrzeżenie zdrowotne.",
+"fs.title": "Rozmiar tekstu",
+"fs.s": "Mały",
+"fs.m": "Domyślny",
+"fs.l": "Duży",
+"fs.xl": "Bardzo duży",
+"fs.preview": "Wyciskanie na ławce · 3 × 8 · 60 kg"
 });

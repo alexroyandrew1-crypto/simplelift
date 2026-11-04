@@ -659,5 +659,11 @@ I18N.add('nl',{
 "lg.yours": "Jouw akkoord",
 "lg.acceptedOn": "Je ging op {d} akkoord met versie {v}.",
 "lg.legal": "Juridisch",
-"lg.signupNote": "Door een account te maken ga je akkoord met de Gebruiksvoorwaarden, het Privacybeleid en de Gezondheidsdisclaimer."
+"lg.signupNote": "Door een account te maken ga je akkoord met de Gebruiksvoorwaarden, het Privacybeleid en de Gezondheidsdisclaimer.",
+"fs.title": "Tekstgrootte",
+"fs.s": "Klein",
+"fs.m": "Standaard",
+"fs.l": "Groot",
+"fs.xl": "Extra groot",
+"fs.preview": "Bankdrukken · 3 × 8 · 60 kg"
 });

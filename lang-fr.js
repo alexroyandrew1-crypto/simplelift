@@ -659,5 +659,11 @@ I18N.add('fr',{
 "lg.yours": "Ton acceptation",
 "lg.acceptedOn": "Tu as accepté la version {v} le {d}.",
 "lg.legal": "Mentions légales",
-"lg.signupNote": "En créant un compte, tu acceptes les Conditions d'utilisation, la Politique de confidentialité et l'Avertissement santé."
+"lg.signupNote": "En créant un compte, tu acceptes les Conditions d'utilisation, la Politique de confidentialité et l'Avertissement santé.",
+"fs.title": "Taille du texte",
+"fs.s": "Petit",
+"fs.m": "Par défaut",
+"fs.l": "Grand",
+"fs.xl": "Très grand",
+"fs.preview": "Développé couché · 3 × 8 · 60 kg"
 });

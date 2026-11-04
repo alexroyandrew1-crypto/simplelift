@@ -659,5 +659,11 @@ I18N.add('tr',{
 "lg.yours": "Onayın",
 "lg.acceptedOn": "{v} sürümünü {d} tarihinde kabul ettin.",
 "lg.legal": "Yasal",
-"lg.signupNote": "Hesap oluşturarak Kullanım Koşulları'nı, Gizlilik Politikası'nı ve Sağlık Uyarısı'nı kabul edersin."
+"lg.signupNote": "Hesap oluşturarak Kullanım Koşulları'nı, Gizlilik Politikası'nı ve Sağlık Uyarısı'nı kabul edersin.",
+"fs.title": "Yazı boyutu",
+"fs.s": "Küçük",
+"fs.m": "Varsayılan",
+"fs.l": "Büyük",
+"fs.xl": "Çok büyük",
+"fs.preview": "Bench press · 3 × 8 · 60 kg"
 });

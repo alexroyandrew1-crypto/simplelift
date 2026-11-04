@@ -659,5 +659,11 @@ I18N.add('es',{
 "lg.yours": "Tu aceptación",
 "lg.acceptedOn": "Aceptaste la versión {v} el {d}.",
 "lg.legal": "Legal",
-"lg.signupNote": "Al crear una cuenta aceptas los Términos de uso, la Política de privacidad y el Aviso de salud."
+"lg.signupNote": "Al crear una cuenta aceptas los Términos de uso, la Política de privacidad y el Aviso de salud.",
+"fs.title": "Tamaño del texto",
+"fs.s": "Pequeño",
+"fs.m": "Predeterminado",
+"fs.l": "Grande",
+"fs.xl": "Muy grande",
+"fs.preview": "Press de banca · 3 × 8 · 60 kg"
 });

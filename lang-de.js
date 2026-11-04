@@ -659,5 +659,11 @@ I18N.add('de',{
 "lg.yours": "Deine Zustimmung",
 "lg.acceptedOn": "Du hast Version {v} am {d} zugestimmt.",
 "lg.legal": "Rechtliches",
-"lg.signupNote": "Mit dem Erstellen eines Kontos stimmst du den Nutzungsbedingungen, der Datenschutzerklärung und dem Gesundheitshinweis zu."
+"lg.signupNote": "Mit dem Erstellen eines Kontos stimmst du den Nutzungsbedingungen, der Datenschutzerklärung und dem Gesundheitshinweis zu.",
+"fs.title": "Textgröße",
+"fs.s": "Klein",
+"fs.m": "Standard",
+"fs.l": "Groß",
+"fs.xl": "Sehr groß",
+"fs.preview": "Bankdrücken · 3 × 8 · 60 kg"
 });

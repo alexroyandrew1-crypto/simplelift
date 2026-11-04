@@ -679,7 +679,13 @@ const D={en:{
 "lg.yours": "Your acceptance",
 "lg.acceptedOn": "You accepted version {v} on {d}.",
 "lg.legal": "Legal",
-"lg.signupNote": "By creating an account you agree to the Terms of Use, Privacy Policy and Health Disclaimer."
+"lg.signupNote": "By creating an account you agree to the Terms of Use, Privacy Policy and Health Disclaimer.",
+"fs.title": "Text size",
+"fs.s": "Small",
+"fs.m": "Default",
+"fs.l": "Large",
+"fs.xl": "Extra large",
+"fs.preview": "Bench press · 3 × 8 · 60 kg"
 }};
 let cur='en';
 const ls={get(k){try{return G.localStorage?G.localStorage.getItem(k):null}catch(e){return null}},

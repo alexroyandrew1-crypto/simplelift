@@ -638,5 +638,11 @@ I18N.add('id',{
 "lg.yours": "Persetujuanmu",
 "lg.acceptedOn": "Kamu menyetujui versi {v} pada {d}.",
 "lg.legal": "Hukum",
-"lg.signupNote": "Dengan membuat akun, kamu menyetujui Ketentuan Penggunaan, Kebijakan Privasi, dan Penafian Kesehatan."
+"lg.signupNote": "Dengan membuat akun, kamu menyetujui Ketentuan Penggunaan, Kebijakan Privasi, dan Penafian Kesehatan.",
+"fs.title": "Ukuran teks",
+"fs.s": "Kecil",
+"fs.m": "Bawaan",
+"fs.l": "Besar",
+"fs.xl": "Sangat besar",
+"fs.preview": "Bench press · 3 × 8 · 60 kg"
 });

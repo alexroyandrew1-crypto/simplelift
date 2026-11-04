@@ -659,5 +659,11 @@ I18N.add('pt',{
 "lg.yours": "Sua aceitação",
 "lg.acceptedOn": "Você aceitou a versão {v} em {d}.",
 "lg.legal": "Jurídico",
-"lg.signupNote": "Ao criar uma conta, você aceita os Termos de Uso, a Política de Privacidade e o Aviso de Saúde."
+"lg.signupNote": "Ao criar uma conta, você aceita os Termos de Uso, a Política de Privacidade e o Aviso de Saúde.",
+"fs.title": "Tamanho do texto",
+"fs.s": "Pequeno",
+"fs.m": "Padrão",
+"fs.l": "Grande",
+"fs.xl": "Muito grande",
+"fs.preview": "Supino · 3 × 8 · 60 kg"
 });
