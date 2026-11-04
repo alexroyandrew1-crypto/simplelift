@@ -1,11 +1,11 @@
-// Simple Lift service worker (v26). Opens from the cache first, so the app starts instantly even on bad gym Wi-Fi.
+// Simple Lift service worker (v27). Opens from the cache first, so the app starts instantly even on bad gym Wi-Fi.
 // Updates: each release changes this file (cache name), so the browser installs the new version in the background.
 // It then WAITS, and the page shows "Update available — tap to refresh"; tapping it sends 'skipWaiting'.
 // (Revalidation happens per version, never file by file, so old and new files are never mixed.)
 // Language files (lang-xx.js) are cached on first use in the versioned cache. On each update the new version
 // re-downloads the languages the old cache had, so a non-English phone stays translated offline after updating.
 // OCR files (big, rarely change) are cache-first in their own cache and cached on first use.
-const C='simplelift-v26',OCR='simplelift-ocr-1';
+const C='simplelift-v27',OCR='simplelift-ocr-1';
 const FILES=['./','index.html','config.js','legal.js','i18n.js','style.css','library.js','store.js','generator.js','parser.js','changes.js','oldimport.js','ocr.js','watch.js','sync.js','app.js','manifest.json','icon.svg','icon-192.png','icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil((async()=>{const c=await caches.open(C);await c.addAll(FILES.map(f=>new Request(f,{cache:'reload'})));
   const langs=new Set();for(const k of await caches.keys())if(k!==C&&/^simplelift-v\d+$/.test(k))for(const r of await (await caches.open(k)).keys()){const m=new URL(r.url).pathname.match(/lang-([a-z]{2})\.js$/);if(m)langs.add(m[1])}

@@ -707,5 +707,12 @@ I18N.add('pl',{
 "fs.m": "Domyślny",
 "fs.l": "Duży",
 "fs.xl": "Bardzo duży",
-"fs.preview": "Wyciskanie na ławce · 3 × 8 · 60 kg"
+"fs.preview": "Wyciskanie na ławce · 3 × 8 · 60 kg",
+"ra.title": "Alarm przerwy",
+"ra.vib": "Wibracja",
+"ra.snd": "Dźwięk",
+"ra.both": "Wibracja + dźwięk",
+"ra.off": "Wyłączony",
+"ra.test": "Testuj alarm",
+"ra.isOff": "Alarm przerwy jest wyłączony."
 });

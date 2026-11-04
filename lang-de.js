@@ -665,5 +665,12 @@ I18N.add('de',{
 "fs.m": "Standard",
 "fs.l": "Groß",
 "fs.xl": "Sehr groß",
-"fs.preview": "Bankdrücken · 3 × 8 · 60 kg"
+"fs.preview": "Bankdrücken · 3 × 8 · 60 kg",
+"ra.title": "Pausen-Alarm",
+"ra.vib": "Vibration",
+"ra.snd": "Ton",
+"ra.both": "Vibration + Ton",
+"ra.off": "Aus",
+"ra.test": "Alarm testen",
+"ra.isOff": "Der Pausen-Alarm ist aus."
 });

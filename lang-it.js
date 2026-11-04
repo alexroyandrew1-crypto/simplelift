@@ -665,5 +665,12 @@ I18N.add('it',{
 "fs.m": "Predefinito",
 "fs.l": "Grande",
 "fs.xl": "Molto grande",
-"fs.preview": "Panca piana · 3 × 8 · 60 kg"
+"fs.preview": "Panca piana · 3 × 8 · 60 kg",
+"ra.title": "Avviso recupero",
+"ra.vib": "Vibrazione",
+"ra.snd": "Suono",
+"ra.both": "Vibrazione + suono",
+"ra.off": "Disattivato",
+"ra.test": "Prova avviso",
+"ra.isOff": "L'avviso del recupero è disattivato."
 });

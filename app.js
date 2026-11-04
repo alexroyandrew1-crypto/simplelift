@@ -40,7 +40,8 @@ async function guard(){if(!draftDirty())return true;
 function go(v,p={},push=true){if(push)stack.push(route);route={v,p};render();scrollTo(0,0)}
 function pop(){route=stack.pop()||{v:'home',p:{}};render();scrollTo(0,0)}
 async function back(){if((route.v==='editor'||(route.v==='day'&&route.p.direct))&&!await guard())return;pop()}
-async function tab(v){if((route.v==='editor'||route.v==='day')&&!await guard())return;stack=[];route={v,p:{}};render();scrollTo(0,0)}
+async function tab(v){if((route.v==='editor'||route.v==='day')&&!await guard())return;stack=[];if(v==='home'&&db().active)v='session'; // v27: Today returns to the running workout
+  route={v,p:{}};render();scrollTo(0,0)}
 $('#back').onclick=back;
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>tab(b.dataset.tab));
 
@@ -231,7 +232,7 @@ settings(){
   const work=`<div class="card"><h3>${t('set.units')}</h3><div class="chips"><button class="chip ${U()==='lb'?'on':''}" data-act="units" data-v="lb" aria-pressed="${U()==='lb'}">lb</button><button class="chip ${U()==='kg'?'on':''}" data-act="units" data-v="kg" aria-pressed="${U()==='kg'}">kg</button></div>
     <div class="mut mt2">${t('set.unitsHint')}</div></div>
     <div class="card"><div class="between"><div><h3>${t('set.copyW')}</h3><div class="mut">${t('set.copyWHint')}</div></div><button class="chip ${db().settings.copyWeight!==false?'on':''}" data-act="copyW" aria-pressed="${db().settings.copyWeight!==false}">${db().settings.copyWeight!==false?t('on'):t('off')}</button></div></div>`;
-  const look=langCard()+fsCard()+`<div class="card"><h3>${t('set.bg')}</h3><div class="mut">${t('set.bgHint')}</div>
+  const look=langCard()+fsCard()+alertCard()+`<div class="card"><h3>${t('set.bg')}</h3><div class="mut">${t('set.bgHint')}</div>
    <div class="bggrid"><button class="bgopt ${bs.kind==='none'?'on':''}" data-act="bgNone" aria-pressed="${bs.kind==='none'}">${t('set.none')}</button>
    ${Object.entries(BGS).map(([k,v])=>`<button class="bgopt ${bs.kind==='preset'&&bs.id===k?'on':''}" style="background:${v}" data-act="bgPreset" data-id="${k}" aria-label="${tA('bg.'+k)}" aria-pressed="${bs.kind==='preset'&&bs.id===k}"><span>${t('bg.'+k)}</span></button>`).join('')}
    <button class="bgopt ${bs.kind==='custom'?'on':''}" data-act="bgPhoto" ${img?`style="background:center/cover url('${img}')"`:''}><span>📷 ${t('set.photo')}</span></button></div>
@@ -354,8 +355,10 @@ function suggest(e){const l=Store.lastFor(e.name,e.oldId);const start=e.weight==
   if(!l||!l.sets.length){if(start)return{w:start,k:'start',last:null};
     const g=startWeight(e.name,U());return{w:g,k:g?'sugStart':'bw',last:null,guess:1}}
   const w=Math.max(...l.sets.map(s=>+s.w||0));const top=l.sets.length>=+e.sets&&l.sets.every(s=>+s.r>=+e.repMax);
-  if(top&&w>0){const inc=step(exType(e)==='lower');return{w:w+inc,k:'top',inc,last:l,up:1}}
-  return{w,k:'repeat',last:l}}
+  // v27: per set. Set N comes from set N of last time (or that workout's last set if it had fewer); a progression adds the step to each loaded set.
+  const at=n=>l.sets[Math.min(n,l.sets.length-1)],perW=inc=>n=>{const v=+at(n).w||0;return v>0?v+inc:v};
+  if(top&&w>0){const inc=step(exType(e)==='lower');return{w:w+inc,k:'top',inc,last:l,up:1,wAt:perW(inc)}}
+  return{w,k:'repeat',last:l,wAt:perW(0),rAt:n=>+at(n).r||0}}
 // Suggestion reason text, in the current language (kept out of suggest() so a language change applies instantly).
 const sugText=g=>t('sug.'+g.k,{n:g.inc,u:U()});
 const createOpts=()=>`<button class="big" data-act="ai">🧭 ${t('co.guided')}<small>${t('co.guidedHint')}</small></button>
@@ -405,13 +408,17 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 function blankPlan(){return{id:Store.uid(),name:t('ed.namePh'),created:Date.now(),next:0,days:[{id:Store.uid(),name:t('dayN',{n:1}),rest:false,exercises:[newEx()]}]}}
 const swap=(a,i,j)=>{if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]]};
 
-function startWorkout(i){
-  const plan=Store.activePlan(),d=plan.days[i];
+async function startWorkout(i){
+  const plan=Store.activePlan(),d=plan.days[i],cur=db().active;
+  // v27: never silently replace a workout in progress
+  if(cur){if(cur.planId===plan.id&&cur.dayIndex===i){go('session');return}
+    if(!await ask(t('s.discardQ'),t('s.discardMsg'),t('s.discard'),'bad',t('fin.keep'))){go('session');return}stopTimer()}
   const ex=d.exercises.filter(e=>e.name.trim()).map(e=>{
     const g=suggest(e),last=g.last,lower=exType(e)==='lower';
     const w=g.w||'',r=g.up||!last?(+e.repMin||8):(+last.sets[0].r||+e.repMin||8);
+    const wN=n=>g.wAt?(g.wAt(n)||''):w,rN=n=>g.rAt?(g.rAt(n)||r):r;
     const lastTxt=last?last.sets.map(s=>`${s.w||0}×${s.r}`).join(', '):'',sugg=g.guess&&g.w?t('sug.guess',{w:num(g.w),u:U()}):t('sug.rec',{w:g.w?num(g.w)+' '+U():t('sug.bwLc'),why:sugText(g)});
-    return{oldId:e.oldId,type:e.type,name:e.name,lower,repMin:+e.repMin,repMax:+e.repMax,rest:restOf(e),note:e.note,last:lastTxt,sugg,sets:[...Array(Math.max(1,+e.sets||1))].map(()=>({w,r,done:false,ws:'s'}))}});
+    return{oldId:e.oldId,type:e.type,name:e.name,lower,repMin:+e.repMin,repMax:+e.repMax,rest:restOf(e),note:e.note,last:lastTxt,sugg,sets:[...Array(Math.max(1,+e.sets||1))].map((_,n)=>({w:wN(n),sw:wN(n),r:rN(n),done:false,ws:'s'}))}});
   if(!ex.length){toast(t('t.addFirst'));return}
   db().active={id:Store.uid(),planId:plan.id,planName:plan.name,dayIndex:i,dayName:d.name,started:Date.now(),exercises:ex};Store.save();go('session');
 }
@@ -419,7 +426,7 @@ function startWorkout(i){
 function fillRemaining(a){const pl=Store.plan(a.planId),day=pl&&pl.days[a.dayIndex];
   a.exercises.forEach(le=>{const pe=day&&day.exercises.find(e=>e.name===le.name);
     le.sets.forEach((st,k)=>{if(st.done)return;
-      if(st.w===''||st.w==null){const prev=k>0?le.sets[k-1].w:'';st.w=prev!==''&&prev!=null?prev:(pe?suggest(pe).w:0);st.ws=st.ws||'s'}
+      if(st.w===''||st.w==null){const prev=k>0?le.sets[k-1].w:'';st.w=prev!==''&&prev!=null?prev:(pe?((g=>g.wAt?g.wAt(k):g.w)(suggest(pe))):0);st.ws=st.ws||'s'}
       if(st.r===''||st.r==null)st.r=pe?(+pe.repMin||8):8;
       st.done=true})});Store.save()}
 async function finishFlow(){const a=db().active;if(!a)return;
@@ -454,15 +461,19 @@ function autoNext(j){
   if(r.top>=hdr+gap/2&&r.bottom<=lim)return; // already fully visible between header and bottom bars
   // align the card top under the header; if it fits in the free band, that also keeps its bottom above the bars
   const y=scrollY+r.top-hdr-gap;scrollTo({top:Math.max(0,y),behavior})}
-function startTimer(sec){timer={end:Date.now()+sec*1000};clearInterval(timer.h);timer.h=setInterval(renderTimer,250);renderTimer()}
-function stopTimer(){if(timer)clearInterval(timer.h);timer=null;renderTimer()}
+function startTimer(sec){runTimer(Date.now()+sec*1000)}
+function runTimer(end){if(timer)clearInterval(timer.h);timer={end};timer.h=setInterval(renderTimer,250);saveRest();renderTimer()}
+function stopTimer(){if(timer)clearInterval(timer.h);timer=null;saveRest();renderTimer()}
+// v27: the rest timer's end time lives in the active workout so it survives a reload or the app being killed
+function saveRest(){const a=db().active;if(!a)return;const v=timer?timer.end:null;if((a.restEnd||null)!==v){a.restEnd=v;Store.save(true)}}
 function renderTimer(){let el=$('#timer');
+  if(timer&&timer.end<=Date.now()){restDone();return} // fires even off the workout screen or right after the screen turns back on
   if(!timer||route.v!=='session'){if(el)el.remove();return}
   const left=Math.max(0,Math.ceil((timer.end-Date.now())/1000));
   if(!el){el=document.createElement('div');el.id='timer';el.className='timer';document.body.appendChild(el);
     el.innerHTML=`<span>${t('rest')} <b id="tl"></b></span><span class="row"><button class="btn sm" data-act="t15">+${t('unit.sec',{n:15})}</button><button class="btn sm" data-act="tskip">${t('timer.skip')}</button></span>`;}
   el.querySelector('#tl').textContent=restTxt(left);
-  if(left<=0){navigator.vibrate&&navigator.vibrate([200,100,200]);toast(t('timer.over'));stopTimer()}}
+  if(left<=0)restDone()}
 
 /* ---------- events ---------- */
 const errMsg=x=>x&&x.message||String(x);
@@ -601,7 +612,7 @@ const ACT={
  setDone:b=>{const e=db().active.exercises[+b.dataset.j],s=e.sets[+b.dataset.k];s.done=!s.done;if(s.done&&s.ws==='s')s.ws='m';Store.save();render();if(s.done)startTimer(e.rest);if(s.done&&e.sets.every(x=>x.done))setTimeout(()=>autoNext(+b.dataset.j),AUTO_NEXT_MS)},
  setAdd:b=>{const e=db().active.exercises[+b.dataset.j],l=e.sets[e.sets.length-1];e.sets.push({w:l.w,r:l.r,done:false,ws:l.ws==='s'?'s':'c'});Store.save();render()},
  setDel:b=>{db().active.exercises[+b.dataset.j].sets.pop();Store.save();render()},
- t15:()=>{timer.end+=15000;renderTimer()},tskip:stopTimer,
+ t15:()=>{if(!timer)return;timer.end+=15000;saveRest();renderTimer()},tskip:stopTimer,
  openHist:b=>go('hist',{id:b.dataset.id}),
  delHist:async b=>{if(await ask(t('h.delQ'),t('h.delMsg'),t('h.delBtn'),'bad')){Store.deleteHistory(b.dataset.id);toast(t('h.deleted'));pop()}},
  wk:b=>{route.p.off=Math.max(0,+b.dataset.o);render()},
@@ -647,12 +658,17 @@ document.addEventListener('input',e=>{
   else if(parts[0]==='day')draft.days[route.p.i].name=v;
   else if(parts[0]==='ex'){const ex=draft.days[route.p.i].exercises[+parts[1]],f=parts[2];ex[f]=['sets','repMin','repMax','rest'].includes(f)?(v===''?'':+v):f==='weight'?(v===''?'':+v):v;if(f==='rest')delete ex.restAuto; // user typed it: never auto-replace
     if(f==='name')showAC(+parts[1],v)}
-  else if(parts[0]==='set'){const s=db().active.exercises[+parts[1]].sets[+parts[2]];s[parts[3]]=v===''?'':+v;if(parts[3]==='w'){s.ws='m';e.target.classList.remove('sugw');if(v!=='')cascadeW(+parts[1],+parts[2])}Store.save()}
+  else if(parts[0]==='set'){const s=db().active.exercises[+parts[1]].sets[+parts[2]],old=s.w;s[parts[3]]=v===''?'':+v;if(parts[3]==='w'){s.ws='m';e.target.classList.remove('sugw');if(v!=='')cascadeW(+parts[1],+parts[2])}Store.save()}
 });
 // Set weight state ws: 's' suggested (gray), 'c' copied from an edit (white, can be overwritten), 'm' set by the user (white, protected).
 // Copy a set's weight to all LATER sets of the same exercise that aren't marked done or set by the user (Settings toggle, default on).
-function cascadeW(j,k){if(db().settings.copyWeight===false)return;const ex=db().active.exercises[j],w=ex.sets[k].w;
-  for(let i=k+1;i<ex.sets.length;i++){const t=ex.sets[i];if(t.done||t.ws==='m')continue;t.w=w;t.ws='c';const inp=document.querySelector(`[data-bind="set.${j}.${i}.w"]`);if(inp){inp.value=w;inp.classList.remove('sugw')}}}
+// v27: when the sets below still hold their own per-set suggestions (a warm-up ramp), shift them by the same change
+// instead of flattening them; equal suggestions behave exactly like the old copy-down.
+// sw = the set's own suggestion from last time (kept on the set, so this works keystroke by keystroke).
+function cascadeW(j,k){if(db().settings.copyWeight===false)return;const ex=db().active.exercises[j],src=ex.sets[k],w=src.w;
+  const num=x=>x!==''&&x!=null&&isFinite(+x)&&+x>0,base=num(src.sw)?+src.sw:null;
+  const ramp=base!=null&&ex.sets.some(t=>num(t.sw)&&+t.sw!==base);
+  for(let i=k+1;i<ex.sets.length;i++){const t=ex.sets[i];if(t.done||t.ws==='m')continue;const nw=ramp&&num(t.sw)?Math.max(0,Math.round((+t.sw+w-base)*100)/100):w;t.w=nw;t.ws='c';const inp=document.querySelector(`[data-bind="set.${j}.${i}.w"]`);if(inp){inp.value=nw;inp.classList.remove('sugw')}}}
 function showAC(j,q){const box=$('#ac'+j);q=q.trim().toLowerCase();
   if(!q){box.hidden=true;return}
   const words=q.split(/\s+/);
@@ -664,6 +680,28 @@ function showOldResult(r,manual){
   if(r.workouts||r.plan)info(t('old.title'),t(r.plan?'old.msgPlan':'old.msg',{w:t('n.workout',{n:r.workouts}),s:t('n.set',{n:r.sets})}));
   else if(manual)info(t('set.old'),r.found?t('old.already'):t('old.none'));
   render()}
+/* ---------- rest timer alert (v27) ---------- */
+const ALERT_KEY='simplelift_alert',ALERTS=['vib','snd','both','off'];
+function alertGet(){const v=localStorage.getItem(ALERT_KEY);return ALERTS.includes(v)?v:'vib'}
+function restDone(){if(!timer)return;stopTimer();restAlarm();toast(t('timer.over'))}
+let actx=null;
+function beep(){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return false;actx=actx||new C();if(actx.state==='suspended')actx.resume();
+  const t0=actx.currentTime;[0,.28,.56].forEach((d,i)=>{const o=actx.createOscillator(),g=actx.createGain();o.type='sine';o.frequency.value=i===2?1175:880;
+    g.gain.setValueAtTime(0.0001,t0+d);g.gain.exponentialRampToValueAtTime(0.35,t0+d+.02);g.gain.exponentialRampToValueAtTime(0.0001,t0+d+.22);
+    o.connect(g).connect(actx.destination);o.start(t0+d);o.stop(t0+d+.25)});window.__beeps=(window.__beeps||0)+1;return true}catch(e){return false}}
+function buzz(){window.__buzz=(window.__buzz||0)+1;
+  try{const H=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.Haptics;if(H&&H.vibrate){H.vibrate({duration:600});return true}}catch(e){}
+  try{return !!(navigator.vibrate&&navigator.vibrate([300,120,300,120,300]))}catch(e){return false}}
+function restAlarm(kind=alertGet()){if(kind==='vib'||kind==='both')buzz();if(kind==='snd'||kind==='both')beep()}
+// browsers only allow sound after a tap: unlock the audio context on the first tap of a set
+document.addEventListener('pointerdown',()=>{if(/snd|both/.test(alertGet())&&!actx){try{const C=window.AudioContext||window.webkitAudioContext;if(C){actx=new C();actx.resume()}}catch(e){}}},{capture:true});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')renderTimer()});
+function alertCard(){const c=alertGet();
+  return `<div class="card" id="alertCard"><h3 id="raT">⏰ ${t('ra.title')}</h3><div class="seg" role="group" aria-labelledby="raT">${ALERTS.map(k=>`<button data-act="setAlert" data-v="${k}" aria-pressed="${k===c}">${t('ra.'+k)}</button>`).join('')}</div>
+    <button class="btn full" data-act="testAlert">${t('ra.test')}</button></div>`}
+ACT.setAlert=b=>{const v=b.dataset.v;if(!ALERTS.includes(v))return;if(v==='vib')localStorage.removeItem(ALERT_KEY);else localStorage.setItem(ALERT_KEY,v);
+  document.querySelectorAll('#alertCard .seg button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.v===v)));if(v!=='off')restAlarm(v)};
+ACT.testAlert=()=>{const k=alertGet();if(k==='off'){toast(t('ra.isOff'));return}restAlarm(k)};
 /* ---------- text size (v26) ---------- */
 const FS_KEY='simplelift_fs',FS={s:.86,m:.93,l:1.06,xl:1.16};
 function fsGet(){const v=localStorage.getItem(FS_KEY);return FS[v]?v:'m'}
@@ -682,7 +720,10 @@ function applyStatic(){const k={home:'today',plans:'plans',history:'history',set
   const bk=$('#back');if(bk)bk.setAttribute('aria-label',t('back'));const nv=$('#tabs');if(nv)nv.setAttribute('aria-label',t('nav.main'))}
 ACT.setLang=b=>{I18N.choose(b.value||b.dataset.v).then(()=>{applyStatic();render()})};
 applyFs();applyBg();
-if(db().active)route={v:'home',p:{}};
+if(db().active){route={v:'session',p:{}};const re=db().active.restEnd;if(re&&re>Date.now())runTimer(re)}
+// v27: write anything typed before the app goes to the background
+const flushNow=()=>{const ae=document.activeElement;if(ae&&ae.dataset&&ae.dataset.bind)ae.dispatchEvent(new Event('input',{bubbles:true}));if(db().active)Store.save(true)};
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushNow()});addEventListener('pagehide',flushNow);
 I18N.start(()=>{applyStatic();render()},name=>toast(t('lang.set',{name}))).then(()=>{
   applyStatic();
   if(!db().oldImportChecked&&oldHasData())importOldApp().then(r=>showOldResult(r,false));

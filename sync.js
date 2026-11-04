@@ -36,7 +36,8 @@ const Sync={
       const j=await this.req('PUT','/data',{data:d,updatedAt:d.updatedAt||0,watchCode:code,ackResults:this.a.acks||[]},this.a.token);
       this.set({acks:[]});if(j.plan)this.set({plan:j.plan});
       // keep anything changed locally while the request was in flight
-      if(!((db().updatedAt||0)>(d.updatedAt||0)))Store.replace(j.data);else this.again=true;
+      // v27: the workout in progress belongs to this device; a pull never replaces or clears it
+      if(!((db().updatedAt||0)>(d.updatedAt||0))){const keep=db().active;Store.replace(j.data);if(keep){db().active=keep;Store.save(true)}}else this.again=true;
       const applied=[];for(const r of j.watchResults||[]){const p=parseResult(r.code);try{if(p){const o=applyResult(p);toast('⌚ '+o.msg)}}catch(e){toast('⌚ '+e.message)}applied.push(r.id)}
       if(applied.length){this.set({acks:applied});this.again=true}
       this.set({lastSync:Date.now(),err:''})}

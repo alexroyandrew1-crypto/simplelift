@@ -644,5 +644,12 @@ I18N.add('id',{
 "fs.m": "Bawaan",
 "fs.l": "Besar",
 "fs.xl": "Sangat besar",
-"fs.preview": "Bench press · 3 × 8 · 60 kg"
+"fs.preview": "Bench press · 3 × 8 · 60 kg",
+"ra.title": "Peringatan timer istirahat",
+"ra.vib": "Getar",
+"ra.snd": "Suara",
+"ra.both": "Getar + suara",
+"ra.off": "Mati",
+"ra.test": "Uji peringatan",
+"ra.isOff": "Peringatan timer istirahat mati."
 });

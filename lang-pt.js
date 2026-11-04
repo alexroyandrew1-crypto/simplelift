@@ -665,5 +665,12 @@ I18N.add('pt',{
 "fs.m": "Padrão",
 "fs.l": "Grande",
 "fs.xl": "Muito grande",
-"fs.preview": "Supino · 3 × 8 · 60 kg"
+"fs.preview": "Supino · 3 × 8 · 60 kg",
+"ra.title": "Alerta do descanso",
+"ra.vib": "Vibração",
+"ra.snd": "Som",
+"ra.both": "Vibração + som",
+"ra.off": "Desligado",
+"ra.test": "Testar alerta",
+"ra.isOff": "O alerta do descanso está desligado."
 });

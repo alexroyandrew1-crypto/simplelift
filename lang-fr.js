@@ -665,5 +665,12 @@ I18N.add('fr',{
 "fs.m": "Par défaut",
 "fs.l": "Grand",
 "fs.xl": "Très grand",
-"fs.preview": "Développé couché · 3 × 8 · 60 kg"
+"fs.preview": "Développé couché · 3 × 8 · 60 kg",
+"ra.title": "Alerte du minuteur",
+"ra.vib": "Vibration",
+"ra.snd": "Son",
+"ra.both": "Vibration + son",
+"ra.off": "Désactivée",
+"ra.test": "Tester l'alerte",
+"ra.isOff": "L'alerte du minuteur est désactivée."
 });

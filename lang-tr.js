@@ -665,5 +665,12 @@ I18N.add('tr',{
 "fs.m": "Varsayılan",
 "fs.l": "Büyük",
 "fs.xl": "Çok büyük",
-"fs.preview": "Bench press · 3 × 8 · 60 kg"
+"fs.preview": "Bench press · 3 × 8 · 60 kg",
+"ra.title": "Dinlenme sayacı uyarısı",
+"ra.vib": "Titreşim",
+"ra.snd": "Ses",
+"ra.both": "Titreşim + ses",
+"ra.off": "Kapalı",
+"ra.test": "Uyarıyı dene",
+"ra.isOff": "Dinlenme sayacı uyarısı kapalı."
 });

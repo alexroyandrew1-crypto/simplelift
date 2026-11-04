@@ -665,5 +665,12 @@ I18N.add('es',{
 "fs.m": "Predeterminado",
 "fs.l": "Grande",
 "fs.xl": "Muy grande",
-"fs.preview": "Press de banca · 3 × 8 · 60 kg"
+"fs.preview": "Press de banca · 3 × 8 · 60 kg",
+"ra.title": "Aviso del temporizador",
+"ra.vib": "Vibración",
+"ra.snd": "Sonido",
+"ra.both": "Vibración + sonido",
+"ra.off": "Desactivado",
+"ra.test": "Probar aviso",
+"ra.isOff": "El aviso del temporizador está desactivado."
 });

@@ -665,5 +665,12 @@ I18N.add('nl',{
 "fs.m": "Standaard",
 "fs.l": "Groot",
 "fs.xl": "Extra groot",
-"fs.preview": "Bankdrukken · 3 × 8 · 60 kg"
+"fs.preview": "Bankdrukken · 3 × 8 · 60 kg",
+"ra.title": "Rusttimer-melding",
+"ra.vib": "Trillen",
+"ra.snd": "Geluid",
+"ra.both": "Trillen + geluid",
+"ra.off": "Uit",
+"ra.test": "Melding testen",
+"ra.isOff": "De rusttimer-melding staat uit."
 });
