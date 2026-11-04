@@ -20,7 +20,7 @@ const photoNote=n=>n?n.replace('the built-in builder is free','reading on your p
 let lastAI=null;const AI_TEXT_MAX=6000;
 function aiNote(remaining,why){
   if(why===null)return{ai:true,remaining};
-  const n={signin:'Sign in with a verified email (Settings → Account) to use AI.',verify:'Verify your email to use AI.',limit:'Daily AI limit reached, so I used the built-in builder. It resets at midnight UTC.',
+  const n={signin:'Sign in with a verified email (Settings → Account & sync) to use AI.',verify:'Verify your email to use AI.',limit:'Daily AI limit reached, so I used the built-in builder. It resets at midnight UTC.',
     offline:'Offline, so I used the built-in builder.',paid:'AI building is a paid extra; the built-in builder is free.',bad:'AI was unavailable, so I used the built-in builder.'}[why]||'';
   return{ai:false,note:n,remaining:why==='limit'?0:remaining}}
 // '' = AI can be tried; otherwise the reason it can't (none|signin|verify|offline). No network.
@@ -88,9 +88,6 @@ function restSec(s){
   if(mm){const a=mm[1]||mm[3],b=mm[2]||mm[4];return{sec:(+a)*60+(+b),txt:mm[0]}}
   const m=s.match(/\b(?:rest(?:ing)?(?:\s*period)?|r)\s*(?:for|:|-|=)?\s*(\d+(?:\.\d+)?)(?:\s*(?:-|to)\s*(\d+(?:\.\d+)?))?\s*(seconds?|secs?|s\b|minutes?|mins?|m\b|')?/i)||s.match(/(\d+(?:\.\d+)?)(?:\s*(?:-|to)\s*(\d+(?:\.\d+)?))?\s*(seconds?|secs?|s\b|minutes?|mins?|m\b|')\s*(?:of\s*)?(?:rest|break)/i);
   if(!m)return null;if(/^r$/i.test(m[0].trim().split(/[\s:]/)[0])&&!m[3])return null;let v=+(m[2]||m[1]);if(/^m|'/i.test(m[3]||'')||(!m[3]&&v<6))v*=60;return{sec:Math.round(v),txt:m[0]}}
-function _oldRestSec(s){
-  const m=s.match(/rest(?:ing)?\s*(?:for|:|-)?\s*(\d+(?:\.\d+)?)(?:\s*-\s*(\d+(?:\.\d+)?))?\s*(seconds?|secs?|s\b|minutes?|mins?|m\b|')?/i)||s.match(/(\d+(?:\.\d+)?)(?:\s*-\s*(\d+(?:\.\d+)?))?\s*(seconds?|secs?|s\b|minutes?|mins?|m\b)\s*rest/i);
-  if(!m)return null;let v=+(m[2]||m[1]);if(/^m|'/i.test(m[3]||'')||(!m[3]&&v<6))v*=60;return{sec:Math.round(v),txt:m[0]}}
 const noParen=s=>s.replace(/\([^)]*\)?/g,'').replace(/\s+/g,' ').trim();
 // "Flat Bench Press (Barbell or Dumbbell)" -> {name:'Flat Bench Press', note:'Barbell or Dumbbell'}; "A (x) OR B (y)" -> A, note "or B (y)"
 function splitName(raw){

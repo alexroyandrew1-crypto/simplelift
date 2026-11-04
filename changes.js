@@ -1,8 +1,7 @@
 // ===== CHANGE-REQUEST HOOK =====
-// requestPlanChanges(plan, text) -> {plan, changes:[...], notUnderstood:[...]}.
+// applyChangeRequest(plan, text) -> {plan, changes:[...], notUnderstood:[...]}.
 // Rule-based for now (applyChangeRequest). To use a real AI backend later, replace the body with an API call
 // returning the same shape; the caller already awaits it.
-async function requestPlanChanges(plan,text){return applyChangeRequest(plan,text)}
 
 const MUSCLE_WORDS={chest:/^(chest|pecs?|pectorals?)$/,back:/^(back|lats?|upper back)$/,shoulders:/^(shoulders?|delts?|deltoids?)$/,
  biceps:/^(biceps?|bis|arms?)$/,triceps:/^(triceps?|tris)$/,quads:/^(quads?|quadriceps|legs?|thighs?|leg day)$/,hamstrings:/^(hamstrings?|hams?)$/,

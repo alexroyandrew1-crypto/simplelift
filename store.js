@@ -24,6 +24,10 @@ const Store=(()=>{
     exportJSON(){const o=Object.assign({},db);const bg=localStorage.getItem('simplelift_bg_img');if(bg)o.bgImage=bg;return JSON.stringify(o,null,2)},
     importJSON(t){const d=JSON.parse(t);if(!d||!Array.isArray(d.plans)||!Array.isArray(d.history))throw new Error('Not a Simple Lift backup');if(d.bgImage){try{localStorage.setItem('simplelift_bg_img',d.bgImage)}catch(e){}}delete d.bgImage;db=Object.assign(blank(),d);save()},
     replace(d){const keepUnits=db.settings;db=Object.assign(blank(),d);if(!db.settings||typeof db.settings!=='object')db.settings=keepUnits;if(!db.settings.unitsChosen)db.settings.units='lb';save(true)},
-    reset(){localStorage.removeItem(KEY);load()}
+    reset(){localStorage.removeItem(KEY);load()},
+    // Erase everything but remember every id as deleted, with a fresh timestamp, so the next sync clears the cloud copy too
+    // (the server merge unions plans/history by id and drops tombstoned ids; a plain reset would be pulled back).
+    wipeEverywhere(){const del=[...new Set([...(db.deleted||[]),...db.plans.map(p=>p.id),...db.history.map(h=>h.id)])].slice(-2000);
+      localStorage.removeItem(KEY);load();db.deleted=del;save()}
   };
 })();

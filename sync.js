@@ -11,7 +11,8 @@ const Sync={
     const j=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(Sync.msg(j,r.status));e.status=r.status;e.code=j.error;throw e}return j},
   msg(j,st){return({bad_code:'That code is wrong or has expired. Check the email or tap Resend.',code_locked:'Too many wrong tries. Tap Resend to get a new code.',
     unverified:'Verify your email first. Enter the 6-digit code we emailed you.',mail_not_configured:'Email is not set up on the server yet, so we could not send a code. Try again later.',
-    mail_failed:'We could not send the email right now. Try again in a few minutes.'})[j.error]||j.message||j.error||(st===429?'Too many tries. Wait a minute and try again.':'Server error '+st)},
+    mail_failed:'We could not send the email right now. Try again in a few minutes.',
+    bad_password:'That password is wrong.',confirm_required:'Type DELETE to confirm.'})[j.error]||j.message||j.error||(st===429?'Too many tries. Wait a minute and try again.':'Server error '+st)},
   async signIn(mode,email,password){const j=await this.req('POST',mode==='up'?'/register':'/login',{email,password});
     this.set({token:j.token,email:j.email,verified:j.verified!==false,plan:j.plan||'free',lastSync:0,err:''});if(j.verified!==false)await this.now();return j},
   async verify(code){const j=await this.req('POST','/auth/verify',{email:this.a.email,code});this.set({verified:true});await this.now();return j},
@@ -19,6 +20,7 @@ const Sync={
   async forgot(email){return this.req('POST','/auth/forgot',{email})},
   async reset(email,code,newPassword){const j=await this.req('POST','/auth/reset',{email,code,newPassword});
     this.set({token:j.token,email:j.email,verified:true,lastSync:0,err:''});await this.now();return j},
+  async deleteAccount(password,confirm){const j=await this.req('POST','/auth/delete-account',{password,confirm},this.a.token);clearTimeout(this.timer);localStorage.removeItem(AUTH_KEY);return j},
   async signOut(){const t=this.a.token;try{if(t)await this.req('POST','/logout',{},t)}catch(e){}localStorage.removeItem(AUTH_KEY)},
   nextCode(){try{const d=db(),plan=Store.activePlan();if(!plan||!plan.days.length)return null;let i;
     if(d.active&&d.active.planId===plan.id)i=d.active.dayIndex;else{i=plan.next||0;for(let k=0;k<plan.days.length&&plan.days[i].rest;k++)i=(i+1)%plan.days.length}

@@ -84,39 +84,3 @@ function rulePlan(a){
   if(a.injuries&&a.injuries.trim())notes.push(`Injuries/areas to avoid: "${a.injuries.trim()}"`+(inj.words.length?` (avoiding: ${inj.words.join(', ')})`:' (no known body part recognized)'));
   return{id:Store.uid(),name:`${gl} · ${days} days/week`,created:Date.now(),next:0,notes:notes.join('\n'),avoid:inj.codes,days:out};
 }
-
-// ===== "Use my own AI chat" prompt (no server, no key) =====
-// Builds a prompt for any chat AI, asking for a reply in the exact format parseTextPlan() reads.
-const AI_LABELS={goal:{muscle:'build muscle',strength:'get stronger',general:'general fitness',fatloss:'lose fat while keeping muscle'},
-  equipment:{full:'a full gym (barbells, dumbbells, machines, cables)',machines:'machines and cables only (no barbells or free weights)',dumbbells:'dumbbells and a bench only',bodyweight:'bodyweight only (no equipment)'}};
-function buildAIPrompt(a,changes){
-  const d=+a.days||3,m=+a.minutes||45,inj=(a.injuries||'').trim(),foc=(a.focus||[]).join(', ');
-  const L=[];
-  L.push(`Write me a weekly weight-training plan. Reply ONLY in the exact format below, so my workout app can read it.`,'');
-  L.push('About me:');
-  L.push(`- Goal: ${AI_LABELS.goal[a.goal]||a.goal||'general fitness'}`);
-  L.push(`- Experience: ${a.experience||'beginner'}`);
-  L.push(`- Training days per week: ${d}${d===7?' (make one of them a light active-recovery day)':''}`);
-  L.push(`- Session length: about ${m} minutes each, including rest between sets`);
-  L.push(`- Equipment: ${AI_LABELS.equipment[a.equipment]||a.equipment||'a full gym'}`);
-  L.push(`- Injuries / areas to avoid: ${inj||'none'}`);
-  if(foc)L.push(`- Muscles to focus on: ${foc}`);
-  if(changes&&changes.trim())L.push('','[Changes I want]',changes.trim(),'[End of changes]');
-  L.push('','Rules:');
-  L.push(`- Exactly ${d} training days${d<7?` and ${7-d} rest day${7-d>1?'s':''}`:''}, so 7 days in total, in a sensible order.`);
-  L.push(`- Fit each training day into about ${m} minutes.`);
-  L.push('- Use only the equipment listed. Use common gym exercises with standard names (e.g. "Barbell Bench Press", "Lat Pulldown", "Dumbbell Lateral Raise").');
-  if(inj)L.push('- Leave out any exercise that loads the injured areas, and pick safe alternatives.');
-  if(changes&&changes.trim())L.push('- Apply everything in [Changes I want].');
-  L.push('- Do NOT include weights. Do NOT use tables, bold, or markdown. No intro, no tips, no warm-up, no notes at the end.');
-  L.push('- Rest times in seconds. Units are lbs.','');
-  L.push('Format (copy it exactly):');
-  L.push('Plan: <short plan name>');
-  L.push('Day 1: <day name, e.g. Push>');
-  L.push('Exercise Name — 3 sets x 8-10 reps — rest 90s');
-  L.push('Exercise Name — 3 sets x 10-12 reps — rest 60s');
-  L.push('Day 2: Rest');
-  L.push('Day 3: <day name>');
-  L.push('...');
-  L.push('','One exercise per line, nothing else.');
-  return L.join('\n')}
