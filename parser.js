@@ -8,21 +8,24 @@ async function parseTextPlan(text){
   return ruleParse(text)}
 // v19: photo import with Grok vision (paid accounts). Returns {plan,unparsed,skipped} or null = caller falls back to on-device OCR.
 // lastAI.note is reworded for photos ("...so I read the picture on your phone"). An aborted request (Cancel) returns null with lastAI.cancelled.
-async function parseImagePlan(dataUrl,signal){
-  const r=await aiRequest('/ai/parse-image',{image:dataUrl,mime:'image/jpeg'},signal);
+// v22: dataUrls can be one picture or an array (max MAX_PICS, pages of one plan) -> ONE request, counted as one AI use.
+const MAX_PICS=6;
+async function parseImagePlan(dataUrls,signal){
+  const list=(Array.isArray(dataUrls)?dataUrls:[dataUrls]).slice(0,MAX_PICS);
+  const r=await aiRequest('/ai/parse-image',list.length===1?{image:list[0],mime:'image/jpeg'}:{images:list,mime:'image/jpeg'},signal);
   if(r.ok){const plan=aiToPlan(r.j.plan);if(plan.days.some(d=>d.exercises.length))return{plan,unparsed:r.j.unparsed||[],skipped:[]};lastAI=aiNote(null,'bad')}
   if(signal&&signal.aborted){lastAI={ai:false,note:'',cancelled:true};return null}
   lastAI.note=photoNote(lastAI.note);return null}
-const photoNote=n=>n?n.replace('the built-in builder is free','reading on your phone is free').replace(/so I used the built-in builder/,'so I read the picture on your phone'):'AI could not read the picture, so I read it on your phone.';
+// photo import wording: same reasons as aiNote, but the fallback is on-phone text reading instead of the built-in builder
+const photoNote=n=>{const w=n&&lastAI&&lastAI.why;return !n?t('aiph.fail'):['limit','offline','paid','bad'].includes(w)?t('aiph.'+w):n};
 
 // ===== AI client (shared by generatePlan + parseTextPlan) =====
 // lastAI = {ai:true,remaining} after an AI result, or {ai:false,note} after a fallback (note '' = nothing worth showing).
 let lastAI=null;const AI_TEXT_MAX=6000;
 function aiNote(remaining,why){
   if(why===null)return{ai:true,remaining};
-  const n={signin:'Sign in with a verified email (Settings → Account & sync) to use AI.',verify:'Verify your email to use AI.',limit:'Daily AI limit reached, so I used the built-in builder. It resets at midnight UTC.',
-    offline:'Offline, so I used the built-in builder.',paid:'AI building is a paid extra; the built-in builder is free.',bad:'AI was unavailable, so I used the built-in builder.'}[why]||'';
-  return{ai:false,note:n,remaining:why==='limit'?0:remaining}}
+  const n=['signin','verify','limit','offline','paid','bad'].includes(why)?t('ai.'+why):'';
+  return{ai:false,note:n,why:n?why:'',remaining:why==='limit'?0:remaining}}
 // '' = AI can be tried; otherwise the reason it can't (none|signin|verify|offline). No network.
 function aiPrecheck(){
   if(typeof API_URL!=='string'||!API_URL||typeof Sync==='undefined'||typeof fetch!=='function')return 'none';
@@ -35,7 +38,7 @@ async function aiRequest(path,body,signal){
     const a=Sync.a;
     const ctl=typeof AbortController==='function'?new AbortController():null;const t=ctl&&setTimeout(()=>ctl.abort(),50000);
     if(ctl&&signal){if(signal.aborted)ctl.abort();else signal.addEventListener('abort',()=>ctl.abort())}
-    const r=await fetch(API_URL.replace(/\/+$/,'')+path,{method:'POST',signal:ctl&&ctl.signal,headers:{'Content-Type':'application/json',Authorization:'Bearer '+a.token},body:JSON.stringify(body)}).finally(()=>t&&clearTimeout(t));
+    const r=await fetch(API_URL.replace(/\/+$/,'')+path,{method:'POST',signal:ctl&&ctl.signal,headers:{'Content-Type':'application/json',Authorization:'Bearer '+a.token},body:JSON.stringify(Object.assign({},body,{lang:typeof I18N==='object'?I18N.lang():'en'}))}).finally(()=>t&&clearTimeout(t));
     const j=await r.json().catch(()=>({}));
     if(r.ok&&j&&j.plan&&Array.isArray(j.plan.days)){lastAI=aiNote(j.remaining,null);return{ok:true,j}}
     if(j.error==='not_paid'&&Sync.set)Sync.set({plan:'free'});lastAI=aiNote(j.remaining,r.status===429&&j.error==='limit'?'limit':j.error==='not_paid'?'paid':j.error==='unverified'?'verify':r.status===401?'signin':j.error==='ai_unavailable'?'':'bad');return{ok:false}
@@ -46,10 +49,10 @@ function aiToPlan(p,extra){
   const days=(Array.isArray(p&&p.days)?p.days:[]).slice(0,7).map((d,i)=>{const ex=(Array.isArray(d.exercises)?d.exercises:[]).slice(0,12).filter(e=>e&&typeof e.name==='string'&&e.name.trim()).map(e=>{
       const nm=String(e.name).trim().slice(0,60),L=libFind(nm)||libFuzzy(nm);
       return fillRest({id:Store.uid(),name:L?L.name:nm,sets:n(e.sets,1,10,3),repMin:n(e.repMin,1,100,8),repMax:Math.max(n(e.repMin,1,100,8),n(e.repMax,1,100,10)),weight:'',rest:hasRest(e.rest)?n(e.rest,0,600,90):null,note:String(e.note||'').slice(0,200)})});
-    const rest=!!d.rest&&!ex.length;return{id:Store.uid(),name:String(d.name||'').slice(0,40)||(rest?'Rest':'Day '+(i+1)),rest,exercises:rest?[]:ex,_est:rest?0:n(d.estMinutes,0,240,0)}});
+    const rest=!!d.rest&&!ex.length;return{id:Store.uid(),name:String(d.name||'').slice(0,40)||(rest?t('g.rest'):t('g.day',{n:i+1})),rest,exercises:rest?[]:ex,_est:rest?0:n(d.estMinutes,0,240,0)}});
   const est=days.filter(d=>!d.rest&&d._est).map(d=>`${d.name} ~${d._est} min`);days.forEach(d=>delete d._est);
-  const notes=[String(p&&p.notes||'').slice(0,400),est.length?'Estimated time: '+est.join(' · '):''].filter(Boolean).join('\n');
-  const plan=Object.assign({id:Store.uid(),name:String(p&&p.name||'AI plan').slice(0,50),created:Date.now(),next:0},notes?{notes}:{},extra||{},{days});
+  const notes=[String(p&&p.notes||'').slice(0,400),est.length?t('g.est',{list:est.join(' · ')}):''].filter(Boolean).join('\n');
+  const plan=Object.assign({id:Store.uid(),name:String(p&&p.name||t('g.aiPlan')).slice(0,50),created:Date.now(),next:0},notes?{notes}:{},extra||{},{days});
   return plan}
 
 const DAYWORDS=/^(day\s*\d+|week\s*\d+|(mon|tues?|wed(nes)?|thu(rs)?|fri|sat(ur)?|sun)(day)?\b|workout\s*[a-z0-9]\b|session\s*\d+|(upper|lower|push|pull|legs?|full[\s-]?body|chest|back|arms|shoulders)(\s+(day|body|[a-z])){0,2}\s*[:\-]?\s*$)/i;

@@ -33,7 +33,9 @@ const SPLITS={
 };
 // W=workout, R=rest, A=active recovery (light core/mobility day)
 const WEEK={2:'WRRWRRR',3:'WRWRWRR',4:'WWRWWRR',5:'WWWRWWR',6:'WWWWWWR',7:'WWWAWWW'};
-const WD=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const WD=i=>I18N.weekday(i); // Mon..Sun in the UI language
+// split names are translated when the plan is built (stored plans keep the language they were made in)
+const gName=s=>s.replace(/^(Full Body|Upper|Lower|Push|Pull|Legs)/,m=>t('g.'+m.replace(' ','').toLowerCase()));
 // exercises per session length; sets multiplier
 const SIZE={20:[3,2],30:[4,3],45:[5,3],60:[6,3],75:[7,3],90:[8,4],105:[9,4],120:[10,4]};
 function rulePlan(a){
@@ -55,12 +57,12 @@ function rulePlan(a){
     if(a.experience==='beginner')s=Math.max(2,s-1);if(a.experience==='advanced'&&x.compound)s++;
     if(x.equip==='bodyweight'&&x.muscle!=='core'){lo=Math.max(lo,8);hi=Math.max(hi,15)}
     if(x.name==='Plank'){lo=30;hi=60}
-    return{id:Store.uid(),name:x.name,sets:s,repMin:lo,repMax:hi,weight:'',rest:r,note:x.name==='Plank'?'Seconds, not reps':''}};
+    return{id:Store.uid(),name:x.name,sets:s,repMin:lo,repMax:hi,weight:'',rest:r,note:x.name==='Plank'?t('g.plank'):''}};
   const out=[];let wi=0;const variant={};
   [...WEEK[days]].forEach((ch,di)=>{
-    const wd=WD[di];
-    if(ch==='R'){out.push({id:Store.uid(),name:wd+' · Rest',rest:true,exercises:[]});return}
-    let name,tpl;if(ch==='A'){name='Active Recovery';tpl='recovery'}else[name,tpl]=split[wi++];
+    const wd=WD(di);
+    if(ch==='R'){out.push({id:Store.uid(),name:wd+' · '+t('g.rest'),rest:true,exercises:[]});return}
+    let name,tpl;if(ch==='A'){name=t('g.recovery');tpl='recovery'}else{[name,tpl]=split[wi++];name=gName(name)}
     let slots=T[tpl].slice();
     const n=ch==='A'?Math.min(4,count):count;
     if(ch!=='A'){const focus=(a.focus||[]).filter(f=>slots.includes(f)||tpl==='full');slots=[...slots.slice(0,2),...focus,...slots.slice(2)]}
@@ -74,13 +76,13 @@ function rulePlan(a){
     });
     // fallback: if filters left the day thin, fill with any allowed exercise for this day's muscles
     for(const x of ok){if(ex.length>=n)break;if(T[tpl].includes(x.muscle)&&!used.has(x.name)){used.add(x.name);ex.push(mk(x))}}
-    if(ch==='A')ex.forEach(e=>{e.sets=2;e.rest=45;e.note=(e.note?e.note+' · ':'')+'Easy effort. Add a 20–30 min walk or bike.'});
+    if(ch==='A')ex.forEach(e=>{e.sets=2;e.rest=45;e.note=(e.note?e.note+' · ':'')+t('g.easy')});
     // short sessions: pair accessories as supersets
-    if(mins<=30&&ch!=='A')for(let i=ex.length%2?1:0;i+1<ex.length;i+=2){ex[i].note=(ex[i].note?ex[i].note+' · ':'')+'Superset with next, no rest between';ex[i].rest=0}
+    if(mins<=30&&ch!=='A')for(let i=ex.length%2?1:0;i+1<ex.length;i+=2){ex[i].note=(ex[i].note?ex[i].note+' · ':'')+t('g.superset');ex[i].rest=0}
     out.push({id:Store.uid(),name:wd+' · '+name,rest:false,exercises:ex});
   });
-  const gl={strength:'Strength',muscle:'Muscle',general:'Fitness',fatloss:'Lean'}[a.goal]||'Fitness';
-  const notes=[`${days} days/week · ${mins} min sessions`];
-  if(a.injuries&&a.injuries.trim())notes.push(`Injuries/areas to avoid: "${a.injuries.trim()}"`+(inj.words.length?` (avoiding: ${inj.words.join(', ')})`:' (no known body part recognized)'));
-  return{id:Store.uid(),name:`${gl} · ${days} days/week`,created:Date.now(),next:0,notes:notes.join('\n'),avoid:inj.codes,days:out};
+  const gl=t('g.goal.'+({strength:1,muscle:1,general:1,fatloss:1}[a.goal]?a.goal:'general'));
+  const notes=[t('g.notes',{days,mins})];
+  if(a.injuries&&a.injuries.trim())notes.push(t(inj.words.length?'g.inj':'g.injNone',{x:a.injuries.trim(),list:inj.words.join(', ')}));
+  return{id:Store.uid(),name:t('g.name',{gl,days}),created:Date.now(),next:0,notes:notes.join('\n'),avoid:inj.codes,days:out};
 }

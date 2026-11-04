@@ -24,40 +24,40 @@ function applyChangeRequest(plan,text){
   for(let p of parts){p=p.replace(/^(please|can you|could you|i('d| would) like( to)?|i want( to)?|let'?s|also|and|then)\s+/i,'').replace(/\s+please$/i,'').trim();let m,done=false;
     // swap / replace
     if((m=p.match(/^(?:swap|replace|switch|change|sub(?:stitute)?)\s+(?:out\s+)?(.+?)\s+(?:for|with|to|into)\s+(.+)$/i))){
-      const hits=matchEx(plan,m[1]);if(hits.length){const nx=exFromName(m[2]);hits.forEach(h=>{const old=h.e.name;Object.assign(h.e,{name:nx.name});if(libFind(nx.name))h.e.rest=nx.rest});changes.push(`Swapped ${hits[0].e&&m[1].trim()} → ${nx.name} (${hits.length} place${hits.length>1?'s':''})`);done=true}
-      else bad.push(`"${p}": couldn't find "${m[1].trim()}" in the plan`),done=true}
+      const hits=matchEx(plan,m[1]);if(hits.length){const nx=exFromName(m[2]);hits.forEach(h=>{const old=h.e.name;Object.assign(h.e,{name:nx.name});if(libFind(nx.name))h.e.rest=nx.rest});changes.push(t('ch.swapped',{x:m[1].trim(),y:nx.name,n:hits.length}));done=true}
+      else bad.push(t('ch.notFound',{p,x:m[1].trim()})),done=true}
     else if((m=p.match(/^(?:use|do)\s+(.+?)\s+instead of\s+(.+)$/i))){
-      const hits=matchEx(plan,m[2]);if(hits.length){const nx=exFromName(m[1]);hits.forEach(h=>h.e.name=nx.name);changes.push(`Swapped ${m[2].trim()} → ${nx.name} (${hits.length} place${hits.length>1?'s':''})`)}else bad.push(`"${p}": couldn't find "${m[2].trim()}" in the plan`);done=true}
+      const hits=matchEx(plan,m[2]);if(hits.length){const nx=exFromName(m[1]);hits.forEach(h=>h.e.name=nx.name);changes.push(t('ch.swapped',{x:m[2].trim(),y:nx.name,n:hits.length}))}else bad.push(t('ch.notFound',{p,x:m[2].trim()}));done=true}
     // remove
     else if((m=p.match(/^(?:remove|drop|delete|no|no more|without|get rid of|take out|cut|skip)\s+(?:the\s+|all\s+)?(.+?)(?:\s+from\s+(.+))?$/i))){
       const scope=m[2]?dayRef(plan,m[2]):null;let hits=matchEx(plan,m[1]);if(scope)hits=hits.filter(h=>h.d===scope);
       const mus=muscleOf(m[1]);
-      if(hits.length){hits.sort((a,b)=>b.ei-a.ei).forEach(h=>h.d.exercises.splice(h.ei,1));changes.push(`Removed ${m[1].trim()} (${hits.length} place${hits.length>1?'s':''})`)}
+      if(hits.length){hits.sort((a,b)=>b.ei-a.ei).forEach(h=>h.d.exercises.splice(h.ei,1));changes.push(t('ch.removedN',{x:m[1].trim(),n:hits.length}))}
       else if(mus){let n=0;plan.days.forEach(d=>{if(scope&&d!==scope)return;const before=d.exercises.length;d.exercises=d.exercises.filter(e=>libFind(e.name)?.muscle!==mus);n+=before-d.exercises.length});
-        n?changes.push(`Removed ${n} ${mus} exercise${n>1?'s':''}`):bad.push(`"${p}": no ${mus} exercises to remove`)}
-      else bad.push(`"${p}": couldn't find "${m[1].trim()}" in the plan`);done=true}
+        n?changes.push(t('ch.removedMus',{n,mus})):bad.push(t('ch.noneToRemove',{p,mus}))}
+      else bad.push(t('ch.notFound',{p,x:m[1].trim()}));done=true}
     // shorter / longer
-    else if(/\b(shorter|quicker|faster|less time|too long|cut down)\b/i.test(p)){let n=0;workDays(plan).forEach(d=>{if(d.exercises.length>2){d.exercises.pop();n++}});changes.push(`Made workouts shorter: removed the last exercise from ${n} day${n===1?'':'s'}`);done=true}
-    else if(/\b(longer|more time|too short)\b/i.test(p)){let n=0;workDays(plan).forEach(d=>{const ms=d.exercises.map(e=>libFind(e.name)?.muscle).filter(Boolean);const x=ms.length&&pickFor(plan,ms[n%ms.length]);if(x){d.exercises.push(exFromName(x.name));n++}});changes.push(`Made workouts longer: added an exercise to ${n} day${n===1?'':'s'}`);done=true}
-    else if(/\b(more|extra|add (a|one|an)?\s*)\s*sets?\b/i.test(p)){workDays(plan).forEach(d=>d.exercises.forEach(e=>e.sets=Math.min(8,+e.sets+1)));changes.push('Added 1 set to every exercise');done=true}
-    else if(/\b(fewer|less)\s+sets?\b/i.test(p)){workDays(plan).forEach(d=>d.exercises.forEach(e=>e.sets=Math.max(1,+e.sets-1)));changes.push('Removed 1 set from every exercise');done=true}
-    else if(/\b(heavier|strength|lower reps|fewer reps)\b/i.test(p)){workDays(plan).forEach(d=>d.exercises.forEach(e=>{e.repMin=Math.max(3,e.repMin-3);e.repMax=Math.max(e.repMin,e.repMax-3)}));changes.push('Lowered rep ranges by 3 (heavier weights)');done=true}
-    else if(/\b(more reps|higher reps|lighter)\b/i.test(p)){workDays(plan).forEach(d=>d.exercises.forEach(e=>{e.repMin+=3;e.repMax+=3}));changes.push('Raised rep ranges by 3 (lighter weights)');done=true}
+    else if(/\b(shorter|quicker|faster|less time|too long|cut down)\b/i.test(p)){let n=0;workDays(plan).forEach(d=>{if(d.exercises.length>2){d.exercises.pop();n++}});changes.push(t('ch.shorter',{n}));done=true}
+    else if(/\b(longer|more time|too short)\b/i.test(p)){let n=0;workDays(plan).forEach(d=>{const ms=d.exercises.map(e=>libFind(e.name)?.muscle).filter(Boolean);const x=ms.length&&pickFor(plan,ms[n%ms.length]);if(x){d.exercises.push(exFromName(x.name));n++}});changes.push(t('ch.longer',{n}));done=true}
+    else if(/\b(more|extra|add (a|one|an)?\s*)\s*sets?\b/i.test(p)){workDays(plan).forEach(d=>d.exercises.forEach(e=>e.sets=Math.min(8,+e.sets+1)));changes.push(t('ch.addSet'));done=true}
+    else if(/\b(fewer|less)\s+sets?\b/i.test(p)){workDays(plan).forEach(d=>d.exercises.forEach(e=>e.sets=Math.max(1,+e.sets-1)));changes.push(t('ch.remSet'));done=true}
+    else if(/\b(heavier|strength|lower reps|fewer reps)\b/i.test(p)){workDays(plan).forEach(d=>d.exercises.forEach(e=>{e.repMin=Math.max(3,e.repMin-3);e.repMax=Math.max(e.repMin,e.repMax-3)}));changes.push(t('ch.heavier'));done=true}
+    else if(/\b(more reps|higher reps|lighter)\b/i.test(p)){workDays(plan).forEach(d=>d.exercises.forEach(e=>{e.repMin+=3;e.repMax+=3}));changes.push(t('ch.lighter'));done=true}
     // more / less muscle
     else if((m=p.match(/^(?:more|extra|add more|increase|focus on|bigger)\s+(.+)$/i))&&muscleOf(m[1])){const mus=muscleOf(m[1]);let n=0;
       let targets=workDays(plan).filter(d=>d.exercises.some(e=>libFind(e.name)?.muscle===mus));if(!targets.length)targets=workDays(plan).slice(0,2);
-      targets.forEach(d=>{const x=pickFor(plan,mus);if(x){d.exercises.push(exFromName(x.name));n++;changes.push(`Added ${x.name} to ${d.name}`)}});if(!n)bad.push(`"${p}": no more ${mus} exercises available`);done=true}
+      targets.forEach(d=>{const x=pickFor(plan,mus);if(x){d.exercises.push(exFromName(x.name));n++;changes.push(t('ch.added',{ex:x.name,day:d.name}))}});if(!n)bad.push(t('ch.noMore',{p,mus}));done=true}
     else if((m=p.match(/^(?:less|fewer|reduce|decrease)\s+(.+)$/i))&&muscleOf(m[1])){const mus=muscleOf(m[1]);let n=0;
-      workDays(plan).forEach(d=>{for(let i=d.exercises.length-1;i>=0;i--)if(libFind(d.exercises[i].name)?.muscle===mus){changes.push(`Removed ${d.exercises[i].name} from ${d.name}`);d.exercises.splice(i,1);n++;break}});if(!n)bad.push(`"${p}": no ${mus} exercises to remove`);done=true}
+      workDays(plan).forEach(d=>{for(let i=d.exercises.length-1;i>=0;i--)if(libFind(d.exercises[i].name)?.muscle===mus){changes.push(t('ch.removedFrom',{ex:d.exercises[i].name,day:d.name}));d.exercises.splice(i,1);n++;break}});if(!n)bad.push(t('ch.noneToRemove',{p,mus}));done=true}
     // add
     else if((m=p.match(/^(?:add|put|include|throw in)\s+(?:some\s+|a\s+|an\s+)?(.+?)(?:\s+(?:to|on|in|into)\s+(.+))?$/i))){
       const what=m[1].replace(/\s+(exercises?|work)$/i,''),mus=muscleOf(what);const scope=m[2]?dayRef(plan,m[2]):null;
-      if(m[2]&&!scope){bad.push(`"${p}": couldn't find day "${m[2].trim()}"`);done=true}
+      if(m[2]&&!scope){bad.push(t('ch.noDay',{p,x:m[2].trim()}));done=true}
       else if(mus){let targets=scope?[scope]:workDays(plan).filter(d=>!d.exercises.some(e=>libFind(e.name)?.muscle===mus));if(!scope&&mus!=='core')targets=targets.slice(0,2);
         if(!targets.length)targets=workDays(plan).slice(0,1);
-        targets.forEach(d=>{const x=pickFor(plan,mus);if(x){d.exercises.push(exFromName(x.name));changes.push(`Added ${x.name} to ${d.name}`)}});done=true}
+        targets.forEach(d=>{const x=pickFor(plan,mus);if(x){d.exercises.push(exFromName(x.name));changes.push(t('ch.added',{ex:x.name,day:d.name}))}});done=true}
       else{const L=libFind(what)||libFuzzyName(what);const d=scope||(L&&workDays(plan).find(d=>d.exercises.some(e=>libFind(e.name)?.muscle===L.muscle)))||workDays(plan)[0];
-        if(!d){bad.push(`"${p}": there's no workout day to add it to`)}else if(!L&&what.split(' ').length>5){bad.push(`"${p}"`)}else{const nx=exFromName(what);d.exercises.push(nx);changes.push(`Added ${nx.name} to ${d.name}`+(L?'':' (not in the library, check sets/reps)'))}done=true}}
+        if(!d){bad.push(t('ch.noWorkDay',{p}))}else if(!L&&what.split(' ').length>5){bad.push(`"${p}"`)}else{const nx=exFromName(what);d.exercises.push(nx);changes.push(t(L?'ch.added':'ch.addedNew',{ex:nx.name,day:d.name}))}done=true}}
     if(!done)bad.push(`"${p}"`);
   }
   return{plan,changes,notUnderstood:bad};

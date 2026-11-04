@@ -24,19 +24,19 @@ function parseResult(t){
   if(ex.some(x=>!x))return null;return{title:p[1],ex}}
 // Apply a watch result: fills the matching in-progress workout, or logs it as a finished workout so progression picks it up.
 function applyResult(r){
-  const link=db().watch||{};const plan=Store.plan(link.planId)||Store.activePlan();if(!plan)throw new Error('No plan to update.');
+  const link=db().watch||{};const plan=Store.plan(link.planId)||Store.activePlan();if(!plan)throw new Error(t('wr.noPlan'));
   let i=link.planId===plan.id&&plan.days[link.dayIndex]&&tKey(plan.days[link.dayIndex].name)===tKey(r.title)?link.dayIndex:plan.days.findIndex(d=>tKey(d.name)===tKey(r.title));
-  if(i<0)throw new Error(`This code is for "${r.title}", which isn't a day in your current plan.`);
+  if(i<0)throw new Error(t('wr.noDay',{title:r.title}));
   const day=plan.days[i],exs=day.exercises.filter(e=>e.name.trim());
-  if(exs.length!==r.ex.length)throw new Error(`The code has ${r.ex.length} exercises but "${day.name}" has ${exs.length}. Send the workout to the watch again first.`);
+  if(exs.length!==r.ex.length)throw new Error(t('wr.count',{a:r.ex.length,day:day.name,b:exs.length}));
   const wAt=(x,k)=>fromLb(x.w[Math.min(k,x.w.length-1)]);
   let a=db().active;
   if(a&&a.planId===plan.id&&a.dayIndex===i){let c=0;
     a.exercises.forEach(le=>{const j=exs.findIndex(e=>e.name===le.name);if(j<0)return;const x=r.ex[j];
       le.sets.forEach((s,k)=>{s.w=wAt(x,k);if(k<x.n){if(!s.done)c++;s.done=true;s.ws='m'}else if(!s.done)s.ws='c'})});
-    Store.save();return{mode:'live',msg:`Updated your workout in progress: ${c} more set${c===1?'':'s'} checked, weights copied from the watch.`}}
+    Store.save();return{mode:'live',msg:t('wr.live',{n:c})}}
   const out=exs.map((e,j)=>{const x=r.ex[j];return{name:e.name,oldId:e.oldId,type:e.type,lower:exType(e)==='lower',sets:[...Array(x.n)].map((_,k)=>({w:+wAt(x,k)||0,r:+e.repMin||8}))}}).filter(e=>e.sets.length);
-  if(!out.length)throw new Error('No sets were checked on the watch.');
+  if(!out.length)throw new Error(t('wr.none'));
   Store.addHistory({id:Store.uid(),date:Date.now(),planId:plan.id,planName:plan.name,dayName:day.name,units:U(),minutes:0,fromWatch:true,exercises:out});
   if(plan.next===i)plan.next=(i+1)%plan.days.length;Store.upsertPlan(plan);
-  return{mode:'log',msg:`Saved a ${day.name} workout from the watch (${out.reduce((s,e)=>s+e.sets.length,0)} sets) to History. Next time's recommendations use it.`}}
+  return{mode:'log',msg:t('wr.log',{day:day.name,n:out.reduce((s,e)=>s+e.sets.length,0)})}}

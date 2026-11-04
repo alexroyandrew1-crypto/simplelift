@@ -151,3 +151,8 @@ body.hasbg header{background:rgba(10,12,16,.7)}
 .busy{padding:var(--s5) var(--s4)}
 .spin{width:30px;height:30px;margin:0 auto 12px;border:3px solid #2a2e37;border-top-color:var(--acc);border-radius:50%;animation:aispin 1s linear infinite}@keyframes aispin{to{transform:rotate(360deg)}}
 .progress i.pulse{animation:aipulse 1.2s ease-in-out infinite alternate}@keyframes aipulse{from{opacity:.35}to{opacity:1}}
+/* v22: picture tray for multi-picture import */
+.thumbs{display:flex;flex-wrap:wrap;gap:var(--s2)}
+.thumb{position:relative;width:72px;height:96px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--card2)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .rm{position:absolute;top:2px;inset-inline-end:2px;width:28px;height:28px;min-height:28px;padding:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:18px;line-height:1}
