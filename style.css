@@ -156,3 +156,20 @@ body.hasbg header{background:rgba(10,12,16,.7)}
 .thumb{position:relative;width:72px;height:96px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--card2)}
 .thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .thumb .rm{position:absolute;top:2px;inset-inline-end:2px;width:28px;height:28px;min-height:28px;padding:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:18px;line-height:1}
+.sel-wrap{position:relative}
+.sel-wrap::after{content:"";position:absolute;inset-inline-end:16px;top:50%;width:8px;height:8px;border-right:2px solid var(--mut,#999);border-bottom:2px solid var(--mut,#999);transform:translateY(-70%) rotate(45deg);pointer-events:none}
+.sel{appearance:none;-webkit-appearance:none;width:100%;min-height:48px;padding:10px 44px 10px 16px;padding-inline:16px 44px;border:1px solid var(--line);border-radius:12px;background:var(--card2);color:var(--txt);font:inherit;font-size:16px}
+.sel:focus{outline:2px solid var(--acc);outline-offset:1px}
+.sel option{background:var(--card2,#1b1d24);color:var(--txt,#fff)}
+/* v25: terms gate + legal pages */
+body.gated>*:not(#gate):not(#toast){visibility:hidden}
+#gate{position:fixed;inset:0;z-index:50;overflow-y:auto;background:var(--bg);padding:max(16px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
+.gate-in{max-width:640px;margin:0 auto}
+.gate-in h2{margin:6px 0 10px}.big-emoji{font-size:44px;line-height:1.2;margin-top:12px}
+.gate-pts{list-style:none;padding:0;margin:12px 0;display:grid;gap:10px}
+.gate-pts li{background:var(--card);border-radius:var(--r);padding:12px 14px;line-height:1.45}
+.gate-chk{display:flex;gap:12px;align-items:flex-start;margin:16px 0 8px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r);background:var(--card2);line-height:1.4;font-size:15px;color:var(--txt)}
+.gate-chk input{width:24px;height:24px;flex:none;margin:0;accent-color:var(--acc)}
+.gate-msg{min-height:22px;color:var(--warn);margin:4px 0 10px}
+.legal{line-height:1.55}.legal h2{font-size:17px;margin:18px 0 6px}.legal p,.legal li{color:var(--txt)}.legal ul{padding-inline-start:20px}.legal a{color:var(--acc)}
+.legal .note{padding:8px 12px;border-radius:10px;margin-bottom:10px}

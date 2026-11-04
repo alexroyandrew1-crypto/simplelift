@@ -44,17 +44,17 @@ async function tab(v){if((route.v==='editor'||route.v==='day')&&!await guard())r
 $('#back').onclick=back;
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>tab(b.dataset.tab));
 
-const TITLES={home:'tab.today',plans:'tab.plans',day:'title.editDay',ai:'title.newPlan',paste:'title.paste',watch:'title.watch',account:'title.account',pair:'title.pair',chooser:'title.newPlan',session:'title.workout',history:'tab.history',hist:'title.workout',settings:'tab.settings'};
-const ROOT={home:'home',session:'home',plans:'plans',editor:'plans',day:'plans',chooser:'plans',ai:'plans',paste:'plans',history:'history',hist:'history',settings:'settings',account:'settings',pair:'settings',watch:'settings'};
+const TITLES={legal:'lg.legal',home:'tab.today',plans:'tab.plans',day:'title.editDay',ai:'title.newPlan',paste:'title.paste',watch:'title.watch',account:'title.account',pair:'title.pair',chooser:'title.newPlan',session:'title.workout',history:'tab.history',hist:'title.workout',settings:'tab.settings'};
+const ROOT={legal:'settings',home:'home',session:'home',plans:'plans',editor:'plans',day:'plans',chooser:'plans',ai:'plans',paste:'plans',history:'history',hist:'history',settings:'settings',account:'settings',pair:'settings',watch:'settings'};
 function render(){
   let v=route.v;if(!VIEWS[v]){v=route.v=v==='progress'?'history':'home'}
-  $('#title').textContent=v==='editor'?t(draft&&draft._new?'title.newPlan':'title.editPlan'):v==='day'&&route.p.direct?t('title.editDay'):TITLES[v]?t(TITLES[v]):'Simple Lift';
+  $('#title').textContent=v==='legal'?t({terms:'lg.terms',health:'lg.health',privacy:'lg.privacy'}[route.p.doc]||'lg.legal'):v==='editor'?t(draft&&draft._new?'title.newPlan':'title.editPlan'):v==='day'&&route.p.direct?t('title.editDay'):TITLES[v]?t(TITLES[v]):'Simple Lift';
   $('#back').style.visibility=stack.length?'visible':'hidden';
   const root=v==='watch'&&db().active?'home':ROOT[v];
   document.querySelectorAll('#tabs button').forEach(b=>{const on=b.dataset.tab===root;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
   const m=$('#view');m.style.animation='none';m.offsetHeight;m.style.animation='';
   m.innerHTML=VIEWS[v](route.p);
-  renderTimer();
+  renderTimer();renderGate();
 }
 
 /* ---------- helpers ---------- */
@@ -163,7 +163,10 @@ account(){const m=route.p.mode||'in',up=m==='up',a=Sync.a,em=esc(route.p.email||
   <button class="btn acc full" data-act="acSubmit" data-mode="${up?'up':'in'}">${up?t('ac.create'):t('ac.signIn')}</button>
   ${up?'':`<div class="right"><button type="button" class="linkbtn" data-act="acForgotGo">${t('ac.forgotQ')}</button></div>`}
   <button class="btn full" data-act="account" data-mode="${up?'in':'up'}">${up?t('ac.haveAccount'):t('ac.createInstead')}</button>${note}</div>
+  ${up?`<div class="mut">${t('lg.signupNote')}</div>${legalLinks()}`:''}
   <div class="mut">${t('ac.stored')}${up?' '+t('ac.storedUp'):''} ${t('privacy.geo')}</div>`},
+legal(p){const k=LEGAL.docs[p.doc]?p.doc:'terms';
+  return `<div class="card legal" lang="en" dir="ltr">${I18N.lang()!=='en'?`<div class="note mut" lang="${I18N.lang()}" dir="${I18N.isRTL()?'rtl':'ltr'}">${t('lg.enNote')}</div>`:''}${LEGAL.docs[k]}</div>${legalLinks(k)}`},
 pair(){return `<div class="card center"><h3>⌚ ${t('pair.title')}</h3><div id="pairCode" class="pair-code">······</div><div class="mut" id="pairNote" aria-live="polite">${t('pair.getting')}</div></div>
   <div class="card"><ol class="mut steps"><li>${t('pair.s1')}</li><li>${t('pair.s2')}</li><li>${t('pair.s3')}</li></ol>
   <div class="mut mt2">${t('pair.once')}</div></div>`},
@@ -198,7 +201,7 @@ session(){
   const done=a.exercises.reduce((s,e)=>s+e.sets.filter(x=>x.done).length,0),tot=a.exercises.reduce((s,e)=>s+e.sets.length,0);
   return `<div class="between"><h2 class="m0">${esc(a.dayName)}</h2><span class="mut">${t('s.progress',{done,tot})}</span></div>
   <div class="progress"><i style="width:${tot?done/tot*100:0}%"></i></div>
-  ${a.exercises.map((e,j)=>`<div class="card"><div class="between"><h3>${esc(e.name)}</h3><span class="mut">${t('s.repsRest',{reps:repTxt(e),rest:restTxt(e.rest)})}</span></div>
+  ${a.exercises.map((e,j)=>`<div class="card ex-card" data-ex="${j}"><div class="between"><h3>${esc(e.name)}</h3><span class="mut">${t('s.repsRest',{reps:repTxt(e),rest:restTxt(e.rest)})}</span></div>
     ${e.note?`<div class="mut">${esc(e.note)}</div>`:''}${e.last?`<div class="mut">${t('s.last',{v:esc(e.last)})}</div>`:''}${e.sugg?`<div class="sugg">↑ ${esc(e.sugg)}</div>`:''}
     <div class="set set-head" aria-hidden="true"><span>${t('s.set')}</span><span>${U()}</span><span>${t('reps')}</span><span>${t('done')}</span></div>
     ${e.sets.map((s,k)=>{const L=tA('s.setN',{name:e.name,n:k+1});return `<div class="set"><span class="mut">${k+1}</span>
@@ -246,8 +249,9 @@ settings(){
     <div class="mut mt3">${t('set.free')}</div>
     <div class="row wrap mt2">${/^https:\/\//.test(DONATE_URL)?`<a class="btn sm" href="${esc(DONATE_URL)}" target="_blank" rel="noopener noreferrer">${t('set.donate')}</a>`:''}
     ${/^[^@\s]+@[^@\s]+$/.test(SUPPORT_EMAIL)?`<a class="btn sm" href="mailto:${esc(SUPPORT_EMAIL)}?subject=Simple%20Lift%20support">${t('set.email')}</a>`:''}
-    ${typeof API_URL==='string'&&API_URL?`<a class="btn sm" href="${esc(API_URL.replace(/\/+$/,''))}/privacy" target="_blank" rel="noopener noreferrer">${t('set.privacy')}</a>`:''}</div>
-    ${/^[^@\s]+@[^@\s]+$/.test(SUPPORT_EMAIL)?`<div class="mut mt2">${t('set.bugs',{email:esc(SUPPORT_EMAIL)})}</div>`:''}</div>`;
+    </div>
+    ${/^[^@\s]+@[^@\s]+$/.test(SUPPORT_EMAIL)?`<div class="mut mt2">${t('set.bugs',{email:esc(SUPPORT_EMAIL)})}</div>`:''}</div>
+  <div class="card" id="legalCard"><h3>⚖️ ${t('lg.legal')}</h3>${legalLinks()}<div class="mut mt2" id="legalAcc"><b>${t('lg.yours')}:</b> ${legalAccText()}</div></div>`;
   return S('acct',t('sec.acct'),acct)+S('work',t('sec.work'),work)+S('look',t('sec.look'),look)+S('data',t('sec.data'),data)+S('watch',t('sec.watch'),watch)+S('about',t('sec.about'),about);
 }};
 
@@ -434,6 +438,22 @@ function finishWorkout(){
   db().active=null;Store.save();stopTimer();stack=[];toast(exs.length?t('fin.saved'):t('fin.closed'));route={v:'history',p:{}};render();scrollTo(0,0)}
 function localReset(){Store.reset();localStorage.removeItem(BG_KEY);applyBg();stopTimer();draft=null}
 /* ---------- rest timer ---------- */
+// v24: finishing the last set of an exercise glides to the next exercise that still has sets to do (or to Finish).
+// The target lands below the sticky header and above every bar floating at the bottom (rest timer, Finish bar, tabs).
+const AUTO_NEXT_MS=300;
+function bottomBars(){let lim=innerHeight;for(const el of document.querySelectorAll('.timer,.sessfoot,nav#tabs')){const r=el.getBoundingClientRect();
+  const st=getComputedStyle(el);if(!r.height||st.display==='none'||st.visibility==='hidden')continue;if(r.bottom>=innerHeight-2||st.position==='fixed'||st.position==='sticky')lim=Math.min(lim,r.top)}return lim}
+function autoNext(j){
+  if(route.v!=='session'||!db().active)return;const ae=document.activeElement;if(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))return;
+  const ex=db().active.exercises;let n=-1;for(let i=j+1;i<ex.length;i++)if(ex[i].sets.some(x=>!x.done)){n=i;break}
+  const reduce=matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches,behavior=reduce?'auto':'smooth';
+  const hdr=($('header')||{getBoundingClientRect:()=>({bottom:0})}).getBoundingClientRect().bottom,lim=bottomBars(),gap=8;
+  if(n<0){const f=$('[data-act="finish"]');if(!f)return;const r=f.getBoundingClientRect();if(r.top>=hdr&&r.bottom<=innerHeight)return;
+    scrollTo({top:document.documentElement.scrollHeight,behavior});return}
+  const card=$(`.ex-card[data-ex="${n}"]`);if(!card)return;const r=card.getBoundingClientRect();
+  if(r.top>=hdr+gap/2&&r.bottom<=lim)return; // already fully visible between header and bottom bars
+  // align the card top under the header; if it fits in the free band, that also keeps its bottom above the bars
+  const y=scrollY+r.top-hdr-gap;scrollTo({top:Math.max(0,y),behavior})}
 function startTimer(sec){timer={end:Date.now()+sec*1000};clearInterval(timer.h);timer.h=setInterval(renderTimer,250);renderTimer()}
 function stopTimer(){if(timer)clearInterval(timer.h);timer=null;renderTimer()}
 function renderTimer(){let el=$('#timer');
@@ -447,7 +467,33 @@ function renderTimer(){let el=$('#timer');
 /* ---------- events ---------- */
 const errMsg=x=>x&&x.message||String(x);
 let authFrom='';
+/* ---------- terms & health disclaimer (v25) ---------- */
+const TERMS_KEY='simplelift_terms';
+function legalAcc(){try{const a=JSON.parse(localStorage.getItem(TERMS_KEY)||'null');return a&&a.v?a:null}catch(e){return null}}
+const legalOK=()=>{const a=legalAcc();return!!a&&a.v===LEGAL.v};
+function legalAccText(){const a=legalAcc();if(!a)return '—';let d=a.at;try{d=new Intl.DateTimeFormat(I18N.locale(),{dateStyle:'medium'}).format(new Date(a.at))}catch(e){}return t('lg.acceptedOn',{v:esc(a.v),d:esc(d)})}
+function legalLinks(cur){return `<div class="row wrap mt2 legal-links">${['terms','health','privacy'].filter(k=>k!==cur).map(k=>`<button type="button" class="btn sm" data-act="legalDoc" data-doc="${k}">${t('lg.'+k)}</button>`).join('')}</div>`}
+let gate={doc:null,msg:'',chk:false};
+function renderGate(){let g=$('#gate');
+  if(legalOK()){if(g){g.remove();document.body.classList.remove('gated')}return}
+  if(!g){g=document.createElement('div');g.id='gate';g.setAttribute('role','dialog');g.setAttribute('aria-modal','true');g.setAttribute('aria-labelledby','gateTitle');document.body.appendChild(g)}
+  document.body.classList.add('gated');const prev=legalAcc(),chk=$('#gateChk');if(chk)gate.chk=chk.checked;const was=!!gate.chk;
+  if(gate.doc){g.innerHTML=`<div class="gate-in"><div class="between"><button class="btn sm" data-act="gateBack">‹ ${t('back')}</button><b id="gateTitle">${t('lg.'+gate.doc)}</b><span></span></div>
+    <div class="card legal" lang="en" dir="ltr">${I18N.lang()!=='en'?`<div class="note mut" lang="${I18N.lang()}" dir="${I18N.isRTL()?'rtl':'ltr'}">${t('lg.enNote')}</div>`:''}${LEGAL.docs[gate.doc]}</div>
+    <button class="btn full" data-act="gateBack">‹ ${t('back')}</button></div>`;g.scrollTop=0;return}
+  g.innerHTML=`<div class="gate-in"><div class="center"><div class="big-emoji">🏋️</div><h2 id="gateTitle">${t('lg.title')}</h2></div>
+    ${prev?`<div class="note warn">${t('lg.changed')}</div>`:''}<p class="mut">${t('lg.intro')}</p>
+    <ul class="gate-pts"><li>🩺 ${t('lg.p1')}</li><li>⚠️ ${t('lg.p2')}</li><li>📏 ${t('lg.p3')}</li><li>🔞 ${t('lg.p4')}</li></ul>
+    ${legalLinks()}${I18N.lang()!=='en'?`<div class="mut mt2">${t('lg.enNote')}</div>`:''}
+    <label class="gate-chk"><input type="checkbox" id="gateChk"${was?' checked':''}> <span>${t('lg.agree')}</span></label>
+    <div class="gate-msg" id="gateMsg" role="alert">${gate.msg?esc(gate.msg):''}</div>
+    <div class="grid2"><button class="btn" data-act="gateNo">${t('lg.decline')}</button><button class="btn acc" data-act="gateYes">${t('lg.accept')}</button></div></div>`}
 const ACT={
+ legalDoc:b=>{if(!legalOK()){gate.doc=b.dataset.doc;renderGate();return}go('legal',{doc:b.dataset.doc})},
+ gateBack:()=>{gate.doc=null;renderGate();const c=$('#gateChk');if(c)c.focus()},
+ gateYes:()=>{if(!$('#gateChk')||!$('#gateChk').checked){gate.msg=t('lg.tick');renderGate();return}
+   localStorage.setItem(TERMS_KEY,JSON.stringify({v:LEGAL.v,at:new Date().toISOString()}));gate={doc:null,msg:'',chk:false};renderGate();render()},
+ gateNo:()=>{gate.msg=t('lg.declined');renderGate()},
  resume:()=>go('session'),start:b=>startWorkout(+b.dataset.i),
  goPlans:()=>tab('plans'),goToday:()=>tab('home'),
  newPlan:()=>{openDraft(blankPlan());draft._new=1;go('editor')},
@@ -552,7 +598,7 @@ const ACT={
    const s=db().active.exercises[+b.dataset.j].sets[+b.dataset.k],f=b.dataset.f,d=+b.dataset.d;
    const inc=(f==='w'?(U()==='kg'?2.5:5):1)*mult;s[f]=Math.max(0,Math.round(((+s[f]||0)+d*inc)*10)/10);Store.save();
    b.parentNode.querySelector('input').value=s[f];if(f==='w'){s.ws='m';b.parentNode.querySelector('input').classList.remove('sugw');cascadeW(+b.dataset.j,+b.dataset.k);Store.save()}},
- setDone:b=>{const e=db().active.exercises[+b.dataset.j],s=e.sets[+b.dataset.k];s.done=!s.done;if(s.done&&s.ws==='s')s.ws='m';Store.save();render();if(s.done)startTimer(e.rest)},
+ setDone:b=>{const e=db().active.exercises[+b.dataset.j],s=e.sets[+b.dataset.k];s.done=!s.done;if(s.done&&s.ws==='s')s.ws='m';Store.save();render();if(s.done)startTimer(e.rest);if(s.done&&e.sets.every(x=>x.done))setTimeout(()=>autoNext(+b.dataset.j),AUTO_NEXT_MS)},
  setAdd:b=>{const e=db().active.exercises[+b.dataset.j],l=e.sets[e.sets.length-1];e.sets.push({w:l.w,r:l.r,done:false,ws:l.ws==='s'?'s':'c'});Store.save();render()},
  setDel:b=>{db().active.exercises[+b.dataset.j].sets.pop();Store.save();render()},
  t15:()=>{timer.end+=15000;renderTimer()},tskip:stopTimer,
@@ -590,7 +636,8 @@ document.addEventListener('click',e=>{
     if(!hasRest(ex.rest)||ex.restAuto){ex.rest=L.rest;ex.restAuto=true}render();return}
   if(!e.target.closest('.ac'))document.querySelectorAll('.aclist').forEach(x=>x.hidden=true);
   const b=e.target.closest('[data-act]');if(b&&!b.disabled&&ACT[b.dataset.act])ACT[b.dataset.act](b,e)});
-document.addEventListener('change',e=>{if(e.target.id==='customColor'){draft.days[route.p.i].color=e.target.value;render()}});
+document.addEventListener('change',e=>{if(e.target.id==='customColor'){draft.days[route.p.i].color=e.target.value;render()}
+  if(e.target.id==='langSel')ACT.setLang(e.target)});
 document.addEventListener('input',e=>{
   if(e.target.id==='dim'){const v=+e.target.value;$('#dimv').textContent=v+'%';setBg({dim:v/100});return}
   if(e.target.id==='aiText'){$('#injHint').innerHTML=injHint(e.target.value);return}
@@ -618,15 +665,14 @@ function showOldResult(r,manual){
   else if(manual)info(t('set.old'),r.found?t('old.already'):t('old.none'));
   render()}
 /* ---------- language ---------- */
-function langCard(){const m=I18N.mode(),cur=I18N.lang();
-  const chip=(v,label,on,lang)=>`<button class="chip ${on?'on':''}" data-act="setLang" data-v="${v}" aria-pressed="${on}"${lang?` lang="${lang}"`:''}>${esc(label)}</button>`;
-  return `<div class="card" id="langCard"><h3>🌐 ${t('lang.title')}</h3><div class="chips">${chip('auto',m==='auto'?t('lang.autoNow',{name:I18N.name(cur)}):t('lang.auto'),m==='auto')}
-    ${I18N.LANGS.map(([c,n])=>chip(c,n,m===c,c)).join('')}</div><div class="mut mt2">${t('lang.hint')}</div></div>`}
+function langCard(){const cur=I18N.lang();
+  return `<div class="card" id="langCard"><h3>🌐 <label for="langSel">${t('lang.title')}</label></h3><div class="sel-wrap"><select id="langSel" class="sel">
+    ${I18N.LANGS.map(([c,n])=>`<option value="${c}" lang="${c}"${c===cur?' selected':''}>${esc(n)}</option>`).join('')}</select></div><div class="mut mt2">${t('lang.hint')}</div></div>`}
 // static text that lives in index.html (tab bar, back button)
 function applyStatic(){const k={home:'today',plans:'plans',history:'history',settings:'settings'};
   document.querySelectorAll('#tabs button[data-tab]').forEach(b=>{const s=b.querySelector('span');if(s&&k[b.dataset.tab])s.textContent=t('tab.'+k[b.dataset.tab])});
   const bk=$('#back');if(bk)bk.setAttribute('aria-label',t('back'));const nv=$('#tabs');if(nv)nv.setAttribute('aria-label',t('nav.main'))}
-ACT.setLang=b=>{I18N.choose(b.dataset.v).then(()=>{applyStatic();render()})};
+ACT.setLang=b=>{I18N.choose(b.value||b.dataset.v).then(()=>{applyStatic();render()})};
 applyBg();
 if(db().active)route={v:'home',p:{}};
 I18N.start(()=>{applyStatic();render()},name=>toast(t('lang.set',{name}))).then(()=>{

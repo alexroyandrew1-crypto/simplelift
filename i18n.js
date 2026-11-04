@@ -18,7 +18,7 @@ Object.entries({
   zh:'CN SG',ja:'JP',ko:'KR',ar:'SA AE EG MA DZ TN LY JO LB SY IQ KW QA BH OM YE SD PS MR',hi:'IN',id:'ID'
 }).forEach(([l,cs])=>cs.split(' ').forEach(c=>COUNTRY[c]=l));
 const K={pick:'simplelift_lang',geo:'simplelift_geo',toast:'simplelift_lang_toast'};
-const GEO_TTL=30*864e5,GEO_TIMEOUT=4000;
+const GEO_TIMEOUT=4000;
 const D={en:{
 "working": "Working…",
 "err.generic": "Something went wrong.",
@@ -295,8 +295,6 @@ const D={en:{
 "sec.watch": "Watch",
 "sec.about": "About &amp; support",
 "lang.title": "Language",
-"lang.auto": "Automatic (based on your location)",
-"lang.autoNow": "Automatic: {name}",
 "lang.hint": "Exercise names stay in English for now.",
 "lang.set": "Language set to {name}. Change it in Settings.",
 "err.notPic": "That file isn't a picture.",
@@ -661,7 +659,27 @@ const D={en:{
 },
 "p.tooMany": "You can add up to {n} pictures at a time.",
 "p.picOf": "Picture {i} of {n}",
-"home.haveAcct": "Already use Simple Lift on another device? Sign in to bring your plans and history here."
+"home.haveAcct": "Already use Simple Lift on another device? Sign in to bring your plans and history here.",
+"lg.title": "Before you start",
+"lg.intro": "Simple Lift is a workout log, not medical advice. Please read the key points and accept to continue.",
+"lg.p1": "Check with a doctor before you start, especially if you have a health condition, an injury, or are pregnant.",
+"lg.p2": "Exercise can cause injury, including serious injury or death. You train at your own risk.",
+"lg.p3": "Suggested weights and plans, including AI plans, are estimates and can be wrong. You are responsible for your form, load and safety. Stop if you feel pain.",
+"lg.p4": "You must be 13 or older. Minors need a parent's or guardian's permission.",
+"lg.agree": "I have read and agree to the Terms of Use, Privacy Policy and Health Disclaimer",
+"lg.accept": "Accept",
+"lg.decline": "Decline",
+"lg.declined": "You need to accept the terms to use Simple Lift. If you don't agree, please close the app.",
+"lg.tick": "Tick the box first to accept.",
+"lg.changed": "Our terms have changed. Please review and accept them to continue.",
+"lg.terms": "Terms of Use",
+"lg.health": "Health & Safety Disclaimer",
+"lg.privacy": "Privacy Policy",
+"lg.enNote": "Legal text is in English.",
+"lg.yours": "Your acceptance",
+"lg.acceptedOn": "You accepted version {v} on {d}.",
+"lg.legal": "Legal",
+"lg.signupNote": "By creating an account you agree to the Terms of Use, Privacy Policy and Health Disclaimer."
 }};
 let cur='en';
 const ls={get(k){try{return G.localStorage?G.localStorage.getItem(k):null}catch(e){return null}},
@@ -683,12 +701,12 @@ function supported(c){c=base(c);return CODES.includes(c)?c:null}
 // First supported language in the browser list (zh-TW / zh-HK map to the Simplified Chinese we ship).
 function browserLang(list){for(const x of list||[]){const c=supported(x);if(c)return c}return null}
 function countryLang(cc){return cc?(COUNTRY[String(cc).toUpperCase()]||'en'):null}
-// Pick order: saved manual choice > IP country > browser languages > English.
+// First-run pick order: saved choice > IP country > browser languages > English.
 // Rule: if the browser asks for a supported NON-English language that differs from the country's language,
 // the browser wins (e.g. a Spanish speaker's phone in Canada gets Spanish, a German phone in Spain gets German).
 // An English browser never overrides the country (most phones default to English regardless of the user).
 function pick(saved,country,langs){
-  if(saved&&saved!=='auto'&&CODES.includes(saved))return saved;
+  if(saved&&CODES.includes(saved))return saved;
   const b=browserLang(langs),c=countryLang(country);
   if(c){if(b&&b!=='en'&&b!==c)return b;return c}
   return b||'en'}
@@ -701,33 +719,27 @@ function load(l){
     G.document.head.appendChild(s)})}
 function applyDoc(){const d=G.document&&G.document.documentElement;if(!d)return;d.lang=cur==='zh'?'zh-Hans':cur==='pt'?'pt-BR':cur;d.dir=RTL.includes(cur)?'rtl':'ltr'}
 async function use(l){l=CODES.includes(l)?l:'en';if(l!=='en'&&!(await load(l)))l='en';cur=l;applyDoc();return l}
-const mode=()=>{const s=ls.get(K.pick);return s&&CODES.includes(s)?s:'auto'};
-const resolve=()=>{const g=geoCache();return pick(mode(),g&&g.country,navLangs())};
-let onChange=()=>{},onToast=()=>{};
-function maybeToast(){
-  // One-time note the first time Automatic settles on a non-English language.
-  if(mode()!=='auto'||cur==='en'||ls.get(K.toast))return;ls.set(K.toast,cur);onToast(name(cur))}
+// The language is chosen once and then never changes by itself (people travel).
+const mode=()=>{const s=ls.get(K.pick);return s&&CODES.includes(s)?s:null};
 const name=c=>(LANGS.find(l=>l[0]===c)||LANGS[0])[1];
-// Ask the Worker which country the connection comes from. Never blocks startup; result cached ~30 days.
+let onChange=()=>{},onToast=()=>{};
+// Ask the Worker which country the connection comes from (first run only). Never blocks startup.
 async function geo(){
-  const api=typeof API_URL==='string'?API_URL:'';if(!api||typeof fetch!=='function'||mode()!=='auto')return null;
-  const g=geoCache();if(g&&Date.now()-g.at<GEO_TTL)return null;
+  const api=typeof API_URL==='string'?API_URL:'';if(!api||typeof fetch!=='function')return null;
   try{const ctl=typeof AbortController==='function'?new AbortController():null;const to=ctl&&setTimeout(()=>ctl.abort(),GEO_TIMEOUT);
     const r=await fetch(api.replace(/\/+$/,'')+'/geo',{signal:ctl&&ctl.signal,cache:'no-store'}).finally(()=>to&&clearTimeout(to));
-    const j=await r.json();const cc=j&&typeof j.country==='string'&&/^[A-Z]{2}$/.test(j.country)?j.country:null;
-    ls.set(K.geo,JSON.stringify({country:cc,at:Date.now()}));return cc}catch(e){return null}}
-// Startup: render as soon as the local choice is ready, then refine from the country in the background.
+    const j=await r.json();return j&&typeof j.country==='string'&&/^[A-Z]{2}$/.test(j.country)?j.country:null}catch(e){return null}}
+// Startup: a saved language is used as is. Installs from v22 "Automatic" keep the language they had, now saved.
+// A brand-new install renders with the phone language at once, refines once with the country, then saves the result.
 async function start(changed,toast){
   onChange=changed||onChange;onToast=toast||onToast;
-  await use(resolve());
-  const first=!ls.get(K.toast)&&!geoCache();
-  geo().then(async()=>{if(mode()!=='auto')return;const l=resolve();
-    // after the first run, a new country only takes effect on the next launch so the UI never flips mid-session
-    if(l!==cur&&first){await use(l);onChange()}
-    maybeToast()});
-  if(!first)maybeToast();
+  const saved=mode();if(saved){await use(saved);return cur}
+  if(ls.get(K.pick)||ls.get(K.toast)||geoCache()){const g=geoCache();await use(pick(null,g&&g.country,navLangs()));ls.set(K.pick,cur);return cur}
+  await use(pick(null,null,navLangs()));
+  geo().then(async cc=>{if(mode())return;const l=pick(null,cc,navLangs());if(l!==cur){await use(l);onChange()}
+    ls.set(K.pick,cur);ls.set(K.toast,cur);onToast(name(cur))});
   return cur}
-async function choose(v){ls.set(K.pick,v==='auto'?'auto':v);if(v!=='auto')ls.set(K.toast,v);await use(resolve());return cur}
+async function choose(v){if(!CODES.includes(v))return cur;ls.set(K.pick,v);ls.set(K.toast,v);await use(v);return cur}
 const locale=()=>LOCALE[cur]||cur;
 function num(n,o){try{return new Intl.NumberFormat(locale(),o).format(n)}catch(e){return String(n)}}
 // Monday-first weekday short names: 2024-01-01 was a Monday.
