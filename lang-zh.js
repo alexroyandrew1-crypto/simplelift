@@ -651,5 +651,8 @@ I18N.add('zh',{
 "ra.both": "振动 + 声音",
 "ra.off": "关闭",
 "ra.test": "测试提醒",
-"ra.isOff": "休息计时提醒已关闭。"
+"ra.isOff": "休息计时提醒已关闭。",
+"wiz.startOver": "重新开始",
+"wiz.startOverMsg": "清除你的回答并从头开始创建这个新计划吗？",
+"wiz.leaveMsg": "离开并清除你为这个新计划填写的回答吗？"
 });

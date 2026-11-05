@@ -692,7 +692,10 @@ const D={en:{
 "ra.both": "Vibration + sound",
 "ra.off": "Off",
 "ra.test": "Test alert",
-"ra.isOff": "The rest timer alert is off."
+"ra.isOff": "The rest timer alert is off.",
+"wiz.startOver": "Start over",
+"wiz.startOverMsg": "Clear your answers and start this new plan from the beginning?",
+"wiz.leaveMsg": "Leave and clear the answers you've entered for this new plan?"
 }};
 let cur='en';
 const ls={get(k){try{return G.localStorage?G.localStorage.getItem(k):null}catch(e){return null}},

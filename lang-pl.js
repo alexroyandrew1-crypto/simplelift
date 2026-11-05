@@ -714,5 +714,8 @@ I18N.add('pl',{
 "ra.both": "Wibracja + dźwięk",
 "ra.off": "Wyłączony",
 "ra.test": "Testuj alarm",
-"ra.isOff": "Alarm przerwy jest wyłączony."
+"ra.isOff": "Alarm przerwy jest wyłączony.",
+"wiz.startOver": "Zacznij od nowa",
+"wiz.startOverMsg": "Wyczyścić odpowiedzi i zacząć ten nowy plan od początku?",
+"wiz.leaveMsg": "Wyjść i wyczyścić odpowiedzi wpisane dla tego nowego planu?"
 });

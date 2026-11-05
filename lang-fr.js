@@ -672,5 +672,8 @@ I18N.add('fr',{
 "ra.both": "Vibration + son",
 "ra.off": "Désactivée",
 "ra.test": "Tester l'alerte",
-"ra.isOff": "L'alerte du minuteur est désactivée."
+"ra.isOff": "L'alerte du minuteur est désactivée.",
+"wiz.startOver": "Recommencer",
+"wiz.startOverMsg": "Effacer vos réponses et recommencer ce nouveau programme depuis le début ?",
+"wiz.leaveMsg": "Quitter et effacer les réponses saisies pour ce nouveau programme ?"
 });

@@ -672,5 +672,8 @@ I18N.add('nl',{
 "ra.both": "Trillen + geluid",
 "ra.off": "Uit",
 "ra.test": "Melding testen",
-"ra.isOff": "De rusttimer-melding staat uit."
+"ra.isOff": "De rusttimer-melding staat uit.",
+"wiz.startOver": "Opnieuw beginnen",
+"wiz.startOverMsg": "Je antwoorden wissen en dit nieuwe schema opnieuw beginnen?",
+"wiz.leaveMsg": "Weggaan en de antwoorden voor dit nieuwe schema wissen?"
 });

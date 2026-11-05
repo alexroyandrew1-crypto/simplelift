@@ -672,5 +672,8 @@ I18N.add('es',{
 "ra.both": "Vibración + sonido",
 "ra.off": "Desactivado",
 "ra.test": "Probar aviso",
-"ra.isOff": "El aviso del temporizador está desactivado."
+"ra.isOff": "El aviso del temporizador está desactivado.",
+"wiz.startOver": "Empezar de nuevo",
+"wiz.startOverMsg": "¿Borrar tus respuestas y empezar este plan nuevo desde el principio?",
+"wiz.leaveMsg": "¿Salir y borrar las respuestas que has introducido para este plan nuevo?"
 });

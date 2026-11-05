@@ -672,5 +672,8 @@ I18N.add('it',{
 "ra.both": "Vibrazione + suono",
 "ra.off": "Disattivato",
 "ra.test": "Prova avviso",
-"ra.isOff": "L'avviso del recupero è disattivato."
+"ra.isOff": "L'avviso del recupero è disattivato.",
+"wiz.startOver": "Ricomincia",
+"wiz.startOverMsg": "Cancellare le risposte e ricominciare questo nuovo piano dall'inizio?",
+"wiz.leaveMsg": "Uscire e cancellare le risposte inserite per questo nuovo piano?"
 });

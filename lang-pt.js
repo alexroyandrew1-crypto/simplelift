@@ -672,5 +672,8 @@ I18N.add('pt',{
 "ra.both": "Vibração + som",
 "ra.off": "Desligado",
 "ra.test": "Testar alerta",
-"ra.isOff": "O alerta do descanso está desligado."
+"ra.isOff": "O alerta do descanso está desligado.",
+"wiz.startOver": "Recomeçar",
+"wiz.startOverMsg": "Apagar suas respostas e recomeçar este novo plano do início?",
+"wiz.leaveMsg": "Sair e apagar as respostas que você inseriu para este novo plano?"
 });

@@ -37,10 +37,28 @@ const draftDirty=()=>!!draft&&(!!draft._new||snap(draft)!==draftSnap);
 async function guard(){if(!draftDirty())return true;
   const ok=await ask(t('guard.title'),draft._new&&route.v==='editor'?t('guard.newPlan'):t('guard.unsaved'),t('guard.discard'),'bad',t('guard.keep'));
   if(ok)draftSnap=snap(draft);return ok}
+/* ---------- v28: plan-creation flow (guided wizard / paste) keeps its answers until saved, cancelled or started over ---------- */
+const FLOW_KEY='simplelift_flow';
+function flowGet(){try{return JSON.parse(localStorage.getItem(FLOW_KEY))||{}}catch(e){return{}}}
+function flowSet(o){const f=Object.assign(flowGet(),o);for(const k in f)if(f[k]==null)delete f[k];try{if(Object.keys(f).length)localStorage.setItem(FLOW_KEY,JSON.stringify(f));else localStorage.removeItem(FLOW_KEY)}catch(e){}}
+function saveFlow(){if(route.v==='ai'&&ai)flowSet({ai:ai.step||aiHasAnswers()?{step:ai.step,a:ai.a}:null,at:'ai'});else if(route.v==='paste')flowSet({paste:route.p.text||'',at:'paste'});
+  else if(ROOT[route.v]==='plans'&&route.v!=='editor')flowSet({at:null})} // left the flow inside Plans; other tabs keep the spot for Plans
+const freshAI=()=>({step:0,a:{injuries:'',focus:[]}});
+const aiHasAnswers=()=>!!ai&&Object.entries(ai.a).some(([k,v])=>Array.isArray(v)?v.length:v!==''&&v!=null);
+// Android system back / browser back: one history entry stands for "there is somewhere to go back to"
+let backArmed=false;
+const canBack=()=>stack.length>0||(route.v==='ai'&&!!ai&&ai.step>0);
+function armBack(){if(canBack()&&!backArmed){try{history.pushState({sl:1},'')}catch(e){}backArmed=true}}
+addEventListener('popstate',()=>{backArmed=false;const sh=document.querySelector('.sheet-bg,.sheet');if(sh){armBack();return}back().then(armBack)});
 function go(v,p={},push=true){if(push)stack.push(route);route={v,p};render();scrollTo(0,0)}
 function pop(){route=stack.pop()||{v:'home',p:{}};render();scrollTo(0,0)}
-async function back(){if((route.v==='editor'||(route.v==='day'&&route.p.direct))&&!await guard())return;pop()}
+async function back(){if(route.v==='ai'&&ai&&ai.step>0){ACT.aiPrev();return} // one wizard step back, answers kept
+  // back from a new plan to the wizard / paste screen it came from: not leaving the flow, the answers are still there
+  const toFlow=route.v==='editor'&&draft&&draft._new&&stack.length&&/^(ai|paste)$/.test(stack[stack.length-1].v);
+  if(!toFlow&&(route.v==='editor'||(route.v==='day'&&route.p.direct))&&!await guard())return;if(toFlow)draftSnap=snap(draft);pop()}
 async function tab(v){if((route.v==='editor'||route.v==='day')&&!await guard())return;stack=[];if(v==='home'&&db().active)v='session'; // v27: Today returns to the running workout
+  const fl=flowGet(); // v28: Plans returns to an unfinished new plan
+  if(v==='plans'&&ROOT[route.v]!=='plans'&&fl.at){stack=[{v:'plans',p:{}},{v:'chooser',p:{}}];if(fl.at==='ai'){ai=fl.ai||freshAI();route={v:'ai',p:{}}}else route={v:'paste',p:{text:fl.paste||''}};render();scrollTo(0,0);return}
   route={v,p:{}};render();scrollTo(0,0)}
 $('#back').onclick=back;
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>tab(b.dataset.tab));
@@ -55,7 +73,7 @@ function render(){
   document.querySelectorAll('#tabs button').forEach(b=>{const on=b.dataset.tab===root;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
   const m=$('#view');m.style.animation='none';m.offsetHeight;m.style.animation='';
   m.innerHTML=VIEWS[v](route.p);
-  renderTimer();renderGate();
+  renderTimer();renderGate();saveFlow();armBack();
 }
 
 /* ---------- helpers ---------- */
@@ -128,7 +146,7 @@ day({i,direct}){
 },
 ai(){
   const S=AI_STEPS,N=S.length+1,n=ai.step+1;
-  const head=`<div class="between"><span class="wiz-step">${t('wiz.step',{n,N})}</span>${n<N?`<span class="mut">${n===6||n===7?t('optional'):''}</span>`:''}</div><div class="progress" role="progressbar" aria-valuemin="1" aria-valuemax="${N}" aria-valuenow="${n}"><i style="width:${n/N*100}%"></i></div>`;
+  const head=`<div class="between"><span class="wiz-step">${t('wiz.step',{n,N})}</span>${n<N?`<span class="mut">${n===6||n===7?t('optional'):''}</span>`:''}</div>${aiHasAnswers()&&!ai.busy?`<div class="right"><button class="linkbtn" data-act="flowRestart" data-f="ai">↺ ${t('wiz.startOver')}</button></div>`:''}<div class="progress" role="progressbar" aria-valuemin="1" aria-valuemax="${N}" aria-valuenow="${n}"><i style="width:${n/N*100}%"></i></div>`;
   if(ai.step>=S.length){const busy=ai.busy,locked=isPaidLocked(aiPrecheck());
     const aiB=locked?`<button class="big ghost locked" data-act="aiBuild">🔒 ✨ ${t('wiz.buildAI')}<small>${t('wiz.paidMore')}</small></button>`
       :`<button class="big acc" data-act="aiBuild">✨ ${t('wiz.buildAI')}<small>${t('wiz.tailored')}</small></button>`;
@@ -193,7 +211,7 @@ paste(){
   ${note}
   <div id="ocrBox" class="card" hidden aria-live="polite"><div class="between"><b id="ocrMsg">${t('p.reading')}</b><span id="ocrPct" class="mut"></span></div><div class="progress"><i id="ocrBar" style="width:0"></i></div><div class="mut" id="ocrSub">${t('p.onPhone')}</div><button class="btn full" id="ocrCancel" data-act="ocrCancel" hidden>${t('cancel')}</button></div>
   <label for="pasteText">${t('p.text')}</label>
-  <textarea id="pasteText" rows="14" placeholder="${tA('p.ph').replace(/\n/g,'&#10;')}">${esc(route.p.text||'')}</textarea>
+  <textarea id="pasteText" rows="14" placeholder="${tA('p.ph').replace(/\n/g,'&#10;')}">${esc(route.p.text||'')}</textarea>${(route.p.text||'').trim()?`<div class="right"><button class="linkbtn" data-act="flowRestart" data-f="paste">↺ ${t('wiz.startOver')}</button></div>`:''}
   <div class="mut mt2">${t('p.tip')}</div>
   ${foot(`<button class="btn acc" data-act="parse">${w===''?'✨ '+t('p.makeAI'):t('p.make')}</button>`)}`;
 },
@@ -386,14 +404,14 @@ async function runOCR(files){files=Array.isArray(files)?files:[files];const n=fi
     $('#ocrBar').style.width='35%';$('#ocrBar').classList.add('pulse');$('#ocrPct').textContent='';$('#ocrMsg').textContent=t('p.readingAI');
     let r=null;try{const imgs=[];for(const f of files)imgs.push(await imageToJpeg(f));r=await parseImagePlan(imgs,ctl.signal)}catch(e){lastAI={ai:false,note:photoNote('')}}
     if(picCtl===ctl)picCtl=null;const b=$('#ocrBox');if(!b||route.v!=='paste')return;$('#ocrCancel').hidden=true;$('#ocrBar').classList.remove('pulse');
-    if(r){openDraft(r.plan);draft._new=1;draft._ai=Object.assign({},lastAI,{photo:true});draft._issues=issuesOf(r);go('editor');toast(t('p.readOK'));return}
+    if(r){openDraft(r.plan);draft._new=1;draft._ai=Object.assign({},lastAI,{photo:true});draft._issues=issuesOf(r);draft._flow='paste';go('editor');toast(t('p.readOK'));return}
     if(ctl.signal.aborted||(lastAI&&lastAI.cancelled)){b.hidden=true;toast(t('cancelled'));return}
     note=(lastAI&&lastAI.note)||photoNote('');$('#ocrSub').textContent=t('p.onPhone')}
   // free / fallback: read each picture on the phone and join the text in order
   try{const parts=[];for(let i=0;i<n;i++){const pre=n>1?t('p.picOf',{i:i+1,n})+' · ':'';
       try{parts.push(await imageToText(files[i],(p,m)=>set((i+p)/n,pre+m)))}catch(e){if(n===1)throw e;parts.push('')}}
     const txt=parts.filter(Boolean).join('\n\n');if(!txt)throw new Error(t('ocr.noText'));
-    const ta=$('#pasteText');ta.value=(ta.value.trim()?ta.value.trim()+'\n\n':'')+txt;route.p.text=ta.value;$('#ocrMsg').textContent=t('p.ocrDone');$('#ocrPct').textContent='';
+    const ta=$('#pasteText');ta.value=(ta.value.trim()?ta.value.trim()+'\n\n':'')+txt;route.p.text=ta.value;saveFlow();$('#ocrMsg').textContent=t('p.ocrDone');$('#ocrPct').textContent='';
     if(note)$('#ocrSub').textContent='ⓘ '+note;ta.focus()}
   catch(e){box.hidden=true;info(t('p.ocrFail'),String(e&&e.message||e))}}
 const issuesOf=r=>({unparsed:r.unparsed,skipped:r.skipped,days:r.plan.days.filter(d=>!d.rest).length,count:r.plan.days.reduce((s,d)=>s+d.exercises.length,0)});
@@ -518,7 +536,7 @@ const ACT={
  addRest:()=>{draft.days.push({id:Store.uid(),name:t('rest'),rest:true,exercises:[]});render()},
  savePlan:()=>{if(!draft.name.trim())draft.name=t('ed.namePh');draft.days.forEach(d=>d.exercises=d.exercises.filter(e=>e.name.trim()));autoRests(draft);
    if(!draft.days.length){toast(t('ed.oneDay'));return}
-   const isNew=draft._new;delete draft._new;delete draft._issues;delete draft._cr;delete draft._ai;Store.upsertPlan(draft);if(isNew)Store.setActive(draft.id);draftSnap=snap(draft);
+   const isNew=draft._new;if(draft._flow){flowSet(draft._flow==='ai'?{ai:null,at:null}:{paste:null,at:null});if(draft._flow==='ai')ai=null}delete draft._flow;delete draft._new;delete draft._issues;delete draft._cr;delete draft._ai;Store.upsertPlan(draft);if(isNew)Store.setActive(draft.id);draftSnap=snap(draft);
    toast(t('ed.saved'));stack=[];go(isNew?'home':'plans',{},false)},
  toggleRest:()=>{const d=draft.days[route.p.i];d.rest=!d.rest;if(!d.rest&&!d.exercises.length)d.exercises.push(newEx());render()},
  exAdd:()=>{draft.days[route.p.i].exercises.push(newEx());render();const ins=document.querySelectorAll('[data-ac]');ins[ins.length-1]?.focus()},
@@ -540,7 +558,7 @@ const ACT={
  bgPreset:b=>{setBg({kind:'preset',id:b.dataset.id});render()},
  bgPhoto:()=>{const f=$('#bgFile');f.value='';f.onchange=async()=>{try{const u=await loadBgFile(f.files[0]);try{localStorage.setItem(BG_KEY,u)}catch(e){throw new Error(t('err.noSpace'))}setBg({kind:'custom'});toast(t('set.bgSet'));render()}catch(e){toast(errMsg(e),'err')}};f.click()},
  importOld:async()=>{const r=await importOldApp();showOldResult(r,true)},
- paste:()=>go('paste'),
+ paste:()=>go('paste',{text:flowGet().paste||''}),
  sessMenu:async()=>{const a=db().active;if(!a)return;const v=await sheet({title:t('s.options'),actions:[{v:'watch',label:'⌚ '+t('s.toWatch')},{v:'discard',label:t('s.discard'),cls:'bad'},{v:null,label:t('close')}]});
    if(v==='watch')go('watch',{i:a.dayIndex,planId:a.planId});
    else if(v==='discard'&&await ask(t('s.discardQ'),t('s.discardMsg'),t('s.discard'),'bad',t('fin.keep'))){db().active=null;Store.save();stopTimer();toast(t('s.discarded'));tab('home')}},
@@ -588,21 +606,28 @@ const ACT={
    setTimeout(()=>document.querySelector('#crText')?.closest('details').scrollIntoView({block:'start'}),30)},
  parse:async b=>{const t=$('#pasteText').value;if(!t.trim()){toast(window.t('p.first'));return}route.p.text=t;
    b.disabled=true;const r=await parseTextPlan(t);b.disabled=false;if(!r.plan.days.length){info(window.t('p.noneTitle'),window.t('p.noneMsg'));return}
-   openDraft(r.plan);draft._new=1;draft._ai=lastAI;draft._issues=issuesOf(r);go('editor')},
- ai:()=>{ai={step:0,a:{injuries:'',focus:[]}};go('ai')},
+   openDraft(r.plan);draft._new=1;draft._ai=lastAI;draft._issues=issuesOf(r);draft._flow='paste';go('editor')},
+ ai:()=>{const f=flowGet();ai=f.ai&&f.ai.a?{step:Math.min(+f.ai.step||0,AI_STEPS.length),a:f.ai.a}:freshAI();go('ai')},
+ flowRestart:async b=>{const isAI=b.dataset.f==='ai';if(!await ask(t('wiz.startOver'),t('wiz.startOverMsg'),t('wiz.startOver'),'bad',t('cancel')))return;
+   if(isAI){if(ai&&ai.ctl)ai.ctl.abort();ai=freshAI();flowSet({ai:null})}else{route.p.text='';clearTray();flowSet({paste:null})}render();scrollTo(0,0)},
  aiPick:async b=>{const s=AI_STEPS[ai.step];let v=b.dataset.v;if(typeof s.opts[0][0]==='number')v=+v;
    if(s.multi){let arr=ai.a[s.key];if(v==='none')arr=[];else{arr=arr.includes(v)?arr.filter(x=>x!==v):[...arr,v];if(s.key==='focus'&&arr.length>3)arr.shift()}ai.a[s.key]=arr;render();return}
    ai.a[s.key]=v;ai.step++;render();scrollTo(0,0)},
- aiPrev:()=>{if(ai.busy)return;const tx=$('#aiText');if(tx)ai.a[AI_STEPS[ai.step].key]=tx.value;ai.msg='';if(!ai.step){pop();return}ai.step--;render();scrollTo(0,0)},
+ aiPrev:async b=>{if(ai.busy)return;const tx=$('#aiText');if(tx&&AI_STEPS[ai.step])ai.a[AI_STEPS[ai.step].key]=tx.value;ai.msg='';
+   if(!ai.step){ // the Cancel button on step 1 leaves the whole flow: ask only if something was entered
+     if(b&&aiHasAnswers()){if(!await ask(t('guard.title'),t('wiz.leaveMsg'),t('guard.discard'),'bad',t('guard.keep')))return;ai=freshAI();flowSet({ai:null})}
+     else if(b){flowSet({ai:null})}
+     pop();return}
+   ai.step--;render();scrollTo(0,0)},
  aiNext:()=>{const S=AI_STEPS,st=S[ai.step];if(!st)return;const tx=$('#aiText');if(tx)ai.a[st.key]=tx.value;
    if(!st.multi&&!st.text&&ai.a[st.key]==null){toast(t('wiz.pick'));return}
    ai.step++;ai.msg='';render();scrollTo(0,0)},
- aiQuick:()=>{if(ai.busy)return;ai.msg='';openDraft(rulePlan(ai.a));draft._new=1;stack=[{v:'plans',p:{}}];go('editor',{},false);toast(t('wiz.readyQuick'))},
+ aiQuick:()=>{if(ai.busy)return;ai.msg='';openDraft(rulePlan(ai.a));draft._new=1;draft._flow='ai';go('editor');toast(t('wiz.readyQuick'))},
  aiBuild:async()=>{if(ai.busy)return;
    const why=aiPrecheck();if(why){ai.msg=t('wiz.why.'+(['paid','none','offline','verify'].includes(why)?why:'signin'));render();return}
    const ctl=new AbortController();ai.ctl=ctl;ai.busy=true;ai.msg='';render();
    const p=await generatePlan(ai.a,{signal:ctl.signal});if(ai.ctl!==ctl||ctl.signal.aborted)return; // cancelled
-   ai.busy=false;ai.ctl=null;openDraft(p);draft._new=1;draft._ai=lastAI;stack=[{v:'plans',p:{}}];go('editor',{},false);
+   ai.busy=false;ai.ctl=null;openDraft(p);draft._new=1;draft._ai=lastAI;draft._flow='ai';go('editor');
    toast(lastAI&&lastAI.ai?t('wiz.readyAI'):lastAI&&lastAI.note?lastAI.note:t('wiz.readyBuiltin'))},
  aiCancel:()=>{if(ai.ctl)ai.ctl.abort();ai.ctl=null;ai.busy=false;ai.msg='';render();toast(t('cancelled'))},
  stp:(b,e,mult=1)=>{if(e&&e.type==='click'&&holdUntil>Date.now())return; // pointer already handled it
@@ -651,7 +676,8 @@ document.addEventListener('change',e=>{if(e.target.id==='customColor'){draft.day
   if(e.target.id==='langSel')ACT.setLang(e.target)});
 document.addEventListener('input',e=>{
   if(e.target.id==='dim'){const v=+e.target.value;$('#dimv').textContent=v+'%';setBg({dim:v/100});return}
-  if(e.target.id==='aiText'){$('#injHint').innerHTML=injHint(e.target.value);return}
+  if(e.target.id==='aiText'){$('#injHint').innerHTML=injHint(e.target.value);if(ai&&AI_STEPS[ai.step])ai.a[AI_STEPS[ai.step].key]=e.target.value;saveFlow();return}
+  if(e.target.id==='pasteText'&&route.v==='paste'){route.p.text=e.target.value;saveFlow();return}
   const k=e.target.dataset.bind;if(!k)return;const v=e.target.value,parts=k.split('.');
   if(parts[0]==='name')draft.name=v;
   else if(parts[0]==='notes')draft.notes=v;
@@ -721,6 +747,8 @@ function applyStatic(){const k={home:'today',plans:'plans',history:'history',set
 ACT.setLang=b=>{I18N.choose(b.value||b.dataset.v).then(()=>{applyStatic();render()})};
 applyFs();applyBg();
 if(db().active){route={v:'session',p:{}};const re=db().active.restEnd;if(re&&re>Date.now())runTimer(re)}
+else{const fl=flowGet();if(fl.at==='ai'&&fl.ai){ai={step:Math.min(+fl.ai.step||0,AI_STEPS.length),a:fl.ai.a};stack=[{v:'plans',p:{}},{v:'chooser',p:{}}];route={v:'ai',p:{}}}
+  else if(fl.at==='paste'){stack=[{v:'plans',p:{}},{v:'chooser',p:{}}];route={v:'paste',p:{text:fl.paste||''}}}} // v28: reopen an unfinished new plan
 // v27: write anything typed before the app goes to the background
 const flushNow=()=>{const ae=document.activeElement;if(ae&&ae.dataset&&ae.dataset.bind)ae.dispatchEvent(new Event('input',{bubbles:true}));if(db().active)Store.save(true)};
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushNow()});addEventListener('pagehide',flushNow);

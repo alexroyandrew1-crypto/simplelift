@@ -672,5 +672,8 @@ I18N.add('de',{
 "ra.both": "Vibration + Ton",
 "ra.off": "Aus",
 "ra.test": "Alarm testen",
-"ra.isOff": "Der Pausen-Alarm ist aus."
+"ra.isOff": "Der Pausen-Alarm ist aus.",
+"wiz.startOver": "Neu beginnen",
+"wiz.startOverMsg": "Deine Antworten löschen und diesen neuen Plan von vorne beginnen?",
+"wiz.leaveMsg": "Verlassen und die Antworten für diesen neuen Plan löschen?"
 });

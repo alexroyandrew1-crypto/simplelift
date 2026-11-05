@@ -651,5 +651,8 @@ I18N.add('id',{
 "ra.both": "Getar + suara",
 "ra.off": "Mati",
 "ra.test": "Uji peringatan",
-"ra.isOff": "Peringatan timer istirahat mati."
+"ra.isOff": "Peringatan timer istirahat mati.",
+"wiz.startOver": "Mulai ulang",
+"wiz.startOverMsg": "Hapus jawabanmu dan mulai rencana baru ini dari awal?",
+"wiz.leaveMsg": "Keluar dan hapus jawaban yang sudah kamu isi untuk rencana baru ini?"
 });

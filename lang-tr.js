@@ -672,5 +672,8 @@ I18N.add('tr',{
 "ra.both": "Titreşim + ses",
 "ra.off": "Kapalı",
 "ra.test": "Uyarıyı dene",
-"ra.isOff": "Dinlenme sayacı uyarısı kapalı."
+"ra.isOff": "Dinlenme sayacı uyarısı kapalı.",
+"wiz.startOver": "Baştan başla",
+"wiz.startOverMsg": "Yanıtlarını silip bu yeni planı baştan başlatmak istiyor musun?",
+"wiz.leaveMsg": "Çıkıp bu yeni plan için girdiğin yanıtları silmek istiyor musun?"
 });
