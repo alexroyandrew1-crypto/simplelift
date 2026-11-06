@@ -686,16 +686,17 @@ const D={en:{
 "fs.l": "Large",
 "fs.xl": "Extra large",
 "fs.preview": "Bench press · 3 × 8 · 60 kg",
-"ra.title": "Rest timer alert",
-"ra.vib": "Vibration",
-"ra.snd": "Sound",
-"ra.both": "Vibration + sound",
-"ra.off": "Off",
 "ra.test": "Test alert",
 "ra.isOff": "The rest timer alert is off.",
 "wiz.startOver": "Start over",
 "wiz.startOverMsg": "Clear your answers and start this new plan from the beginning?",
-"wiz.leaveMsg": "Leave and clear the answers you've entered for this new plan?"
+"wiz.leaveMsg": "Leave and clear the answers you've entered for this new plan?",
+"rt.title": "Rest timer",
+"rt.hint": "Count down your rest after each set.",
+"rs.title": "When rest starts",
+"rs.ding": "Chime",
+"rs.buzz": "Vibration",
+"rt.end": "When rest ends"
 }};
 let cur='en';
 const ls={get(k){try{return G.localStorage?G.localStorage.getItem(k):null}catch(e){return null}},

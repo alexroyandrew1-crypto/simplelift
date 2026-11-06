@@ -182,3 +182,4 @@ body.gated>*:not(#gate):not(#toast){visibility:hidden}
 html.fs-l .set,html.fs-xl .set{gap:4px}html.fs-l .step button,html.fs-xl .step button{width:34px}
 @media (max-width:380px){html.fs-l .step input,html.fs-xl .step input{font-size:17px}}
 @media (max-width:380px){html.fs-l main:has(.ex-card),html.fs-xl main:has(.ex-card){padding-inline:12px}html.fs-l main:has(.ex-card) .sessfoot,html.fs-xl main:has(.ex-card) .sessfoot{margin-inline:0}html.fs-l .ex-card,html.fs-xl .ex-card{padding-inline:12px}}
+.rtrow{margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);gap:8px;flex-wrap:wrap}.rtrow>div{min-width:0}.rtrow .row{flex-wrap:wrap;margin-left:auto}.rtrow .chip{min-width:0}

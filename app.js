@@ -433,8 +433,9 @@ async function startWorkout(i){
     if(!await ask(t('s.discardQ'),t('s.discardMsg'),t('s.discard'),'bad',t('fin.keep'))){go('session');return}stopTimer()}
   const ex=d.exercises.filter(e=>e.name.trim()).map(e=>{
     const g=suggest(e),last=g.last,lower=exType(e)==='lower';
-    const w=g.w||'',r=g.up||!last?(+e.repMin||8):(+last.sets[0].r||+e.repMin||8);
-    const wN=n=>g.wAt?(g.wAt(n)||''):w,rN=n=>g.rAt?(g.rAt(n)||r):r;
+    // v29: reps always start at the plan's target; what was done last time stays visible in the 'Last' line. Weights still recall per set.
+    const w=g.w||'',r=+e.repMin||8;
+    const wN=n=>g.wAt?(g.wAt(n)||''):w,rN=()=>r;
     const lastTxt=last?last.sets.map(s=>`${s.w||0}×${s.r}`).join(', '):'',sugg=g.guess&&g.w?t('sug.guess',{w:num(g.w),u:U()}):t('sug.rec',{w:g.w?num(g.w)+' '+U():t('sug.bwLc'),why:sugText(g)});
     return{oldId:e.oldId,type:e.type,name:e.name,lower,repMin:+e.repMin,repMax:+e.repMax,rest:restOf(e),note:e.note,last:lastTxt,sugg,sets:[...Array(Math.max(1,+e.sets||1))].map((_,n)=>({w:wN(n),sw:wN(n),r:rN(n),done:false,ws:'s'}))}});
   if(!ex.length){toast(t('t.addFirst'));return}
@@ -479,7 +480,9 @@ function autoNext(j){
   if(r.top>=hdr+gap/2&&r.bottom<=lim)return; // already fully visible between header and bottom bars
   // align the card top under the header; if it fits in the free band, that also keeps its bottom above the bars
   const y=scrollY+r.top-hdr-gap;scrollTo({top:Math.max(0,y),behavior})}
-function startTimer(sec){runTimer(Date.now()+sec*1000)}
+function startTimer(sec){if(!restOn())return;runTimer(Date.now()+sec*1000);startCue()}
+// v29: optional single soft ding / short buzz when a rest starts (only from a set tick, never on restore); both off by default
+function startCue(){const st=db().settings;if('startDing' in st){delete st.startDing;Store.save()}if(st.startBuzz)tap()}
 function runTimer(end){if(timer)clearInterval(timer.h);timer={end};timer.h=setInterval(renderTimer,250);saveRest();renderTimer()}
 function stopTimer(){if(timer)clearInterval(timer.h);timer=null;saveRest();renderTimer()}
 // v27: the rest timer's end time lives in the active workout so it survives a reload or the app being killed
@@ -709,12 +712,15 @@ function showOldResult(r,manual){
 /* ---------- rest timer alert (v27) ---------- */
 const ALERT_KEY='simplelift_alert',ALERTS=['vib','snd','both','off'];
 function alertGet(){const v=localStorage.getItem(ALERT_KEY);return ALERTS.includes(v)?v:'vib'}
-function restDone(){if(!timer)return;stopTimer();restAlarm();toast(t('timer.over'))}
+function restDone(){if(!timer)return;stopTimer();if(!restOn())return;restAlarm();toast(t('timer.over'))}
 let actx=null;
 function beep(){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return false;actx=actx||new C();if(actx.state==='suspended')actx.resume();
   const t0=actx.currentTime;[0,.28,.56].forEach((d,i)=>{const o=actx.createOscillator(),g=actx.createGain();o.type='sine';o.frequency.value=i===2?1175:880;
     g.gain.setValueAtTime(0.0001,t0+d);g.gain.exponentialRampToValueAtTime(0.35,t0+d+.02);g.gain.exponentialRampToValueAtTime(0.0001,t0+d+.22);
     o.connect(g).connect(actx.destination);o.start(t0+d);o.stop(t0+d+.25)});window.__beeps=(window.__beeps||0)+1;return true}catch(e){return false}}
+function tap(){window.__taps=(window.__taps||0)+1;
+  try{const H=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.Haptics;if(H&&H.vibrate){H.vibrate({duration:80});return true}}catch(e){}
+  try{return !!(navigator.vibrate&&navigator.vibrate(80))}catch(e){return false}}
 function buzz(){window.__buzz=(window.__buzz||0)+1;
   try{const H=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.Haptics;if(H&&H.vibrate){H.vibrate({duration:600});return true}}catch(e){}
   try{return !!(navigator.vibrate&&navigator.vibrate([300,120,300,120,300]))}catch(e){return false}}
@@ -722,11 +728,22 @@ function restAlarm(kind=alertGet()){if(kind==='vib'||kind==='both')buzz();if(kin
 // browsers only allow sound after a tap: unlock the audio context on the first tap of a set
 document.addEventListener('pointerdown',()=>{if(/snd|both/.test(alertGet())&&!actx){try{const C=window.AudioContext||window.webkitAudioContext;if(C){actx=new C();actx.resume()}}catch(e){}}},{capture:true});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')renderTimer()});
-function alertCard(){const c=alertGet();
-  return `<div class="card" id="alertCard"><h3 id="raT">⏰ ${t('ra.title')}</h3><div class="seg" role="group" aria-labelledby="raT">${ALERTS.map(k=>`<button data-act="setAlert" data-v="${k}" aria-pressed="${k===c}">${t('ra.'+k)}</button>`).join('')}</div>
-    <button class="btn full" data-act="testAlert">${t('ra.test')}</button></div>`}
-ACT.setAlert=b=>{const v=b.dataset.v;if(!ALERTS.includes(v))return;if(v==='vib')localStorage.removeItem(ALERT_KEY);else localStorage.setItem(ALERT_KEY,v);
-  document.querySelectorAll('#alertCard .seg button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.v===v)));if(v!=='off')restAlarm(v)};
+// v29: the rest timer can be switched off entirely (a synced setting; on unless set to false)
+const restOn=()=>db().settings.restTimer!==false;
+// v29: one Rest timer card. Start cues live in synced settings (default off); the end alert keeps its stored
+// value (simplelift_alert: vib|snd|both|off, default vib), shown as two switches, so old choices carry over as is.
+const endGet=()=>{const a=alertGet();return{vib:a==='vib'||a==='both',snd:a==='snd'||a==='both'}};
+function endSet(vib,snd){const v=vib&&snd?'both':vib?'vib':snd?'snd':'off';if(v==='vib')localStorage.removeItem(ALERT_KEY);else localStorage.setItem(ALERT_KEY,v)}
+function alertCard(){const on=restOn(),st=db().settings;if('startDing' in st){delete st.startDing;Store.save()}const e=endGet();
+  const sw=(act,k,v,lbl)=>`<button class="chip ${v?'on':''}" data-act="${act}" data-k="${k}" aria-pressed="${v}" aria-label="${lbl}: ${v?t('on'):t('off')}">${lbl}</button>`;
+  const row=(id,title,a,b)=>`<div class="between rtrow" id="${id}"><div>${title}</div><div class="row" style="gap:6px">${a}${b}</div></div>`;
+  return `<div class="card" id="restCard"><div class="between"><div><h3>⏱️ ${t('rt.title')}</h3><div class="mut">${t('rt.hint')}</div></div><button class="chip ${on?'on':''}" data-act="restT" aria-pressed="${on}">${on?t('on'):t('off')}</button></div>`+
+   (on?row('rtStart',t('rs.title'),sw('startT','startBuzz',!!st.startBuzz,t('rs.buzz')),'')+
+    row('rtEnd',t('rt.end'),sw('endT','snd',e.snd,t('rs.ding')),sw('endT','vib',e.vib,t('rs.buzz')))+
+    `<div style="text-align:right;margin-top:8px"><button class="btn sm" data-act="testAlert">${t('ra.test')}</button></div>`:'')+`</div>`}
+ACT.restT=()=>{db().settings.restTimer=!restOn();Store.save();if(!restOn())stopTimer();render()};
+ACT.startT=b=>{const k=b.dataset.k;if(k!=='startBuzz')return;const st=db().settings;st[k]=!st[k];Store.save();render();if(st[k])tap()};
+ACT.endT=b=>{const k=b.dataset.k;if(k!=='vib'&&k!=='snd')return;const e=endGet();e[k]=!e[k];endSet(e.vib,e.snd);render();if(e[k])(k==='vib'?buzz:beep)()};
 ACT.testAlert=()=>{const k=alertGet();if(k==='off'){toast(t('ra.isOff'));return}restAlarm(k)};
 /* ---------- text size (v26) ---------- */
 const FS_KEY='simplelift_fs',FS={s:.86,m:.93,l:1.06,xl:1.16};
@@ -746,7 +763,7 @@ function applyStatic(){const k={home:'today',plans:'plans',history:'history',set
   const bk=$('#back');if(bk)bk.setAttribute('aria-label',t('back'));const nv=$('#tabs');if(nv)nv.setAttribute('aria-label',t('nav.main'))}
 ACT.setLang=b=>{I18N.choose(b.value||b.dataset.v).then(()=>{applyStatic();render()})};
 applyFs();applyBg();
-if(db().active){route={v:'session',p:{}};const re=db().active.restEnd;if(re&&re>Date.now())runTimer(re)}
+if(db().active){route={v:'session',p:{}};const re=db().active.restEnd;if(re&&re>Date.now()&&restOn())runTimer(re)}
 else{const fl=flowGet();if(fl.at==='ai'&&fl.ai){ai={step:Math.min(+fl.ai.step||0,AI_STEPS.length),a:fl.ai.a};stack=[{v:'plans',p:{}},{v:'chooser',p:{}}];route={v:'ai',p:{}}}
   else if(fl.at==='paste'){stack=[{v:'plans',p:{}},{v:'chooser',p:{}}];route={v:'paste',p:{text:fl.paste||''}}}} // v28: reopen an unfinished new plan
 // v27: write anything typed before the app goes to the background

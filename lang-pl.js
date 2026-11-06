@@ -708,14 +708,15 @@ I18N.add('pl',{
 "fs.l": "Duży",
 "fs.xl": "Bardzo duży",
 "fs.preview": "Wyciskanie na ławce · 3 × 8 · 60 kg",
-"ra.title": "Alarm przerwy",
-"ra.vib": "Wibracja",
-"ra.snd": "Dźwięk",
-"ra.both": "Wibracja + dźwięk",
-"ra.off": "Wyłączony",
 "ra.test": "Testuj alarm",
 "ra.isOff": "Alarm przerwy jest wyłączony.",
 "wiz.startOver": "Zacznij od nowa",
 "wiz.startOverMsg": "Wyczyścić odpowiedzi i zacząć ten nowy plan od początku?",
-"wiz.leaveMsg": "Wyjść i wyczyścić odpowiedzi wpisane dla tego nowego planu?"
+"wiz.leaveMsg": "Wyjść i wyczyścić odpowiedzi wpisane dla tego nowego planu?",
+"rt.title": "Minutnik przerwy",
+"rt.hint": "Odliczanie przerwy po każdej serii.",
+"rs.title": "Gdy zaczyna się przerwa",
+"rs.ding": "Dzwonek",
+"rs.buzz": "Wibracja",
+"rt.end": "Gdy kończy się przerwa"
 });

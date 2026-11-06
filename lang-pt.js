@@ -666,14 +666,15 @@ I18N.add('pt',{
 "fs.l": "Grande",
 "fs.xl": "Muito grande",
 "fs.preview": "Supino · 3 × 8 · 60 kg",
-"ra.title": "Alerta do descanso",
-"ra.vib": "Vibração",
-"ra.snd": "Som",
-"ra.both": "Vibração + som",
-"ra.off": "Desligado",
 "ra.test": "Testar alerta",
 "ra.isOff": "O alerta do descanso está desligado.",
 "wiz.startOver": "Recomeçar",
 "wiz.startOverMsg": "Apagar suas respostas e recomeçar este novo plano do início?",
-"wiz.leaveMsg": "Sair e apagar as respostas que você inseriu para este novo plano?"
+"wiz.leaveMsg": "Sair e apagar as respostas que você inseriu para este novo plano?",
+"rt.title": "Timer de descanso",
+"rt.hint": "Contagem regressiva do descanso após cada série.",
+"rs.title": "Quando o descanso começa",
+"rs.ding": "Toque",
+"rs.buzz": "Vibração",
+"rt.end": "Quando o descanso termina"
 });

@@ -666,14 +666,15 @@ I18N.add('tr',{
 "fs.l": "Büyük",
 "fs.xl": "Çok büyük",
 "fs.preview": "Bench press · 3 × 8 · 60 kg",
-"ra.title": "Dinlenme sayacı uyarısı",
-"ra.vib": "Titreşim",
-"ra.snd": "Ses",
-"ra.both": "Titreşim + ses",
-"ra.off": "Kapalı",
 "ra.test": "Uyarıyı dene",
 "ra.isOff": "Dinlenme sayacı uyarısı kapalı.",
 "wiz.startOver": "Baştan başla",
 "wiz.startOverMsg": "Yanıtlarını silip bu yeni planı baştan başlatmak istiyor musun?",
-"wiz.leaveMsg": "Çıkıp bu yeni plan için girdiğin yanıtları silmek istiyor musun?"
+"wiz.leaveMsg": "Çıkıp bu yeni plan için girdiğin yanıtları silmek istiyor musun?",
+"rt.title": "Dinlenme sayacı",
+"rt.hint": "Her setten sonra dinlenmeni geri sayar.",
+"rs.title": "Dinlenme başladığında",
+"rs.ding": "Zil",
+"rs.buzz": "Titreşim",
+"rt.end": "Dinlenme bittiğinde"
 });

@@ -666,14 +666,15 @@ I18N.add('de',{
 "fs.l": "Groß",
 "fs.xl": "Sehr groß",
 "fs.preview": "Bankdrücken · 3 × 8 · 60 kg",
-"ra.title": "Pausen-Alarm",
-"ra.vib": "Vibration",
-"ra.snd": "Ton",
-"ra.both": "Vibration + Ton",
-"ra.off": "Aus",
 "ra.test": "Alarm testen",
 "ra.isOff": "Der Pausen-Alarm ist aus.",
 "wiz.startOver": "Neu beginnen",
 "wiz.startOverMsg": "Deine Antworten löschen und diesen neuen Plan von vorne beginnen?",
-"wiz.leaveMsg": "Verlassen und die Antworten für diesen neuen Plan löschen?"
+"wiz.leaveMsg": "Verlassen und die Antworten für diesen neuen Plan löschen?",
+"rt.title": "Pausentimer",
+"rt.hint": "Zählt deine Pause nach jedem Satz herunter.",
+"rs.title": "Wenn die Pause beginnt",
+"rs.ding": "Glockenton",
+"rs.buzz": "Vibration",
+"rt.end": "Wenn die Pause endet"
 });

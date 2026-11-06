@@ -645,14 +645,15 @@ I18N.add('id',{
 "fs.l": "Besar",
 "fs.xl": "Sangat besar",
 "fs.preview": "Bench press · 3 × 8 · 60 kg",
-"ra.title": "Peringatan timer istirahat",
-"ra.vib": "Getar",
-"ra.snd": "Suara",
-"ra.both": "Getar + suara",
-"ra.off": "Mati",
 "ra.test": "Uji peringatan",
 "ra.isOff": "Peringatan timer istirahat mati.",
 "wiz.startOver": "Mulai ulang",
 "wiz.startOverMsg": "Hapus jawabanmu dan mulai rencana baru ini dari awal?",
-"wiz.leaveMsg": "Keluar dan hapus jawaban yang sudah kamu isi untuk rencana baru ini?"
+"wiz.leaveMsg": "Keluar dan hapus jawaban yang sudah kamu isi untuk rencana baru ini?",
+"rt.title": "Timer istirahat",
+"rt.hint": "Hitung mundur istirahat setelah setiap set.",
+"rs.title": "Saat istirahat dimulai",
+"rs.ding": "Denting",
+"rs.buzz": "Getar",
+"rt.end": "Saat istirahat selesai"
 });

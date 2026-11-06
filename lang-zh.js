@@ -645,14 +645,15 @@ I18N.add('zh',{
 "fs.l": "大",
 "fs.xl": "特大",
 "fs.preview": "卧推 · 3 × 8 · 60 公斤",
-"ra.title": "休息计时提醒",
-"ra.vib": "振动",
-"ra.snd": "声音",
-"ra.both": "振动 + 声音",
-"ra.off": "关闭",
 "ra.test": "测试提醒",
 "ra.isOff": "休息计时提醒已关闭。",
 "wiz.startOver": "重新开始",
 "wiz.startOverMsg": "清除你的回答并从头开始创建这个新计划吗？",
-"wiz.leaveMsg": "离开并清除你为这个新计划填写的回答吗？"
+"wiz.leaveMsg": "离开并清除你为这个新计划填写的回答吗？",
+"rt.title": "休息计时器",
+"rt.hint": "每组结束后倒计时休息时间。",
+"rs.title": "休息开始时",
+"rs.ding": "提示音",
+"rs.buzz": "振动",
+"rt.end": "休息结束时"
 });

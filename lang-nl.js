@@ -666,14 +666,15 @@ I18N.add('nl',{
 "fs.l": "Groot",
 "fs.xl": "Extra groot",
 "fs.preview": "Bankdrukken · 3 × 8 · 60 kg",
-"ra.title": "Rusttimer-melding",
-"ra.vib": "Trillen",
-"ra.snd": "Geluid",
-"ra.both": "Trillen + geluid",
-"ra.off": "Uit",
 "ra.test": "Melding testen",
 "ra.isOff": "De rusttimer-melding staat uit.",
 "wiz.startOver": "Opnieuw beginnen",
 "wiz.startOverMsg": "Je antwoorden wissen en dit nieuwe schema opnieuw beginnen?",
-"wiz.leaveMsg": "Weggaan en de antwoorden voor dit nieuwe schema wissen?"
+"wiz.leaveMsg": "Weggaan en de antwoorden voor dit nieuwe schema wissen?",
+"rt.title": "Rusttimer",
+"rt.hint": "Telt je rust af na elke set.",
+"rs.title": "Als de rust begint",
+"rs.ding": "Belletje",
+"rs.buzz": "Trilling",
+"rt.end": "Als de rust eindigt"
 });

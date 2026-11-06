@@ -4,7 +4,7 @@ const DONATE_URL='https://paypal.me/simplelift';
 // Support email shown in Settings > Support (mailto link). Empty = hidden.
 const SUPPORT_EMAIL='simpleliftsupport@gmail.com';
 // Shown in Settings > About. Bump together with the cache name in sw.js.
-const APP_VERSION='28';
+const APP_VERSION='29';
 // Fallback rest (seconds) for exercises not in the library's per-exercise defaults.
 const DEFAULT_REST_SEC=120;
 // Simple Lift account server (simplelift-api Cloudflare Worker), e.g. 'https://simplelift-api.<you>.workers.dev'.

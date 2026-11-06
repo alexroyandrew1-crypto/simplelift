@@ -666,14 +666,15 @@ I18N.add('es',{
 "fs.l": "Grande",
 "fs.xl": "Muy grande",
 "fs.preview": "Press de banca · 3 × 8 · 60 kg",
-"ra.title": "Aviso del temporizador",
-"ra.vib": "Vibración",
-"ra.snd": "Sonido",
-"ra.both": "Vibración + sonido",
-"ra.off": "Desactivado",
 "ra.test": "Probar aviso",
 "ra.isOff": "El aviso del temporizador está desactivado.",
 "wiz.startOver": "Empezar de nuevo",
 "wiz.startOverMsg": "¿Borrar tus respuestas y empezar este plan nuevo desde el principio?",
-"wiz.leaveMsg": "¿Salir y borrar las respuestas que has introducido para este plan nuevo?"
+"wiz.leaveMsg": "¿Salir y borrar las respuestas que has introducido para este plan nuevo?",
+"rt.title": "Temporizador de descanso",
+"rt.hint": "Cuenta atrás del descanso tras cada serie.",
+"rs.title": "Al empezar el descanso",
+"rs.ding": "Campanilla",
+"rs.buzz": "Vibración",
+"rt.end": "Al terminar el descanso"
 });

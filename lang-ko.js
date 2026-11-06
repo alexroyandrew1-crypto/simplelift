@@ -645,14 +645,15 @@ I18N.add('ko',{
 "fs.l": "크게",
 "fs.xl": "아주 크게",
 "fs.preview": "벤치프레스 · 3 × 8 · 60kg",
-"ra.title": "휴식 타이머 알림",
-"ra.vib": "진동",
-"ra.snd": "소리",
-"ra.both": "진동 + 소리",
-"ra.off": "끄기",
 "ra.test": "알림 테스트",
 "ra.isOff": "휴식 타이머 알림이 꺼져 있습니다.",
 "wiz.startOver": "처음부터 다시",
 "wiz.startOverMsg": "답변을 지우고 이 새 플랜을 처음부터 다시 시작할까요?",
-"wiz.leaveMsg": "나가면서 이 새 플랜에 입력한 답변을 지울까요?"
+"wiz.leaveMsg": "나가면서 이 새 플랜에 입력한 답변을 지울까요?",
+"rt.title": "휴식 타이머",
+"rt.hint": "세트마다 휴식 시간을 카운트다운합니다.",
+"rs.title": "휴식이 시작될 때",
+"rs.ding": "차임",
+"rs.buzz": "진동",
+"rt.end": "휴식이 끝날 때"
 });

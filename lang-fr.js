@@ -666,14 +666,15 @@ I18N.add('fr',{
 "fs.l": "Grand",
 "fs.xl": "Très grand",
 "fs.preview": "Développé couché · 3 × 8 · 60 kg",
-"ra.title": "Alerte du minuteur",
-"ra.vib": "Vibration",
-"ra.snd": "Son",
-"ra.both": "Vibration + son",
-"ra.off": "Désactivée",
 "ra.test": "Tester l'alerte",
 "ra.isOff": "L'alerte du minuteur est désactivée.",
 "wiz.startOver": "Recommencer",
 "wiz.startOverMsg": "Effacer vos réponses et recommencer ce nouveau programme depuis le début ?",
-"wiz.leaveMsg": "Quitter et effacer les réponses saisies pour ce nouveau programme ?"
+"wiz.leaveMsg": "Quitter et effacer les réponses saisies pour ce nouveau programme ?",
+"rt.title": "Minuteur de repos",
+"rt.hint": "Décompte du repos après chaque série.",
+"rs.title": "Au début du repos",
+"rs.ding": "Carillon",
+"rs.buzz": "Vibration",
+"rt.end": "À la fin du repos"
 });
