@@ -53,10 +53,14 @@ const Sync={
     if(d.active&&d.active.planId===plan.id)i=d.active.dayIndex;else{i=plan.next||0;for(let k=0;k<plan.days.length&&plan.days[i].rest;k++)i=(i+1)%plan.days.length}
     if(plan.days[i].rest)return null;const c=watchCode(plan,i);d.watch={planId:plan.id,dayIndex:i,title:c.title,at:Date.now()};return c.code}catch(e){return null}},
   soon(ms=3000){if(!this.on())return;clearTimeout(this.timer);this.timer=setTimeout(()=>this.now(),ms)},
-  async now(){if(!this.on())return;if(this.busy){this.again=true;return}
+  async now(){if(!this.on())return;clearTimeout(this.timer);if(this.busy){this.again=true;return}
     const epoch=this.epoch,email=String(this.a.email||'').toLowerCase(),me=this.busy=++this._seq;
     const stale=()=>epoch!==this.epoch||this.busy!==me||String(this.a.email||'').toLowerCase()!==email||!this.on();
-    try{const d=JSON.parse(JSON.stringify(db()));const code=this.nextCode();Store.save(true);
+    try{const d=JSON.parse(JSON.stringify(db()));
+      // Live workouts belong to this device. Never publish `active` so a second phone cannot
+      // adopt (or revive after finish) another device's in-progress session. History still syncs.
+      delete d.active;
+      const code=this.nextCode();Store.save(true);
       const j=await this.req('PUT','/data',{data:d,updatedAt:d.updatedAt||0,watchCode:code,ackResults:this.a.acks||[]},this.a.token);
       if(stale())return;
       this.set({acks:[]});if(j.plan)this.set({plan:j.plan});
@@ -75,7 +79,12 @@ const Sync={
       this.set({lastSync:Date.now(),err:''})}
     catch(e){if(stale())return;if(e.code==='unverified')this.set({verified:false,err:''});else if(e.status===401){localStorage.removeItem(AUTH_KEY);toast(t('sy.out'))}else this.set({err:navigator.onLine===false?t('sy.offline'):e.message})}
     finally{if(this.busy===me)this.busy=0;if(epoch!==this.epoch)return;if(typeof route!=='undefined'&&route.v==='settings')render();if(this.again){this.again=false;this.soon(500)}}},
-  async pair(){return this.req('POST','/pair/start',{},this.a.token)},
+  async pair(){return this.req('POST','/pair/start',{},this.a.token)}, // leftover for older clients; v31 phone uses pairClaim
+  async pairClaim(code){return this.req('POST','/pair/claim',{code},this.a.token)},
+  watchList:null,
+  async listWatches(){try{const j=await this.req('GET','/watches',null,this.a.token);this.watchList=j.watches||[]}catch(e){this.watchList=[]}return this.watchList},
+  async removeWatch(id){return this.req('POST','/watches/remove',{id},this.a.token)},
+  async renameWatch(id,name){return this.req('POST','/watches/rename',{id,name},this.a.token)},
   status(){const a=this.a;if(a.err)return '⚠ '+a.err;if(!a.lastSync)return t('sy.never');const s=(Date.now()-a.lastSync)/1000;
     return s<60?t('sy.now'):s<3600?t('sy.min',{n:Math.round(s/60)}):t('sy.at',{d:new Date(a.lastSync).toLocaleString(I18N.locale())})}
 };

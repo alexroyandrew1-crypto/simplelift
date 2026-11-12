@@ -1,1 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="0" fill="#0f1115"/><g fill="#4ade80"><rect x="96" y="176" width="48" height="160" rx="14"/><rect x="368" y="176" width="48" height="160" rx="14"/><rect x="56" y="216" width="40" height="80" rx="12"/><rect x="416" y="216" width="40" height="80" rx="12"/><rect x="144" y="236" width="224" height="40" rx="10"/></g></svg>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <circle cx="256" cy="256" r="256" fill="#141519"/>
+  <g fill="#2df354" fill-rule="evenodd">
+    <!-- chevron (up) -->
+    <path d="M256 148 L338 248 L302 248 L256 192 L210 248 L174 248 Z"/>
+    <!-- barbell: outer plates, inner plates, bar -->
+    <rect x="86" y="292" width="36" height="88" rx="10"/>
+    <rect x="390" y="292" width="36" height="88" rx="10"/>
+    <rect x="118" y="276" width="52" height="120" rx="16"/>
+    <rect x="342" y="276" width="52" height="120" rx="16"/>
+    <rect x="162" y="314" width="188" height="44" rx="12"/>
+  </g>
+</svg>

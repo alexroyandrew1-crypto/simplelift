@@ -3,7 +3,28 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const db=()=>Store.db;
 const U=()=>db().settings.units;
-const step=lower=>U()==='kg'?(lower?5:2.5):(lower?10:5);
+const step=lower=>U()==='kg'?(lower?5:2.5):(lower?10:5); // progression only; +/- buttons stay 2.5 kg / 5 lb
+const KG_PER_LB=0.45359237;
+// Store a precise conversion (not 0.5-rounded) so 100 lb → kg → lb is 100, not 100.5.
+// 100 lb * 0.45359237 = 45.359237 kg; display uses fmtW (nearest 0.5 → 45.5). IEEE dust under 1e-9 is snapped.
+function convW(n,from,to){if(from===to||n===''||n==null)return n;n=+n;if(!isFinite(n)||n===0)return n;
+  const x=from==='lb'&&to==='kg'?n*KG_PER_LB:from==='kg'&&to==='lb'?n/KG_PER_LB:n;
+  return Math.abs(x-Math.round(x*2)/2)<1e-9?Math.round(x*2)/2:x}
+function fmtW(n){if(n===''||n==null)return n;n=+n;if(!isFinite(n))return n;return Math.round(n*2)/2}
+function convertAllUnits(from,to){if(from===to)return;
+  const walkEx=e=>{if(!e)return;if('weight' in e)e.weight=convW(e.weight,from,to);
+    if(e.sugg&&typeof e.sugg==='object'&&'w' in e.sugg)e.sugg.w=convW(e.sugg.w,from,to);
+    if(Array.isArray(e.sets))e.sets.forEach(s=>{if(!s)return;if('w' in s)s.w=convW(s.w,from,to);if('sw' in s)s.sw=convW(s.sw,from,to)})};
+  const walkPlan=p=>p&&(p.days||[]).forEach(d=>(d.exercises||[]).forEach(walkEx));
+  const src=db();
+  const clone=JSON.parse(JSON.stringify({plans:src.plans,active:src.active,history:src.history,draft:(typeof draft!=='undefined'&&draft)?draft:null}));
+  (clone.plans||[]).forEach(walkPlan);
+  if(clone.active)(clone.active.exercises||[]).forEach(walkEx);
+  (clone.history||[]).forEach(w=>{(w.exercises||[]).forEach(walkEx);if(w.units===from)w.units=to});
+  if(clone.draft)walkPlan(clone.draft);
+  // commit the converted clone only if the walk finished (throws leave the live db untouched)
+  src.plans=clone.plans;src.active=clone.active;src.history=clone.history;
+  if(typeof draft!=='undefined'&&draft&&clone.draft){Object.keys(draft).forEach(k=>delete draft[k]);Object.assign(draft,clone.draft)}}
 const fmtDate=t=>new Date(t).toLocaleDateString(I18N.locale(),{weekday:'short',month:'short',day:'numeric'});
 const tA=(k,v)=>esc(t(k,v)); // translated text for HTML attributes
 const num=n=>I18N.num(n);
@@ -41,8 +62,8 @@ async function guard(){if(!draftDirty())return true;
 const FLOW_KEY='simplelift_flow';
 function flowGet(){try{return JSON.parse(localStorage.getItem(FLOW_KEY))||{}}catch(e){return{}}}
 function flowSet(o){const f=Object.assign(flowGet(),o);for(const k in f)if(f[k]==null)delete f[k];try{if(Object.keys(f).length)localStorage.setItem(FLOW_KEY,JSON.stringify(f));else localStorage.removeItem(FLOW_KEY)}catch(e){}}
-function saveFlow(){if(route.v==='ai'&&ai)flowSet({ai:ai.step||aiHasAnswers()?{step:ai.step,a:ai.a}:null,at:'ai'});else if(route.v==='paste')flowSet({paste:route.p.text||'',at:'paste'});
-  else if(ROOT[route.v]==='plans'&&route.v!=='editor')flowSet({at:null})} // left the flow inside Plans; other tabs keep the spot for Plans
+function saveFlow(){if(route.v==='ai'&&ai)flowSet({ai:ai.step||aiHasAnswers()?{step:ai.step,a:ai.a}:null,at:'ai'});else if(route.v==='paste')flowSet({paste:route.p.text||'',at:'paste'})}
+  // Back to the chooser (or another Plans screen) keeps the draft, same as the AI wizard; save / cancel / start-over still clear it
 const freshAI=()=>({step:0,a:{injuries:'',focus:[]}});
 const aiHasAnswers=()=>!!ai&&Object.entries(ai.a).some(([k,v])=>Array.isArray(v)?v.length:v!==''&&v!=null);
 // Android system back / browser back: one history entry stands for "there is somewhere to go back to"
@@ -113,7 +134,7 @@ const isPaidLocked=w=>['paid','signin','verify'].includes(w);
 const VIEWS={
 chooser(){return `<div class="mut">${t('chooser.intro')}</div>`+createOpts()},
 home(){
-  const a=db().active,plan=Store.activePlan();let h=backupNag();
+  const a=db().active,plan=Store.activePlan();let h='';
   if(a)h+=`<button class="big acc" data-act="resume">${t('home.resume')}<small>${t('home.inProgress',{day:esc(a.dayName)})}</small></button>`;
   if(plan)return h+todayHTML(plan);
   if(db().plans.length)return h+`<div class="card empty"><h2>${t('home.pickPlan')}</h2><div class="mut">${t('home.pickPlanHint')}</div><button class="btn acc full" data-act="goPlans">${t('home.goPlans')}</button></div>`;
@@ -144,7 +165,7 @@ editor(){
   <h3 class="sec-sm">${t('ed.days')}</h3><div class="mut">${t('ed.daysHint')}</div>
   ${p.days.map((d,i)=>`<div class="card dayrow" style="--dc:${esc(dayColor(d))}"><div class="row"><button class="grow plain" data-act="openDay" data-i="${i}">
     <h3>${esc(d.name)} ${d.rest?`<span class="tag">${t('rest')}</span>`:''}</h3>
-    <span class="mut">${d.rest?t('ed.recovery'):d.exercises.length?esc(d.exercises.map(e=>e.name).join(', ')):t('ed.noEx')}</span></button>
+    <span class="mut">${d.rest?t('ed.recovery'):d.exercises.length?esc(d.exercises.map(e=>I18N.exName(e.name)).join(', ')):t('ed.noEx')}</span></button>
     <div class="col"><button class="icon-btn sm" data-act="dayUp" data-i="${i}" aria-label="${tA('ed.moveUp',{name:d.name})}">▲</button><button class="icon-btn sm" data-act="dayDown" data-i="${i}" aria-label="${tA('ed.moveDown',{name:d.name})}">▼</button></div></div></div>`).join('')}
   <div class="grid2"><button class="btn" data-act="addDay">${t('ed.addDay')}</button><button class="btn" data-act="addRest">${t('ed.addRest')}</button></div>
   ${req}${foot(`<button class="btn acc" data-act="savePlan">${t('ed.save')}</button>`)}`;
@@ -154,11 +175,11 @@ day({i,direct}){
   return `<label for="dName">${t('day.name')}</label><input id="dName" data-bind="day.name" value="${esc(d.name)}">
   <div class="between mt3"><span>${t('day.rest')}</span><button class="chip ${d.rest?'on':''}" data-act="toggleRest" aria-pressed="${!!d.rest}">${d.rest?t('yes'):t('no')}</button></div>
   ${d.rest?'':d.exercises.map((e,j)=>`<div class="ex">
-    <div class="ac"><label for="exn${j}">${t('day.exercise')}</label><input id="exn${j}" data-bind="ex.${j}.name" data-ac="${j}" value="${esc(e.name)}" placeholder="${tA('day.exPh')}" autocomplete="off"><div class="aclist" id="ac${j}" hidden></div></div>
+    <div class="ac"><label for="exn${j}">${t('day.exercise')}</label><input id="exn${j}" data-bind="ex.${j}.name" data-ac="${j}" value="${esc(I18N.exName(e.name))}" placeholder="${tA('day.exPh')}" autocomplete="off"><div class="aclist" id="ac${j}" hidden></div></div>
     <div class="grid3"><div><label for="exs${j}">${t('sets')}</label><input id="exs${j}" type="number" inputmode="numeric" min="1" data-bind="ex.${j}.sets" value="${esc(e.sets)}"></div>
     <div><label for="exa${j}">${t('day.repMin')}</label><input id="exa${j}" type="number" inputmode="numeric" data-bind="ex.${j}.repMin" value="${esc(e.repMin)}"></div>
     <div><label for="exb${j}">${t('day.repMax')}</label><input id="exb${j}" type="number" inputmode="numeric" data-bind="ex.${j}.repMax" value="${esc(e.repMax)}"></div></div>
-    <div class="grid2"><div><label for="exw${j}">${t('day.startW',{u:U()})}</label><input id="exw${j}" type="number" inputmode="decimal" data-bind="ex.${j}.weight" value="${esc(e.weight)}"></div>
+    <div class="grid2"><div><label for="exw${j}">${t('day.startW',{u:U()})}</label><input id="exw${j}" type="number" inputmode="decimal" data-bind="ex.${j}.weight" value="${esc(e.weight===''||e.weight==null?'':fmtW(e.weight))}"></div>
     <div><label for="exr${j}">${t('day.restSec')}</label><input id="exr${j}" type="number" inputmode="numeric" data-bind="ex.${j}.rest" value="${esc(e.rest)}" placeholder="${restFor(e.name)}"></div></div>
     <label for="exo${j}">${t('day.note')}</label><input id="exo${j}" data-bind="ex.${j}.note" value="${esc(e.note)}" placeholder="${tA('optional')}">
     <div class="row mt3"><button class="btn sm" data-act="exUp" data-j="${j}" aria-label="${tA('day.exUp')}">▲</button><button class="btn sm" data-act="exDown" data-j="${j}" aria-label="${tA('day.exDown')}">▼</button><span class="grow"></span><button class="btn sm bad" data-act="exDel" data-j="${j}">${t('remove')}</button></div></div>`).join('')}
@@ -211,9 +232,13 @@ account(){const m=route.p.mode||'in',up=m==='up',a=Sync.a,em=esc(route.p.email||
   <div class="mut">${t('ac.stored')}${up?' '+t('ac.storedUp'):''} ${t('privacy.geo')}</div>`},
 legal(p){const k=LEGAL.docs[p.doc]?p.doc:'terms';
   return `<div class="card legal" lang="en" dir="ltr">${I18N.lang()!=='en'?`<div class="note mut" lang="${I18N.lang()}" dir="${I18N.isRTL()?'rtl':'ltr'}">${t('lg.enNote')}</div>`:''}${LEGAL.docs[k]}</div>${legalLinks(k)}`},
-pair(){return `<div class="card center"><h3>⌚ ${t('pair.title')}</h3><div id="pairCode" class="pair-code">······</div><div class="mut" id="pairNote" aria-live="polite">${t('pair.getting')}</div></div>
-  <div class="card"><ol class="mut steps"><li>${t('pair.s1')}</li><li>${t('pair.s2')}</li><li>${t('pair.s3')}</li></ol>
-  <div class="mut mt2">${t('pair.once')}</div></div>`},
+pair(){return `<div class="card"><h3>⌚ ${t('pair.title')}</h3>
+  <div class="mut">${t('pair.enter')}</div>
+  <label for="pairIn">${t('pair.codeLbl')}</label>
+  <input id="pairIn" class="pair-code" inputmode="numeric" maxlength="6" pattern="[0-9]*" autocomplete="one-time-code" aria-describedby="pairNote">
+  <button class="btn acc full" data-act="pairClaim">${t('pair.claim')}</button>
+  <div class="mut mt2" id="pairNote" aria-live="polite"></div>
+  <div class="mut mt2">${t('pair.onceNew')}</div></div>`},
 watch(){const plan=Store.plan(route.p.planId)||Store.activePlan();if(!plan)return `<div class="card mut">${t('w.noPlan')}</div>`;
   const i=Math.min(route.p.i|0,plan.days.length-1),c=watchCode(plan,i);
   db().watch={planId:plan.id,dayIndex:i,title:c.title,at:Date.now()};Store.save();
@@ -245,11 +270,11 @@ session(){
   const done=a.exercises.reduce((s,e)=>s+e.sets.filter(x=>x.done).length,0),tot=a.exercises.reduce((s,e)=>s+e.sets.length,0);
   return `<div class="between"><h2 class="m0">${esc(a.dayName)}</h2><span class="mut">${t('s.progress',{done,tot})}</span></div>
   <div class="progress"><i style="width:${tot?done/tot*100:0}%"></i></div>
-  ${a.exercises.map((e,j)=>`<div class="card ex-card" data-ex="${j}"><div class="between"><h3>${esc(e.name)}</h3><span class="mut">${t('s.repsRest',{reps:repTxt(e),rest:restTxt(e.rest)})}</span></div>
-    ${e.note?`<div class="mut">${esc(e.note)}</div>`:''}${e.last?`<div class="mut">${t('s.last',{v:esc(e.last)})}</div>`:''}${e.sugg?`<div class="sugg">↑ ${esc(e.sugg)}</div>`:''}
+  ${a.exercises.map((e,j)=>`<div class="card ex-card" data-ex="${j}"><div class="between"><h3>${esc(I18N.exName(e.name))}</h3><span class="mut">${t('s.repsRest',{reps:repTxt(e),rest:restTxt(e.rest)})}</span></div>
+    ${e.note?`<div class="mut">${esc(e.note)}</div>`:''}${e.last?`<div class="mut">${t('s.last',{v:esc(e.last)})}</div>`:''}${sessionSugg(e)}
     <div class="set set-head" aria-hidden="true"><span>${t('s.set')}</span><span>${U()}</span><span>${t('reps')}</span><span>${t('done')}</span></div>
-    ${e.sets.map((s,k)=>{const L=tA('s.setN',{name:e.name,n:k+1});return `<div class="set"><span class="mut">${k+1}</span>
-      <div class="step"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="w" data-d="-1" aria-label="${tA('s.lessW')}, ${L}">−</button><input type="number" inputmode="decimal" data-bind="set.${j}.${k}.w" class="${s.ws==='s'?'sugw':''}" value="${esc(s.w)}" aria-label="${L}, ${tA('s.weightIn',{u:U()})}"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="w" data-d="1" aria-label="${tA('s.moreW')}, ${L}">+</button></div>
+    ${e.sets.map((s,k)=>{const L=tA('s.setN',{name:I18N.exName(e.name),n:k+1});return `<div class="set"><span class="mut">${k+1}</span>
+      <div class="step"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="w" data-d="-1" aria-label="${tA('s.lessW')}, ${L}">−</button><input type="number" inputmode="decimal" data-bind="set.${j}.${k}.w" class="${s.ws==='s'?'sugw':''}" value="${esc(s.w===''||s.w==null?'':fmtW(s.w))}" aria-label="${L}, ${tA('s.weightIn',{u:U()})}"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="w" data-d="1" aria-label="${tA('s.moreW')}, ${L}">+</button></div>
       <div class="step"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="r" data-d="-1" aria-label="${tA('s.fewerR')}, ${L}">−</button><input type="number" inputmode="numeric" data-bind="set.${j}.${k}.r" value="${esc(s.r)}" aria-label="${L}, ${tA('reps')}"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="r" data-d="1" aria-label="${tA('s.moreR')}, ${L}">+</button></div>
       <button class="done ${s.done?'on':''}" data-act="setDone" data-j="${j}" data-k="${k}" aria-label="${L}, ${tA('done')}" aria-pressed="${!!s.done}">✓</button></div>`}).join('')}
     <div class="row"><button class="btn sm" data-act="setAdd" data-j="${j}">+ ${t('s.set')}</button>${e.sets.length>1?`<button class="btn sm" data-act="setDel" data-j="${j}">− ${t('s.set')}</button>`:''}</div></div>`).join('')}
@@ -265,7 +290,7 @@ history({off=0}){
 hist({id}){
   const w=db().history.find(x=>x.id===id);if(!w)return`<div class="card">${t('h.notFound')}</div>`;
   return `<div class="mut">${fmtDate(w.date)} · ${esc(w.planName||'')}</div><h2>${esc(w.dayName)}</h2>
-  ${w.exercises.map(e=>`<div class="card"><h3>${esc(e.name)}</h3>${e.sets.map((s,k)=>`<div class="between"><span class="mut">${t('s.set')} ${k+1}</span><span>${esc(s.w||0)} ${esc(w.units)} × ${esc(s.r)}</span></div>`).join('')||`<div class="mut">${t('h.noSets')}</div>`}</div>`).join('')}
+  ${w.exercises.map(e=>`<div class="card"><h3>${esc(I18N.exName(e.name))}</h3>${e.sets.map((s,k)=>`<div class="between"><span class="mut">${t('s.set')} ${k+1}</span><span>${esc(fmtW(s.w)||0)} ${esc(w.units)} × ${esc(s.r)}</span></div>`).join('')||`<div class="mut">${t('h.noSets')}</div>`}</div>`).join('')}
   <button class="btn bad full" data-act="delHist" data-id="${w.id}">${t('h.del')}</button>`;
 },
 settings(){
@@ -281,20 +306,22 @@ settings(){
    <button class="bgopt ${bs.kind==='custom'?'on':''}" data-act="bgPhoto" ${img?`style="background:center/cover url('${img}')"`:''}><span>📷 ${t('set.photo')}</span></button></div>
    <input type="file" id="bgFile" accept="image/*" hidden>
    <label for="dim">${t('set.dim')} <b id="dimv">${Math.round(bs.dim*100)}%</b></label><input type="range" id="dim" class="range" min="0" max="85" value="${Math.round(bs.dim*100)}"></div>`;
-  const data=`<div class="card"><h3>${t('set.data')}</h3><div class="mut">${on?t('set.dataSynced',{email:esc(Sync.a.email||'')}):t('set.dataLocal')}</div>
-    <button class="btn full" data-act="export">${t('set.export')}</button><button class="btn full" data-act="import">${t('set.restore')}</button><input type="file" id="file" accept="application/json,.json" hidden>
-    <details class="more"><summary>${t('set.old')}</summary><div class="mut mt2">${t('set.oldHint')}</div>
-    <button class="btn full" data-act="importOld">${t('set.old')}</button></details>
+  const data=`<div class="card"><div class="mut">${on?t('set.dataSynced',{email:esc(Sync.a.email||'')}):t('set.dataLocal')}</div>
+    <input type="file" id="file" accept="application/json,.json" hidden>
     <button class="btn bad full" data-act="reset">${t('set.reset')}</button></div>`;
+  if(on&&Sync.watchList==null){Sync.listWatches().then(()=>{if(route.v==='settings')render()})}
+  const wl=Sync.watchList||[];
+  const wrows=wl.map(w=>`<div class="between mt2"><div><b>${esc(w.name||w.model||t('watch.unnamed'))}</b>
+    <div class="mut">${esc(w.model||'')}${w.lastSeen?` · ${t('watch.last',{d:new Date(w.lastSeen).toLocaleString(I18N.locale())})}`:''}</div></div>
+    <button class="btn sm bad" data-act="watchRm" data-id="${esc(w.id)}" data-name="${esc(w.name||w.model||'')}">${t('watch.remove')}</button></div>`).join('');
   const watch=`<div class="card"><h3>${t('set.garmin')}</h3><div class="mut">${on?t('set.garminOn'):t('set.garminOff')}</div>
-    ${on?`<button class="btn acc full" data-act="pair">⌚ ${t('title.pair')}</button>`:''}
+    ${on?`<h3 class="mt3">${t('watch.mine')}</h3>${wrows||`<div class="mut">${t('watch.none')}</div>`}
+    <button class="btn acc full" data-act="pair">⌚ ${t('pair.enterBtn')}</button>`:''}
     ${plan?`<button class="btn full" data-act="watch" data-i="${Math.max(0,nextDayIndex(plan))}">${t('set.manual')}</button>`:`<div class="mut mt2">${t('set.planFirst')}</div>`}</div>`;
-  const about=`<div class="card"><h3>Simple Lift v${esc(APP_VERSION)}</h3><div class="mut">${t('set.about')}</div>
-    <div class="mut mt3">${t('set.free')}</div>
+  const about=`<div class="card"><h3>Simple Lift</h3><div class="mut">${t('set.aboutText')}</div>
     <div class="row wrap mt2">${/^https:\/\//.test(DONATE_URL)?`<a class="btn sm" href="${esc(DONATE_URL)}" target="_blank" rel="noopener noreferrer">${t('set.donate')}</a>`:''}
     ${/^[^@\s]+@[^@\s]+$/.test(SUPPORT_EMAIL)?`<a class="btn sm" href="mailto:${esc(SUPPORT_EMAIL)}?subject=Simple%20Lift%20support">${t('set.email')}</a>`:''}
-    </div>
-    ${/^[^@\s]+@[^@\s]+$/.test(SUPPORT_EMAIL)?`<div class="mut mt2">${t('set.bugs',{email:esc(SUPPORT_EMAIL)})}</div>`:''}</div>
+    </div></div>
   <div class="card" id="legalCard"><h3>⚖️ ${t('lg.legal')}</h3>${legalLinks()}<div class="mut mt2" id="legalAcc"><b>${t('lg.yours')}:</b> ${legalAccText()}</div></div>`;
   return S('acct',t('sec.acct'),acct)+S('work',t('sec.work'),work)+S('look',t('sec.look'),look)+S('data',t('sec.data'),data)+S('watch',t('sec.watch'),watch)+S('about',t('sec.about'),about);
 }};
@@ -353,7 +380,7 @@ function todayHTML(plan){
   else if(!d.exercises.length)body+=`<div class="mut pad">${t('t.noEx')}</div></div>`;
   else body+=`<div class="mut">${t('n.exercise',{n:d.exercises.length})} · ${t('n.set',{n:d.exercises.reduce((s,e)=>s+(+e.sets||0),0)})}</div>
     ${live?`<div class="mut">${t('home.inProgress',{day:esc(cur.dayName)})} · ${t('s.progress',{done:liveDone,tot:liveTot})}</div>`:''}
-    <div class="exlist">${d.exercises.map(e=>{const g=suggest(e);return `<div class="between lrow"><span>${esc(e.name)}<br><small class="mut">${esc(sugText(g))}</small></span><span class="right">${e.sets}×${repTxt(e)}<br><small class="dc-txt">${g.w?esc(num(g.w))+' '+U():''}</small></span></div>`}).join('')}</div>
+    <div class="exlist">${d.exercises.map(e=>{const g=suggest(e);return `<div class="between lrow"><span>${esc(I18N.exName(e.name))}<br><small class="mut">${esc(sugText(g))}</small></span><span class="right">${e.sets}×${repTxt(e)}<br><small class="dc-txt">${g.w?esc(num(fmtW(g.w)))+' '+U():''}</small></span></div>`}).join('')}</div>
     <button class="btn full dc-btn" data-act="start" data-i="${sel}">${live?t('home.resume'):t('t.start')}</button></div>`;
   return tabs+body;
 }
@@ -386,8 +413,7 @@ function accountCard(){if(typeof API_URL!=='string'||!API_URL)return '';const a=
   if(a.verified===false)return `<div class="card"><h3>${t('title.account')}</h3><div>${esc(a.email||'')}</div><div class="mut">⚠ ${t('acc.unverified')}</div>
   <div class="row wrap mt2"><button class="btn sm acc" data-act="account" data-mode="verify">${t('acc.enterCode')}</button><button class="btn sm" data-act="acOut">${t('ac.signOut')}</button><button class="btn sm bad" data-act="delAcct">${t('acc.del')}</button></div></div>`;
   return `<div class="card"><h3>${t('title.account')}</h3><div>${esc(a.email||'')}</div>${a.plan?`<div class="mut">${t('acc.plan',{v:a.plan==='paid'?t('acc.paid'):t('acc.free')})}</div>`:''}<div class="mut" id="syncStatus">${esc(Sync.status())}</div>
-  <div class="row wrap mt2"><button class="btn sm" data-act="acSync">⟳ ${t('acc.syncNow')}</button><button class="btn sm" data-act="acOut">${t('ac.signOut')}</button></div>
-  <div class="mut mt2">${t('acc.syncHint')}</div>
+  <div class="row wrap mt2"><button class="btn sm" data-act="acOut">${t('ac.signOut')}</button></div>
   <button class="btn sm bad mt3" data-act="delAcct">${t('acc.del')}…</button></div>`}
 // Gentle backup reminder: only without an account, only once workouts exist, at most every 14 days, dismissible.
 const NAG_MS=14*864e5;
@@ -408,6 +434,15 @@ function suggest(e){const l=Store.lastFor(e.name,e.oldId);const start=e.weight==
   return{w,k:'repeat',last:l,wAt:perW(0),rAt:n=>+at(n).r||0}}
 // Suggestion reason text, in the current language (kept out of suggest() so a language change applies instantly).
 const sugText=g=>t('sug.'+g.k,{n:g.inc,u:U()});
+// Re-translate at render so a language change (and unit switch) is instant; startWorkout stores meta, not baked English.
+function sessionSugg(e){if(!e)return '';
+  let g=e.sugg&&typeof e.sugg==='object'?e.sugg:null;
+  if(!g){const w0=e.sets&&e.sets[0]&&(e.sets[0].sw??e.sets[0].w);
+    g=suggest({name:e.name,oldId:e.oldId,weight:w0,sets:(e.sets||[]).length,repMin:e.repMin,repMax:e.repMax,type:e.type,lower:e.lower});
+    if(!(g&&(g.w||g.k||g.guess)))return typeof e.sugg==='string'&&e.sugg?`<div class="sugg">↑ ${esc(e.sugg)}</div>`:''}
+  if(g.k==='top')g={...g,inc:step(exType(e)==='lower')};
+  const txt=g.guess&&g.w?t('sug.guess',{w:num(fmtW(g.w)),u:U()}):t('sug.rec',{w:g.w?num(fmtW(g.w))+' '+U():t('sug.bwLc'),why:sugText(g)});
+  return `<div class="sugg">↑ ${esc(txt)}</div>`}
 const createOpts=()=>`<button class="big" data-act="ai">🧭 ${t('co.guided')}<small>${t('co.guidedHint')}</small></button>
   <button class="big" data-act="newPlan">✎ ${t('co.own')}<small>${t('co.ownHint')}</small></button>
   <button class="big" data-act="paste">📷 ${t('co.copy')}<small>${t('co.copyHint')}</small></button>`;
@@ -465,7 +500,7 @@ async function startWorkout(i){
     // v29: reps always start at the plan's target; what was done last time stays visible in the 'Last' line. Weights still recall per set.
     const w=g.w||'',r=+e.repMin||8;
     const wN=n=>g.wAt?(g.wAt(n)||''):w,rN=()=>r;
-    const lastTxt=last?last.sets.map(s=>`${s.w||0}×${s.r}`).join(', '):'',sugg=g.guess&&g.w?t('sug.guess',{w:num(g.w),u:U()}):t('sug.rec',{w:g.w?num(g.w)+' '+U():t('sug.bwLc'),why:sugText(g)});
+    const lastTxt=last?last.sets.map(s=>`${fmtW(s.w)||0}×${s.r}`).join(', '):'',sugg={guess:!!(g.guess&&g.w),w:g.w,k:g.k,inc:g.inc};
     return{oldId:e.oldId,type:e.type,name:e.name,lower,repMin:+e.repMin,repMax:+e.repMax,rest:restOf(e),note:e.note,last:lastTxt,sugg,sets:[...Array(Math.max(1,+e.sets||1))].map((_,n)=>({w:wN(n),sw:wN(n),r:rN(n),done:false,ws:'s'}))}});
   if(!ex.length){toast(t('t.addFirst'));return}
   stopTimer(); // an old interval must not keep alarming over a new workout
@@ -474,7 +509,8 @@ async function startWorkout(i){
   db().active={id:Store.uid(),planId:plan.id,planName:plan.name,dayIndex:i,dayName:d.name,started:Date.now(),focus:0,exercises:ex};Store.save();go('session');
 }
 // Finish, discard and sign-out all go through here so a later sync cannot revive the session.
-function endSession(){markSessionCleared();stopTimer();if(db().active){db().active=null;Store.save()}}
+function endSession(){markSessionCleared();stopTimer();if(db().active){db().active=null;Store.save()}
+  if(typeof Sync!=='undefined'&&Sync.on())Sync.now()} // push active:cleared + history immediately so a second device cannot revive this session
 // Mark every unticked set done, filling blanks with the previous set's weight or the recommended weight, and the rep target.
 function fillRemaining(a){const pl=Store.plan(a.planId),day=pl&&pl.days[a.dayIndex];
   a.exercises.forEach(le=>{const pe=day&&day.exercises.find(e=>e.name===le.name);
@@ -496,7 +532,37 @@ function finishWorkout(){
   if(exs.length)Store.addHistory({id:a.id,date:Date.now(),planId:a.planId,planName:a.planName,dayName:a.dayName,units:U(),minutes:Math.round((Date.now()-a.started)/6e4),exercises:exs});
   const p=Store.plan(a.planId);if(p){p.next=(a.dayIndex+1)%p.days.length;Store.upsertPlan(p)}
   endSession();stack=[];toast(exs.length?t('fin.saved'):t('fin.closed'));route={v:'history',p:{}};afterNav()}
-function localReset(){endSession();Store.reset();localStorage.removeItem(BG_KEY);applyBg();draft=null}
+async function wipeLocalAppData(){
+  endSession();draft=null;
+  try{Store.reset()}catch(e){}
+  try{
+    const keep=new Set();
+    const drop=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k&&(k.startsWith('simplelift')||k==='wlog_v1'||k==='wplan_v1'))drop.push(k);
+    }
+    for(const k of drop)localStorage.removeItem(k);
+  }catch(e){}
+  try{
+    if(window.indexedDB&&indexedDB.databases){
+      const dbs=await indexedDB.databases();
+      for(const d of dbs||[]){
+        if(d&&d.name&&/simplelift|tesseract|^keyval-store$/i.test(d.name))indexedDB.deleteDatabase(d.name);
+      }
+    }
+  }catch(e){}
+  try{
+    if(window.caches){
+      for(const k of await caches.keys()){
+        if(/ocr|tesseract/i.test(k))await caches.delete(k);
+      }
+    }
+  }catch(e){}
+  try{applyBg()}catch(e){}
+  try{if(typeof applyFs==='function')applyFs()}catch(e){}
+}
+function localReset(){wipeLocalAppData()}
 /* ---------- rest timer ---------- */
 // v24: finishing the last set of an exercise glides to the next exercise that still has sets to do (or to Finish).
 // The target lands below the sticky header and above every bar floating at the bottom (rest timer, Finish bar, tabs).
@@ -536,8 +602,9 @@ function renderTimer(){let el=$('#timer');
   if(timer&&timer.end<=Date.now()){restDone();return} // fires even off the workout screen or right after the screen turns back on
   if(!timer){if(el)el.remove();return}
   const left=Math.max(0,Math.ceil((timer.end-Date.now())/1000));
-  if(!el){el=document.createElement('div');el.id='timer';el.className='timer';document.body.appendChild(el);
-    el.innerHTML=`<span>${t('rest')} <b id="tl"></b></span><span class="row"><button class="btn sm" data-act="t15">+${t('unit.sec',{n:15})}</button><button class="btn sm" data-act="tskip">${t('timer.skip')}</button></span>`;}
+  if(!el){el=document.createElement('div');el.id='timer';el.className='timer';document.body.appendChild(el)}
+  if(el.dataset.lang!==I18N.lang()){el.dataset.lang=I18N.lang();
+    el.innerHTML=`<span>${t('rest')} <b id="tl"></b></span><span class="row"><button class="btn sm" data-act="t15">+${t('unit.sec',{n:15})}</button><button class="btn sm" data-act="tskip">${t('timer.skip')}</button></span>`}
   el.querySelector('#tl').textContent=restTxt(left);
   if(left<=0)restDone()}
 
@@ -627,18 +694,21 @@ const ACT={
    if(p.length<8){n.textContent=t('ac.pwShort');return}
    b.disabled=true;b.textContent=t('saving');try{await Sync.reset(b.dataset.email,c,p);toast(t('ac.pwChanged'));stack=[];tab('settings')}catch(x){n.textContent=x.message;b.disabled=false;b.textContent=t('ac.saveNew')}},
  acOut:async()=>{if(!await ask(t('ac.outQ'),t('ac.outMsg'),t('ac.signOut')))return;await Sync.signOut();stack=[];tab('home')},
- acSync:async()=>{await Sync.now();toast(Sync.a.err||t('acc.synced'))},
  delAcct:async()=>{
    const v=await sheet({title:t('del.title'),msg:t('del.msg'),
      html:`<label for="dPw">${t('del.pw')}</label><input id="dPw" name="pw" type="password" autocomplete="current-password">
-       <label for="dCf">${t('del.type')}</label><input id="dCf" name="cf" autocomplete="off" autocapitalize="characters" spellcheck="false">
-       <label class="chk"><input type="checkbox" name="wipe"> ${t('del.wipe')}</label>`,
+       <label for="dCf">${t('del.type')}</label><input id="dCf" name="cf" autocomplete="off" autocapitalize="characters" spellcheck="false">`,
      actions:[{v:'del',label:t('del.btn'),cls:'bad',run:async o=>{const pw=o.querySelector('#dPw').value,cf=o.querySelector('#dCf').value;
        if(cf.trim().toUpperCase()!=='DELETE')return t('del.typeErr');if(!pw)return t('del.pwErr');
        try{await Sync.deleteAccount(pw,'DELETE');return true}catch(x){return errMsg(x)}}},{v:null,label:t('cancel')}]});
-   if(v!=='del')return;const wipe=sheetVals.wipe;if(wipe)localReset();stack=[];route={v:'settings',p:{}};render();
-   toast(wipe?t('del.doneWipe'):t('del.done'))},
- pair:async()=>{go('pair');try{const j=await Sync.pair();$('#pairCode').textContent=j.code;$('#pairNote').textContent=t('pair.expires')}catch(x){$('#pairNote').textContent=t('pair.fail',{msg:x.message})}},
+   if(v!=='del')return;await wipeLocalAppData();stack=[];route={v:'settings',p:{}};render();
+   toast(t('del.doneWipe'))},
+ pair:()=>go('pair'),
+ pairClaim:async b=>{const c=(($('#pairIn')||{}).value||'').replace(/\D/g,'');const n=$('#pairNote');
+   if(c.length!==6){if(n)n.textContent=t('pair.need6');return}
+   b.disabled=true;try{await Sync.pairClaim(c);toast(t('pair.ok'));Sync.watchList=null;pop()}catch(x){if(n)n.textContent=x.message;b.disabled=false}},
+ watchRm:async b=>{if(!await ask(t('watch.rmQ'),t('watch.rmMsg',{name:b.dataset.name||t('watch.unnamed')}),t('watch.remove'),'bad'))return;
+   try{await Sync.removeWatch(b.dataset.id);toast(t('watch.removed'));Sync.watchList=null;render()}catch(x){toast(x.message,'err')}},
  watch:b=>go('watch',{i:+b.dataset.i,planId:Store.activePlan()?.id}),
  watchCopy:async()=>{const ta=$('#watchCode');ta.focus();ta.select();let ok=false;try{await navigator.clipboard.writeText(ta.value);ok=true}catch(e){try{ok=document.execCommand('copy')}catch(_){}}toast(ok?t('w.copied'):t('w.selected'))},
  watchImport:async()=>{const r=parseResult($('#watchRes').value);if(!r){toast(t('w.badCode'),'err');return}
@@ -680,7 +750,7 @@ const ACT={
  aiCancel:()=>{if(ai.ctl)ai.ctl.abort();ai.ctl=null;ai.busy=false;ai.msg='';render();toast(t('cancelled'))},
  stp:(b,e,mult=1)=>{if(e&&e.type==='click'&&holdUntil>Date.now())return; // pointer already handled it
    noteFocus(+b.dataset.j);const s=db().active.exercises[+b.dataset.j].sets[+b.dataset.k],f=b.dataset.f,d=+b.dataset.d;
-   const inc=(f==='w'?(U()==='kg'?2.5:5):1)*mult;s[f]=Math.max(0,Math.round(((+s[f]||0)+d*inc)*10)/10);Store.save();
+   const inc=(f==='w'?(U()==='kg'?2.5:5):1)*mult;const cur=f==='w'?fmtW(+s[f]||0):(+s[f]||0);s[f]=Math.max(0,Math.round((cur+d*inc)*10)/10);Store.save();
    b.parentNode.querySelector('input').value=s[f];if(f==='w'){s.ws='m';b.parentNode.querySelector('input').classList.remove('sugw');cascadeW(+b.dataset.j,+b.dataset.k);Store.save()}},
  setDone:b=>{noteFocus(+b.dataset.j);const e=db().active.exercises[+b.dataset.j],s=e.sets[+b.dataset.k];s.done=!s.done;if(s.done&&s.ws==='s')s.ws='m';Store.save();render();if(s.done)startTimer(e.rest);if(s.done&&e.sets.every(x=>x.done))setTimeout(()=>autoNext(+b.dataset.j),AUTO_NEXT_MS)},
  setAdd:b=>{const e=db().active.exercises[+b.dataset.j],l=e.sets[e.sets.length-1];e.sets.push({w:l.w,r:l.r,done:false,ws:l.ws==='s'?'s':'c'});Store.save();render()},
@@ -690,7 +760,7 @@ const ACT={
  delHist:async b=>{if(await ask(t('h.delQ'),t('h.delMsg'),t('h.delBtn'),'bad')){Store.deleteHistory(b.dataset.id);toast(t('h.deleted'));pop()}},
  wk:b=>{route.p.off=Math.max(0,+b.dataset.o);render()},
  copyW:()=>{db().settings.copyWeight=db().settings.copyWeight===false;Store.save();render()},
- units:b=>{db().settings.units=b.dataset.v;db().settings.unitsChosen=true;Store.save();render()},
+ units:b=>{const to=b.dataset.v,from=U();if(to&&to!==from){try{convertAllUnits(from,to)}catch(e){toast(errMsg(e),'err');return}db().settings.units=to;db().settings.unitsChosen=true;Store.save()}else if(to){db().settings.units=to;db().settings.unitsChosen=true;Store.save()}render()},
  nagLater:()=>{db().settings.nagAt=Date.now();Store.save();render();toast(t('nag.ok'))},
  export:()=>{const blob=new Blob([Store.exportJSON()],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`simplelift-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();
    db().settings.backupAt=Date.now();Store.save();if(route.v==='home')render();toast(t('set.exported'))},
@@ -721,7 +791,8 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('.ac'))document.querySelectorAll('.aclist').forEach(x=>x.hidden=true);
   const b=e.target.closest('[data-act]');if(b&&!b.disabled&&ACT[b.dataset.act])ACT[b.dataset.act](b,e)});
 document.addEventListener('change',e=>{if(e.target.id==='customColor'){draft.days[route.p.i].color=e.target.value;render()}
-  if(e.target.id==='langSel')ACT.setLang(e.target)});
+  if(e.target.id==='langSel')ACT.setLang(e.target);
+  const kb=e.target.dataset&&e.target.dataset.bind;if(kb){const p=kb.split('.');if(p[0]==='ex'&&p[2]==='name'&&draft&&draft.days[route.p.i]){const ex=draft.days[route.p.i].exercises[+p[1]];if(ex)ex.name=I18N.exKey(e.target.value)}}});
 document.addEventListener('input',e=>{
   if(e.target.id==='dim'){const v=+e.target.value;$('#dimv').textContent=v+'%';setBg({dim:v/100});return}
   if(e.target.id==='aiText'){$('#injHint').innerHTML=injHint(e.target.value);if(ai&&AI_STEPS[ai.step])ai.a[AI_STEPS[ai.step].key]=e.target.value;saveFlow();return}
@@ -746,9 +817,9 @@ function cascadeW(j,k){if(db().settings.copyWeight===false)return;const ex=db().
 function showAC(j,q){const box=$('#ac'+j);q=q.trim().toLowerCase();
   if(!q){box.hidden=true;return}
   const words=q.split(/\s+/);
-  const m=LIBRARY.filter(x=>{const s=(x.name+' '+x.muscle+' '+x.equip).toLowerCase();return words.every(w=>s.includes(w))}).slice(0,8);
-  if(!m.length||(m.length===1&&m[0].name.toLowerCase()===q)){box.hidden=true;return}
-  box.innerHTML=m.map(x=>`<div data-pick="${j}" data-name="${esc(x.name)}">${esc(x.name)} <small>· ${esc(x.muscle)} · ${esc(x.equip)}</small></div>`).join('');box.hidden=false}
+  const m=LIBRARY.filter(x=>{const loc=I18N.exName(x.name);const s=(x.name+' '+loc+' '+x.muscle+' '+x.equip).toLowerCase();return words.every(w=>s.includes(w))}).slice(0,8);
+  if(!m.length||(m.length===1&&(m[0].name.toLowerCase()===q||I18N.exName(m[0].name).toLowerCase()===q))){box.hidden=true;return}
+  box.innerHTML=m.map(x=>`<div data-pick="${j}" data-name="${esc(x.name)}">${esc(I18N.exName(x.name))} <small>· ${esc(x.muscle)} · ${esc(x.equip)}</small></div>`).join('');box.hidden=false}
 
 function showOldResult(r,manual){
   if(r.workouts||r.plan)info(t('old.title'),t(r.plan?'old.msgPlan':'old.msg',{w:t('n.workout',{n:r.workouts}),s:t('n.set',{n:r.sets})}));
@@ -784,12 +855,10 @@ function alertCard(){const on=restOn(),st=db().settings;if('startDing' in st){de
   const row=(id,title,a,b)=>`<div class="between rtrow" id="${id}"><div>${title}</div><div class="row" style="gap:6px">${a}${b}</div></div>`;
   return `<div class="card" id="restCard"><div class="between"><div><h3>⏱️ ${t('rt.title')}</h3><div class="mut">${t('rt.hint')}</div></div><button class="chip ${on?'on':''}" data-act="restT" aria-pressed="${on}">${on?t('on'):t('off')}</button></div>`+
    (on?row('rtStart',t('rs.title'),sw('startT','startBuzz',!!st.startBuzz,t('rs.buzz')),'')+
-    row('rtEnd',t('rt.end'),sw('endT','snd',e.snd,t('rs.ding')),sw('endT','vib',e.vib,t('rs.buzz')))+
-    `<div style="text-align:right;margin-top:8px"><button class="btn sm" data-act="testAlert">${t('ra.test')}</button></div>`:'')+`</div>`}
+    row('rtEnd',t('rt.end'),sw('endT','snd',e.snd,t('rs.ding')),sw('endT','vib',e.vib,t('rs.buzz'))):'')+`</div>`}
 ACT.restT=()=>{db().settings.restTimer=!restOn();Store.save();if(!restOn())stopTimer();render()};
 ACT.startT=b=>{const k=b.dataset.k;if(k!=='startBuzz')return;const st=db().settings;st[k]=!st[k];Store.save();render();if(st[k])tap()};
 ACT.endT=b=>{const k=b.dataset.k;if(k!=='vib'&&k!=='snd')return;const e=endGet();e[k]=!e[k];endSet(e.vib,e.snd);render();if(e[k])(k==='vib'?buzz:beep)()};
-ACT.testAlert=()=>{const k=alertGet();if(k==='off'){toast(t('ra.isOff'));return}restAlarm(k)};
 /* ---------- text size (v26) ---------- */
 const FS_KEY='simplelift_fs',FS={s:.86,m:.93,l:1.06,xl:1.16};
 function fsGet(){const v=localStorage.getItem(FS_KEY);return FS[v]?v:'m'}
