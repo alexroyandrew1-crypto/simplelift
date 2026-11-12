@@ -1,0 +1,9 @@
+<properties>
+  <property id="workoutCode" type="string"></property>
+  <property id="lastResult" type="string"></property>
+  <property id="pairingCode" type="string"></property>
+  <property id="apiUrl" type="string">https://simplelift-api.alexroyandrew1.workers.dev</property>
+  <property id="restAlert" type="number">0</property>
+  <property id="repDetect" type="boolean">true</property>
+  <property id="autoDetectSets" type="boolean">false</property>
+</properties>

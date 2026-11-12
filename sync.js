@@ -16,7 +16,9 @@ const Sync={
   invalidate(){this.epoch++;this.again=false;clearTimeout(this.timer)},
   async waitIdle(){const start=Date.now();while(this.busy&&Date.now()-start<15000)await new Promise(r=>setTimeout(r,30))},
   async req(method,path,body,tok){
-    const r=await fetch(API_URL.replace(/\/+$/,'')+path,{method,headers:{'Content-Type':'application/json',...(tok?{Authorization:'Bearer '+tok}:{})},body:body?JSON.stringify(body):undefined});
+    let r;
+    try{r=await fetch(API_URL.replace(/\/+$/,'')+path,{method,headers:{'Content-Type':'application/json',...(tok?{Authorization:'Bearer '+tok}:{})},body:body?JSON.stringify(body):undefined})}
+    catch(e){const err=new Error(t('sy.net'));err.code='network';err.offline=navigator.onLine===false;throw err}
     const j=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(Sync.msg(j,r.status));e.status=r.status;e.code=j.error;throw e}return j},
   msg(j,st){const k={bad_code:1,code_locked:1,unverified:1,mail_not_configured:1,mail_failed:1,bad_password:1,confirm_required:1};
     return k[j.error]?t('sy.'+j.error):j.message||j.error||(st===429?t('sy.429'):t('sy.server',{st}))},
@@ -53,7 +55,12 @@ const Sync={
     if(d.active&&d.active.planId===plan.id)i=d.active.dayIndex;else{i=plan.next||0;for(let k=0;k<plan.days.length&&plan.days[i].rest;k++)i=(i+1)%plan.days.length}
     if(plan.days[i].rest)return null;const c=watchCode(plan,i);d.watch={planId:plan.id,dayIndex:i,title:c.title,at:Date.now()};return c.code}catch(e){return null}},
   soon(ms=3000){if(!this.on())return;clearTimeout(this.timer);this.timer=setTimeout(()=>this.now(),ms)},
-  async now(){if(!this.on())return;clearTimeout(this.timer);if(this.busy){this.again=true;return}
+  // Wi-Fi only is a phone setting. Cellular is the only type we hold back. Unknown (most iPhones) still syncs.
+  wifiBlocked(){try{if(!db().settings.syncWifiOnly)return false}catch(e){return false}return netInfo().kind==='cell'},
+  async now(){if(!this.on())return;clearTimeout(this.timer);
+    if(navigator.onLine===false){this.set({err:t('sy.offline'),held:''});if(typeof updateNet==='function')updateNet();if(typeof route!=='undefined'&&route.v==='settings')render();return}
+    if(this.wifiBlocked()){this.set({err:t('sy.wifiWait'),held:'wifi'});if(typeof updateNet==='function')updateNet();if(typeof route!=='undefined'&&route.v==='settings')render();return}
+    if(this.busy){this.again=true;return}
     const epoch=this.epoch,email=String(this.a.email||'').toLowerCase(),me=this.busy=++this._seq;
     const stale=()=>epoch!==this.epoch||this.busy!==me||String(this.a.email||'').toLowerCase()!==email||!this.on();
     try{const d=JSON.parse(JSON.stringify(db()));
@@ -76,20 +83,30 @@ const Sync={
       if(stale())return;
       const applied=[];for(const r of j.watchResults||[]){const p=parseResult(r.code);try{if(p){const o=applyResult(p);toast('⌚ '+o.msg)}}catch(e){toast('⌚ '+e.message)}applied.push(r.id)}
       if(applied.length){this.set({acks:applied});this.again=true}
-      this.set({lastSync:Date.now(),err:''})}
-    catch(e){if(stale())return;if(e.code==='unverified')this.set({verified:false,err:''});else if(e.status===401){localStorage.removeItem(AUTH_KEY);toast(t('sy.out'))}else this.set({err:navigator.onLine===false?t('sy.offline'):e.message})}
-    finally{if(this.busy===me)this.busy=0;if(epoch!==this.epoch)return;if(typeof route!=='undefined'&&route.v==='settings')render();if(this.again){this.again=false;this.soon(500)}}},
+      this.set({lastSync:Date.now(),err:'',held:''})}
+    catch(e){if(stale())return;if(e.code==='unverified')this.set({verified:false,err:'',held:''});else if(e.status===401){localStorage.removeItem(AUTH_KEY);toast(t('sy.out'))}else this.set({err:navigator.onLine===false?t('sy.offline'):e.message,held:''})}
+    finally{if(this.busy===me)this.busy=0;if(epoch!==this.epoch)return;if(typeof updateNet==='function')updateNet();if(typeof route!=='undefined'&&route.v==='settings')render();if(this.again){this.again=false;this.soon(500)}}},
   async pair(){return this.req('POST','/pair/start',{},this.a.token)}, // leftover for older clients; v31 phone uses pairClaim
   async pairClaim(code){return this.req('POST','/pair/claim',{code},this.a.token)},
   watchList:null,
   async listWatches(){try{const j=await this.req('GET','/watches',null,this.a.token);this.watchList=j.watches||[]}catch(e){this.watchList=[]}return this.watchList},
   async removeWatch(id){return this.req('POST','/watches/remove',{id},this.a.token)},
   async renameWatch(id,name){return this.req('POST','/watches/rename',{id,name},this.a.token)},
-  status(){const a=this.a;if(a.err)return '⚠ '+a.err;if(!a.lastSync)return t('sy.never');const s=(Date.now()-a.lastSync)/1000;
+  status(){const a=this.a;
+    if(typeof navigator!=='undefined'&&navigator.onLine===false)return t('acc.statusOffline');
+    if(a.held==='wifi')return t('acc.statusWifi');
+    if(this.busy)return t('acc.syncing');
+    if(a.err)return '⚠ '+a.err;if(!a.lastSync)return t('sy.never');const s=(Date.now()-a.lastSync)/1000;
     return s<60?t('sy.now'):s<3600?t('sy.min',{n:Math.round(s/60)}):t('sy.at',{d:new Date(a.lastSync).toLocaleString(I18N.locale())})}
 };
 // installs from before v22: signed in but no owner tag yet -> the local data is the signed-in account's
 try{if(!localStorage.getItem(OWNER_KEY)&&Sync.a.token&&Sync.a.email)localStorage.setItem(OWNER_KEY,String(Sync.a.email).toLowerCase())}catch(e){}
 function onStoreSave(){Sync.soon()}
-window.addEventListener('online',()=>Sync.soon(500));
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')Sync.soon(500)});
+// What this phone can tell us. kind is off | wifi | cell | unknown. iOS often reports unknown and must not be treated as mobile data.
+function netInfo(){const c=navigator.connection||navigator.mozConnection||navigator.webkitConnection;const type=c&&c.type||'';const on=navigator.onLine!==false&&type!=='none';
+  let kind='unknown';if(!on)kind='off';else if(type==='wifi'||type==='ethernet')kind='wifi';else if(type==='cellular')kind='cell';
+  return {on,type,kind}}
+window.addEventListener('online',()=>{Sync.soon(500);if(typeof updateNet==='function')updateNet()});
+window.addEventListener('offline',()=>{if(Sync.a.token)Sync.set({err:t('sy.offline'),held:''});if(typeof updateNet==='function')updateNet()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){Sync.soon(500);if(typeof updateNet==='function')updateNet()}});
+if(navigator.connection)navigator.connection.addEventListener('change',()=>{if(typeof updateNet==='function')updateNet();if(navigator.onLine&&!Sync.wifiBlocked())Sync.soon(500)});
