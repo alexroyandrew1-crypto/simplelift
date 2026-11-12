@@ -77,6 +77,12 @@ details summary{cursor:pointer;padding:6px 0;min-height:32px}
 .restbox{padding:var(--s5) 0}
 .nag{border:1px solid var(--line)}
 .dayrow{border-left:4px solid var(--dc)}
+/* Long exercise names wrap inside the plan-editor day card and the Today list; never spill under the tab bar */
+.dayrow .plain span.mut,
+.exlist .lrow>span:first-child{overflow-wrap:anywhere;word-break:break-word;min-width:0}
+.exlist .lrow>span:first-child{flex:1}
+.exlist .lrow>span.right{flex:none;white-space:nowrap}
+.dayrow,.exlist,.lrow{min-width:0;max-width:100%}
 
 /* workout */
 .set{display:grid;grid-template-columns:28px 1fr 1fr 48px;gap:var(--s2);align-items:center;margin:var(--s2) 0}

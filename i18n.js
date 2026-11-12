@@ -251,7 +251,7 @@ const D={en:{
 "h.del": "Delete this workout",
 "set.noAccounts": "Accounts are turned off in this version. Everything stays on this phone.",
 "set.units": "Units",
-"set.unitsHint": "Changes labels and progression steps. Saved numbers are not converted.",
+"set.unitsHint": "Saved weights are converted when you switch units.",
 "set.copyW": "Copy weight to later sets",
 "set.copyWHint": "Changing a set's weight also fills in the sets after it that aren't done yet.",
 "on": "On",
@@ -270,8 +270,8 @@ const D={en:{
 "bg.grape": "Grape",
 "bg.grid": "Grid",
 "set.data": "Your data",
-"set.dataSynced": "Saved on this phone and synced to your account ({email}). A backup file is still a good extra copy.",
-"set.dataLocal": "Everything is stored on this phone only. Export a backup to keep a copy or move to another phone.",
+"set.dataSynced": "Saved on your phone and synced to your account ({email})",
+"set.dataLocal": "Saved on this phone. Sign in to sync to your account.",
 "set.export": "Export backup (JSON)",
 "set.restore": "Restore from backup…",
 "set.old": "Import from old app",
@@ -284,6 +284,7 @@ const D={en:{
 "set.planFirst": "Make a plan first to send a day to your watch.",
 "set.about": "Free. No ads, no tracking, no account needed. Works offline. Add it to your home screen from your browser menu.",
 "set.free": "I made Simple Lift to be completely free, and I'm trying to keep it free forever. If you ever want to chip in, it's optional and appreciated, never expected.",
+"set.aboutText": "Simple Lift is built for people who want to train hard without babysitting a screen. Plan your workout in seconds, log each set with a tap, and get back to lifting. Pair a watch if you like, and your phone can stay in your pocket. AI features help when you need them, and I'm trying to keep it as cheap as possible.",
 "set.donate": "Donate via PayPal (optional)",
 "set.email": "Email support",
 "set.privacy": "Privacy policy",
@@ -295,7 +296,7 @@ const D={en:{
 "sec.watch": "Watch",
 "sec.about": "About &amp; support",
 "lang.title": "Language",
-"lang.hint": "Exercise names stay in English for now.",
+"lang.hint": "Custom exercise names stay as you typed them.",
 "lang.set": "Language set to {name}. Change it in Settings.",
 "err.notPic": "That file isn't a picture.",
 "err.picBig": "That picture is too big (over 25 MB). Pick a smaller one.",
@@ -467,7 +468,7 @@ const D={en:{
 "ac.outMsg": "Your plans and history are saved to your account, then removed from this phone. Sign in again any time to get them back.",
 "acc.synced": "Synced",
 "del.title": "Delete your account?",
-"del.msg": "This permanently deletes your Simple Lift account and everything stored for it online: your email, synced plans and history, watch pairing and AI usage. It cannot be undone.",
+"del.msg": "This permanently deletes your Simple Lift account and everything stored for it online: your email, synced plans and history, watch pairing and AI usage. It also erases all Simple Lift data on this device. It cannot be undone.",
 "del.pw": "Your password",
 "del.type": "Type DELETE to confirm",
 "del.wipe": "Also erase the plans and history on this phone",
@@ -478,6 +479,21 @@ const D={en:{
 "del.done": "Account deleted. Your data is still on this phone.",
 "pair.expires": "Expires in 10 minutes",
 "pair.fail": "Could not get a code: {msg}",
+"pair.enter": "Enter the 6-digit code shown on your watch.",
+"pair.codeLbl": "Watch code",
+"pair.claim": "Pair watch",
+"pair.enterBtn": "Enter the code shown on your watch",
+"pair.onceNew": "The code works once and expires in 10 minutes.",
+"pair.need6": "Enter the 6-digit code from your watch.",
+"pair.ok": "Watch paired",
+"watch.mine": "My watches",
+"watch.none": "No watches paired yet.",
+"watch.unnamed": "Watch",
+"watch.last": "Last sync {d}",
+"watch.remove": "Remove",
+"watch.rmQ": "Remove this watch?",
+"watch.rmMsg": "\"{name}\" will be unpaired. It will show Not paired and can request a new code. Your other watches stay paired.",
+"watch.removed": "Watch removed",
 "w.copied": "Code copied",
 "w.selected": "Code selected. Long-press it and tap Copy.",
 "w.badCode": "That doesn't look like a watch result code. It should start with SR1~",
@@ -510,7 +526,7 @@ const D={en:{
 "rs.done": "Backup restored",
 "rs.fail": "Restore failed",
 "rst.q": "Reset all data?",
-"rst.msg": "This erases all plans, history and settings on this phone. It cannot be undone. Export a backup first if you might want them.",
+"rst.msg": "This erases all plans, history and settings on this phone. It cannot be undone.",
 "rst.erase": "Erase everything",
 "rst.done": "All data reset",
 "rst.cloudMsg": "You're signed in as {email}, so your data is also in the cloud. Choose what to erase. This cannot be undone.",
@@ -762,9 +778,12 @@ function num(n,o){try{return new Intl.NumberFormat(locale(),o).format(n)}catch(e
 // Monday-first weekday short names: 2024-01-01 was a Monday.
 function weekday(i){if(cur==='en')return['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i];
   try{return new Intl.DateTimeFormat(locale(),{weekday:'short',timeZone:'UTC'}).format(new Date(Date.UTC(2024,0,1+i)))}catch(e){return['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]}}
-// Hook for localized exercise names later: I18N.exName('Bench Press') returns a translation when lang-xx.js provides EX.
+// I18N.exName('Barbell Bench Press') returns a translation when lang-xx.js provides __ex. Unknown/custom names pass through.
 function exName(n){const m=D[cur]&&D[cur].__ex;return m&&m[n]||n}
-G.I18N={LANGS,CODES,COUNTRY,RTL,K,add:(l,d)=>{D[l]=d},dict:l=>D[l],lang:()=>cur,mode,name,pick,browserLang,countryLang,load,use,start,choose,applyDoc,locale,num,weekday,exName,
+// Reverse map: a translated or English library name -> English canonical key; custom names unchanged.
+function exKey(n){if(n==null||n==='')return n;const m=D[cur]&&D[cur].__ex;if(!m)return n;if(m[n])return n;const q=String(n).trim().toLowerCase();
+  for(const en of Object.keys(m)){if(en.toLowerCase()===q||String(m[en]).toLowerCase()===q)return en}return n}
+G.I18N={LANGS,CODES,COUNTRY,RTL,K,add:(l,d)=>{D[l]=d},dict:l=>D[l],lang:()=>cur,mode,name,pick,browserLang,countryLang,load,use,start,choose,applyDoc,locale,num,weekday,exName,exKey,
   isRTL:()=>RTL.includes(cur)};
 G.t=t;
 })(typeof window!=='undefined'?window:globalThis);
