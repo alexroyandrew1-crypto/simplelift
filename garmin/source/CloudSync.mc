@@ -125,7 +125,7 @@ class CloudSync {
             pairCode = data["code"] as String;
             Storage.setValue("pairCode", pairCode);
             failed = false;
-            pairNote = "Enter in Simple Lift";
+            pairNote = "Confirm in Simple Lift";
             status = "Waiting to pair";
             startPoll();
         } else {

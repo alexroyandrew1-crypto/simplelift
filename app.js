@@ -75,7 +75,7 @@ function armBack(){
   const want=canBack()||(!!db().active&&route.v!=='session'&&route.v!=='home');
   if(want&&!backArmed){try{history.pushState({sl:1},'')}catch(e){}backArmed=true}}
 addEventListener('popstate',()=>{backArmed=false;const sh=document.querySelector('.sheet-bg,.sheet');if(sh){armBack();return}back().then(armBack)});
-function go(v,p={},push=true){if(push)stack.push(route);route={v,p};afterNav()}
+function go(v,p={},push=true){if(push){route.scroll=window.scrollY||0;stack.push(route)}route={v,p};afterNav()}
 // v30: tab() clears the in-app stack but leaves the browser Back sentinel. Back then had nowhere
 // to go and opened Today, which draws the plan (no checks) while the rest interval keeps alarming.
 function pop(){
@@ -109,10 +109,12 @@ function render(){
 }
 // Entering the workout from another page scrolls to the exercise you were on. Re-rendering a set does not.
 function afterNav(){
+  const y=+route.scroll||0;
   const entered=route.v==='session'&&afterNav.v!=='session';
   render();
+  // A fresh screen opens at the top. Back (in-app or the browser) returns to the scroll that was saved on the way in.
   if(entered)scrollToFocus();
-  else if(route.v!=='session')scrollTo(0,0);
+  else if(route.v!=='session')scrollTo(0,y);
 }
 function scrollToFocus(){
   const a=db().active;if(!a||route.v!=='session')return;
@@ -131,6 +133,9 @@ const AI_TAG='<span class="tag ai">✨ AI</span>';
 const isPaidLocked=w=>['paid','signin','verify'].includes(w);
 
 /* ---------- views ---------- */
+// Add a watch by appending {id, ready}. id matches watch.type.<id> and, when ready, pair.lead.<id>.
+const WATCH_TYPES=[{id:'garmin',ready:true},{id:'apple',ready:false},{id:'wear',ready:false}];
+const watchType=id=>WATCH_TYPES.find(w=>w.id===id);
 const VIEWS={
 chooser(){return `<div class="mut">${t('chooser.intro')}</div>`+createOpts()},
 home(){
@@ -225,22 +230,30 @@ account(){const m=route.p.mode||'in',up=m==='up',a=Sync.a,em=esc(route.p.email||
   <div class="mut">${t('ac.resetNote')}</div>`;
   return `<div class="card"><h3>${up?t('ac.createTitle'):t('ac.signIn')}</h3>
   <label for="acEmail">${t('ac.email')}</label><input id="acEmail" type="email" autocomplete="email" placeholder="you@example.com" value="${em}">
-  <label for="acPw">${up?t('ac.pw8'):t('ac.pw')}</label><input id="acPw" type="password" autocomplete="${up?'new-password':'current-password'}">
+  <label for="acPw">${up?t('ac.pw8'):t('ac.pw')}</label><input id="acPw" type="password" autocomplete="${up?'new-password':'current-password'}" aria-describedby="acNote">
+  <div class="auth-err" id="acNote" role="alert">${esc(route.p.note||'')}</div>
   <button class="btn acc full" data-act="acSubmit" data-mode="${up?'up':'in'}">${up?t('ac.create'):t('ac.signIn')}</button>
   ${up?'':`<div class="right"><button type="button" class="linkbtn" data-act="acForgotGo">${t('ac.forgotQ')}</button></div>`}
-  <button class="btn full" data-act="account" data-mode="${up?'in':'up'}">${up?t('ac.haveAccount'):t('ac.createInstead')}</button>${note}</div>
+  <button class="btn full" data-act="account" data-mode="${up?'in':'up'}">${up?t('ac.haveAccount'):t('ac.createInstead')}</button></div>
   ${up?`<div class="mut">${t('lg.signupNote')}</div>${legalLinks()}`:''}
   <div class="mut">${t('ac.stored')}${up?' '+t('ac.storedUp'):''} ${t('privacy.geo')}</div>`},
 legal(p){const k=LEGAL.docs[p.doc]?p.doc:'terms';
   return `<div class="card legal" lang="en" dir="ltr">${I18N.lang()!=='en'?`<div class="note mut" lang="${I18N.lang()}" dir="${I18N.isRTL()?'rtl':'ltr'}">${t('lg.enNote')}</div>`:''}${LEGAL.docs[k]}</div>${legalLinks(k)}`},
 pair(){const off=navigator.onLine===false?`<div class="card note">${t('pair.needNet')}</div>`:'';
-  return off+`<div class="card"><h3>⌚ ${t('pair.title')}</h3>
+  const type=route.p.type||'';
+  if(!type)return off+`<div class="card" id="pairPick"><h3>${t('watch.pair')}</h3><div class="mut">${t('watch.choose')}</div>
+    ${WATCH_TYPES.map(w=>`<button class="big opt${w.ready?'':' locked'}" data-act="pairType" data-v="${w.id}"${w.ready?'':' disabled'}>${esc(t('watch.type.'+w.id))}${w.ready?'':`<small>${esc(t('watch.soon'))}</small>`}</button>`).join('')}</div>`;
+  const spec=watchType(type);
+  if(!spec||!spec.ready)return off+`<div class="card" id="pairSoon"><h3>${esc(t('watch.type.'+type))}</h3><div class="mut">${t('watch.soon')}</div></div>`;
+  if(!route.p.code)return off+`<div class="card" id="pairFlow"><h3>${esc(t('watch.type.'+type))}</h3><div class="mut">${t('pair.lead.'+type)}</div>
+    <div class="right mt2"><button type="button" class="linkbtn" data-act="pairShowCode">${t('pair.trouble')}</button></div></div>`;
+  return off+`<div class="card" id="pairCode"><h3>${esc(t('watch.type.'+type))}</h3>
   <div class="mut">${t('pair.enter')}</div>
   <label for="pairIn">${t('pair.codeLbl')}</label>
   <input id="pairIn" class="pair-code" inputmode="numeric" maxlength="6" pattern="[0-9]*" autocomplete="one-time-code" aria-describedby="pairNote">
-  <button class="btn acc full" data-act="pairClaim">${t('pair.claim')}</button>
-  <div class="mut mt2" id="pairNote" aria-live="polite"></div>
-  <div class="mut mt2">${t('pair.onceNew')}</div></div>`},
+  <button class="btn acc full" data-act="pairClaim">${t('pair.confirm')}</button>
+  <div class="mut mt2" id="pairNote" role="alert" aria-live="polite"></div>
+  <div class="mut mt2">${t('pair.help')}</div></div>`},
 watch(){const plan=Store.plan(route.p.planId)||Store.activePlan();if(!plan)return `<div class="card mut">${t('w.noPlan')}</div>`;
   const i=Math.min(route.p.i|0,plan.days.length-1),c=watchCode(plan,i);
   db().watch={planId:plan.id,dayIndex:i,title:c.title,at:Date.now()};Store.save();
@@ -318,13 +331,12 @@ settings(){
     <button class="btn bad full" data-act="reset">${t('set.reset')}</button></div>`;
   if(on&&Sync.watchList==null){Sync.listWatches().then(()=>{if(route.v==='settings')render()})}
   const wl=Sync.watchList||[];
-  const wrows=wl.map(w=>`<div class="between mt2"><div><b>${esc(w.name||w.model||t('watch.unnamed'))}</b>
-    <div class="mut">${esc(w.model||'')}${w.lastSeen?` · ${t('watch.last',{d:new Date(w.lastSeen).toLocaleString(I18N.locale())})}`:''}</div></div>
-    <button class="btn sm bad" data-act="watchRm" data-id="${esc(w.id)}" data-name="${esc(w.name||w.model||'')}">${t('watch.remove')}</button></div>`).join('');
-  const watch=`<div class="card"><h3>${t('set.garmin')}</h3><div class="mut">${on?t('set.garminOn'):t('set.garminOff')}</div>
-    <div class="mut mt2">${t('acc.watchHow')}</div>
+  const wrows=wl.map(w=>`<div class="between mt2" data-watch="${esc(w.id)}"><div><b>${esc(w.name||w.model||t('watch.unnamed'))}</b>
+    <div class="mut">${t('watch.paired')}${w.model?` · ${esc(w.model)}`:''}${w.lastSeen?` · ${t('watch.last',{d:new Date(w.lastSeen).toLocaleString(I18N.locale())})}`:''}</div></div>
+    <button class="btn sm bad" data-act="watchRm" data-id="${esc(w.id)}" data-name="${esc(w.name||w.model||'')}">${t('watch.unpair')}</button></div>`).join('');
+  const watch=`<div class="card" id="watchCard"><h3>${t('sec.watch')}</h3><div class="mut">${on?t('watch.hintOn'):t('watch.hintOff')}</div>
     ${on?`<h3 class="mt3">${t('watch.mine')}</h3>${wrows||`<div class="mut">${t('watch.none')}</div>`}
-    <button class="btn acc full" data-act="pair">⌚ ${t('pair.enterBtn')}</button>`:''}
+    <button class="btn acc full" data-act="pair">${t('watch.pair')}</button>`:''}
     ${plan?`<button class="btn full" data-act="watch" data-i="${Math.max(0,nextDayIndex(plan))}">${t('set.manual')}</button>`:`<div class="mut mt2">${t('set.planFirst')}</div>`}</div>`;
   const about=`<div class="card"><h3>Simple Lift</h3><div class="mut">${t('set.aboutText')}</div>
     <div class="row wrap mt2">${/^https:\/\//.test(DONATE_URL)?`<a class="btn sm" href="${esc(DONATE_URL)}" target="_blank" rel="noopener noreferrer">${t('set.donate')}</a>`:''}
@@ -610,8 +622,9 @@ function autoNext(j){
   // align the card top under the header; if it fits in the free band, that also keeps its bottom above the bars
   const y=scrollY+r.top-hdr-gap;scrollTo({top:Math.max(0,y),behavior})}
 function startTimer(sec){if(!restOn()||!db().active)return;runTimer(Date.now()+sec*1000);startCue()}
-// v29: optional single soft ding / short buzz when a rest starts (only from a set tick, never on restore); both off by default
-function startCue(){const st=db().settings;if('startDing' in st){delete st.startDing;Store.save()}if(st.startBuzz)tap()}
+// v29: optional buzz and chime when a rest starts (only from a set tick, never on restore). Both off by default.
+// If the set-logged chime also plays, the rest-start chime follows it so the two stay distinct.
+function startCue(){const st=db().settings;if('startDing' in st){delete st.startDing;Store.save()}if(st.startBuzz)tap();if(chimeOn('start'))playChime('start',chimeOn('set')?0.24:0)}
 function runTimer(end){const sid=db().active&&db().active.id;if(timer)clearInterval(timer.h);timer={end,sid};timer.h=setInterval(renderTimer,250);saveRest();renderTimer()}
 function stopTimer(){const sid=timer&&timer.sid;if(timer)clearInterval(timer.h);timer=null;const a=db().active;if(!sid||(a&&a.id===sid))saveRest();renderTimer()}
 // v27: the rest timer's end time lives in the active workout so it survives a reload or the app being killed.
@@ -708,10 +721,12 @@ const ACT={
  finish:()=>finishFlow(),
  // v22: Today's empty screen also opens sign-in / sign-up; after signing in we return to Today (sync pulls the account's data)
  account:b=>{if(route.v!=='account')authFrom=b.dataset.from||'';go('account',{mode:b.dataset.mode||'in'},route.v!=='account')},
- acSubmit:async b=>{const e=$('#acEmail').value.trim(),p=$('#acPw').value,n=$('#acNote');if(!e||!p){n.textContent=t('ac.needBoth');return}
+ acSubmit:async b=>{const e=$('#acEmail').value.trim(),p=$('#acPw').value,n=$('#acNote'),pw=$('#acPw');
+   const fail=msg=>{if(n)n.textContent=msg;if(pw)pw.setAttribute('aria-invalid','true')};
+   if(!e||!p){fail(t('ac.needBoth'));return}
    b.disabled=true;b.textContent=t('working');try{const j=await Sync.signIn(b.dataset.mode,e,p);
      if(j.verified===false){go('account',{mode:'verify',note:j.mailError?Sync.msg({error:j.mailError}):''},false);return}
-     toast(t('ac.signedIn'));stack=[];tab(authFrom==='home'?'home':'settings')}catch(x){n.textContent=errMsg(x);b.disabled=false;b.textContent=b.dataset.mode==='up'?t('ac.create'):t('ac.signIn')}},
+     toast(t('ac.signedIn'));stack=[];tab(authFrom==='home'?'home':'settings')}catch(x){fail(errMsg(x));b.disabled=false;b.textContent=b.dataset.mode==='up'?t('ac.create'):t('ac.signIn')}},
  acVerify:async b=>{const c=($('#acCode').value||'').replace(/\D/g,'');if(c.length!==6){$('#acNote').textContent=t('ac.need6');return}
    b.disabled=true;b.textContent=t('ac.checking');try{await Sync.verify(c);toast(t('ac.verified'));stack=[];tab(authFrom==='home'?'home':'settings')}catch(x){$('#acNote').textContent=x.message;b.disabled=false;b.textContent=t('ac.verify')}},
  acResend:async b=>{b.disabled=true;try{await Sync.resend();$('#acNote').textContent=t('ac.newCode')}catch(x){$('#acNote').textContent=x.status===429?t('ac.wait5'):x.message}setTimeout(()=>{b.disabled=false},60000)},
@@ -732,6 +747,8 @@ const ACT={
    if(v!=='del')return;await wipeLocalAppData();stack=[];route={v:'settings',p:{}};render();
    toast(t('del.doneWipe'))},
  pair:()=>go('pair'),
+ pairType:b=>{const spec=watchType(b.dataset.v);if(!spec||!spec.ready)return;go('pair',{type:spec.id})},
+ pairShowCode:()=>{go('pair',{type:route.p.type,code:1});const i=$('#pairIn');if(i)i.focus()},
  pairClaim:async b=>{const c=(($('#pairIn')||{}).value||'').replace(/\D/g,'');const n=$('#pairNote');
    if(c.length!==6){if(n)n.textContent=t('pair.need6');return}
    b.disabled=true;try{await Sync.pairClaim(c);toast(t('pair.ok'));Sync.watchList=null;pop()}catch(x){if(n)n.textContent=x.message;b.disabled=false}},
@@ -780,7 +797,7 @@ const ACT={
    noteFocus(+b.dataset.j);const s=db().active.exercises[+b.dataset.j].sets[+b.dataset.k],f=b.dataset.f,d=+b.dataset.d;
    const inc=(f==='w'?(U()==='kg'?2.5:5):1)*mult;const cur=f==='w'?fmtW(+s[f]||0):(+s[f]||0);s[f]=Math.max(0,Math.round((cur+d*inc)*10)/10);Store.save();
    b.parentNode.querySelector('input').value=s[f];if(f==='w'){s.ws='m';b.parentNode.querySelector('input').classList.remove('sugw');cascadeW(+b.dataset.j,+b.dataset.k);Store.save()}},
- setDone:b=>{noteFocus(+b.dataset.j);const e=db().active.exercises[+b.dataset.j],s=e.sets[+b.dataset.k];s.done=!s.done;if(s.done&&s.ws==='s')s.ws='m';Store.save();render();if(s.done)startTimer(e.rest);if(s.done&&e.sets.every(x=>x.done))setTimeout(()=>autoNext(+b.dataset.j),AUTO_NEXT_MS)},
+ setDone:b=>{noteFocus(+b.dataset.j);const e=db().active.exercises[+b.dataset.j],s=e.sets[+b.dataset.k];s.done=!s.done;if(s.done&&s.ws==='s')s.ws='m';Store.save();render();if(s.done&&chimeOn('set'))playChime('set');if(s.done)startTimer(e.rest);if(s.done&&e.sets.every(x=>x.done))setTimeout(()=>autoNext(+b.dataset.j),AUTO_NEXT_MS)},
  setAdd:b=>{const e=db().active.exercises[+b.dataset.j],l=e.sets[e.sets.length-1];e.sets.push({w:l.w,r:l.r,done:false,ws:l.ws==='s'?'s':'c'});Store.save();render()},
  setDel:b=>{db().active.exercises[+b.dataset.j].sets.pop();Store.save();render()},
  t15:()=>{if(!timer)return;timer.end+=15000;saveRest();renderTimer()},tskip:stopTimer,
@@ -862,10 +879,22 @@ const ALERT_KEY='simplelift_alert',ALERTS=['vib','snd','both','off'];
 function alertGet(){const v=localStorage.getItem(ALERT_KEY);return ALERTS.includes(v)?v:'vib'}
 function restDone(){if(!timer)return;const sid=timer.sid;stopTimer();if(!restOn())return;const a=db().active;if(sid&&(!a||a.id!==sid))return;restAlarm();toast(t('timer.over'))}
 let actx=null;
-function beep(){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return false;actx=actx||new C();if(actx.state==='suspended')actx.resume();
-  const t0=actx.currentTime;[0,.28,.56].forEach((d,i)=>{const o=actx.createOscillator(),g=actx.createGain();o.type='sine';o.frequency.value=i===2?1175:880;
-    g.gain.setValueAtTime(0.0001,t0+d);g.gain.exponentialRampToValueAtTime(0.35,t0+d+.02);g.gain.exponentialRampToValueAtTime(0.0001,t0+d+.22);
-    o.connect(g).connect(actx.destination);o.start(t0+d);o.stop(t0+d+.25)});window.__beeps=(window.__beeps||0)+1;return true}catch(e){return false}}
+// Three short Web Audio chimes. Set logged is one high tick, rest start is two descending notes,
+// rest end is the longer rising alarm. Scheduled only after the context is running, which is what
+// iOS and Android need or the notes land in the past and never play.
+function audioCtx(){const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;actx=actx||new C();return actx}
+function unlockAudio(){try{const c=audioCtx();if(!c)return;if(c.state==='suspended')c.resume();
+  const b=c.createBuffer(1,1,22050),s=c.createBufferSource();s.buffer=b;s.connect(c.destination);s.start(0)}catch(e){}}
+function tone(c,t0,freq,dur,peak){const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(freq,t0);
+  g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(peak,t0+.02);g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  o.connect(g).connect(c.destination);o.start(t0);o.stop(t0+dur+.03)}
+function scheduleChime(c,kind,t0){
+  if(kind==='set'){tone(c,t0,1318.5,.11,.2);return .14}
+  if(kind==='start'){tone(c,t0,659.3,.16,.22);tone(c,t0+.15,523.3,.2,.18);return .4}
+  tone(c,t0,880,.22,.35);tone(c,t0+.28,880,.22,.35);tone(c,t0+.56,1175,.22,.35);return .82}
+function playChimes(kinds,gap){try{const c=audioCtx();if(!c)return false;const run=()=>{let t=c.currentTime+.03;kinds.forEach(k=>{const d=scheduleChime(c,k,t);window.__chimes=(window.__chimes||[]).concat(k);t+=d+(gap||.3)});window.__beeps=(window.__beeps||0)+kinds.length};if(c.state==='suspended')c.resume().then(run);else run();return true}catch(e){return false}}
+function playChime(kind,delay){try{const c=audioCtx();if(!c)return false;const run=()=>{scheduleChime(c,kind,c.currentTime+.03+(delay||0));window.__chimes=(window.__chimes||[]).concat(kind);window.__beeps=(window.__beeps||0)+1};if(c.state==='suspended')c.resume().then(run);else run();return true}catch(e){return false}}
+function beep(){return playChime('end')}
 function tap(){window.__taps=(window.__taps||0)+1;
   try{const H=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.Haptics;if(H&&H.vibrate){H.vibrate({duration:80});return true}}catch(e){}
   try{return !!(navigator.vibrate&&navigator.vibrate(80))}catch(e){return false}}
@@ -873,23 +902,32 @@ function buzz(){window.__buzz=(window.__buzz||0)+1;
   try{const H=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.Haptics;if(H&&H.vibrate){H.vibrate({duration:600});return true}}catch(e){}
   try{return !!(navigator.vibrate&&navigator.vibrate([300,120,300,120,300]))}catch(e){return false}}
 function restAlarm(kind=alertGet()){if(kind==='vib'||kind==='both')buzz();if(kind==='snd'||kind==='both')beep()}
-// browsers only allow sound after a tap: unlock the audio context on the first tap of a set
-document.addEventListener('pointerdown',()=>{if(/snd|both/.test(alertGet())&&!actx){try{const C=window.AudioContext||window.webkitAudioContext;if(C){actx=new C();actx.resume()}}catch(e){}}},{capture:true});
+// Mobile browsers stay silent until a tap resumes the audio context. Unlock on every tap so a later chime can play.
+document.addEventListener('pointerdown',()=>{unlockAudio()},{capture:true});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')renderTimer()});
 // v29: the rest timer can be switched off entirely (a synced setting; on unless set to false)
 const restOn=()=>db().settings.restTimer!==false;
-// v29: one Rest timer card. Start cues live in synced settings (default off); the end alert keeps its stored
-// value (simplelift_alert: vib|snd|both|off, default vib), shown as two switches, so old choices carry over as is.
+// v29: one Rest timer card. The start buzz is a synced setting (default off). Chimes and the end vibration
+// stay on this phone, like the end chime (simplelift_alert: vib|snd|both|off, default vib).
+const CHIME_KEY={start:'simplelift_chime_start',set:'simplelift_chime_set'};
+function chimeOn(kind){try{return localStorage.getItem(CHIME_KEY[kind])==='1'}catch(e){return false}}
+function chimeSet(kind,on){try{if(on)localStorage.setItem(CHIME_KEY[kind],'1');else localStorage.removeItem(CHIME_KEY[kind])}catch(e){}}
 const endGet=()=>{const a=alertGet();return{vib:a==='vib'||a==='both',snd:a==='snd'||a==='both'}};
 function endSet(vib,snd){const v=vib&&snd?'both':vib?'vib':snd?'snd':'off';if(v==='vib')localStorage.removeItem(ALERT_KEY);else localStorage.setItem(ALERT_KEY,v)}
 function alertCard(){const on=restOn(),st=db().settings;if('startDing' in st){delete st.startDing;Store.save()}const e=endGet();
-  const sw=(act,k,v,lbl)=>`<button class="chip ${v?'on':''}" data-act="${act}" data-k="${k}" aria-pressed="${v}" aria-label="${lbl}: ${v?t('on'):t('off')}">${lbl}</button>`;
+  const sw=(act,k,v,lbl,name)=>`<button class="chip ${v?'on':''}" data-act="${act}" data-k="${k}" aria-pressed="${v}" aria-label="${name||lbl}: ${v?t('on'):t('off')}">${lbl}</button>`;
   const row=(id,title,a,b)=>`<div class="between rtrow" id="${id}"><div>${title}</div><div class="row" style="gap:6px">${a}${b}</div></div>`;
   return `<div class="card" id="restCard"><div class="between"><div><h3>⏱️ ${t('rt.title')}</h3><div class="mut">${t('rt.hint')}</div></div><button class="chip ${on?'on':''}" data-act="restT" aria-pressed="${on}">${on?t('on'):t('off')}</button></div>`+
    (on?row('rtStart',t('rs.title'),sw('startT','startBuzz',!!st.startBuzz,t('rs.buzz')),'')+
-    row('rtEnd',t('rt.end'),sw('endT','snd',e.snd,t('rs.ding')),sw('endT','vib',e.vib,t('rs.buzz'))):'')+`</div>`}
+    row('rtStartChime',t('rs.startChime'),sw('startChime','chime',chimeOn('start'),t('rs.ding'),t('rs.startChime')),'')+
+    row('rtEnd',t('rt.end'),sw('endT','snd',e.snd,t('rs.ding')),sw('endT','vib',e.vib,t('rs.buzz')))+
+    row('rtSetChime',t('rs.setChime'),sw('setChime','chime',chimeOn('set'),t('rs.ding'),t('rs.setChime')),'')+
+    `<button type="button" class="btn full" data-act="chimeTest">${t('ra.test')}</button>`:'')+`</div>`}
 ACT.restT=()=>{db().settings.restTimer=!restOn();Store.save();if(!restOn())stopTimer();render()};
 ACT.startT=b=>{const k=b.dataset.k;if(k!=='startBuzz')return;const st=db().settings;st[k]=!st[k];Store.save();render();if(st[k])tap()};
+ACT.startChime=()=>{const on=!chimeOn('start');chimeSet('start',on);render();if(on)playChime('start')};
+ACT.setChime=()=>{const on=!chimeOn('set');chimeSet('set',on);render();if(on)playChime('set')};
+ACT.chimeTest=()=>playChimes(['set','start','end'],.32);
 ACT.endT=b=>{const k=b.dataset.k;if(k!=='vib'&&k!=='snd')return;const e=endGet();e[k]=!e[k];endSet(e.vib,e.snd);render();if(e[k])(k==='vib'?buzz:beep)()};
 /* ---------- text size (v26) ---------- */
 const FS_KEY='simplelift_fs',FS={s:.86,m:.93,l:1.06,xl:1.16};
