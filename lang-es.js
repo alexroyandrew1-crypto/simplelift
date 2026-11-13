@@ -713,7 +713,7 @@ I18N.add('es',{
 "watch.rmQ": "¿Quitar este reloj?",
 "watch.rmMsg": "Se desemparejará «{name}». Mostrará «No emparejado» y podrá pedir un código nuevo. Tus otros relojes siguen emparejados.",
 "watch.removed": "Reloj quitado",
-"set.aboutText": "Simple Lift está hecho para quienes quieren entrenar duro sin estar pendientes de una pantalla. Planifica tu entrenamiento en segundos, anota cada serie con un toque y vuelve a levantar. Empareja un reloj si quieres, y el teléfono puede quedarse en el bolsillo. Las funciones de IA ayudan cuando las necesitas, y estoy intentando que sea lo más barato posible.",
+"set.aboutText": "Simple Lift está hecho para quienes quieren entrenar duro sin estar pendientes de una pantalla. Planifica tu entrenamiento en segundos, anota cada serie con un toque y vuelve a levantar. Empareja un reloj si quieres y deja el teléfono en el bolsillo. Las funciones de IA están ahí cuando las necesitas.",
 "__ex": {
 "Barbell Bench Press": "Press de banca con barra",
 "Incline Barbell Bench Press": "Press de banca inclinado con barra",

@@ -713,7 +713,7 @@ I18N.add('nl',{
 "watch.rmQ": "Dit horloge verwijderen?",
 "watch.rmMsg": "\"{name}\" wordt ontkoppeld. Het toont \"Niet gekoppeld\" en kan een nieuwe code vragen. Je andere horloges blijven gekoppeld.",
 "watch.removed": "Horloge verwijderd",
-"set.aboutText": "Simple Lift is gemaakt voor mensen die hard willen trainen zonder naar een scherm te staren. Plan je workout in seconden, log elke set met een tik en ga weer tillen. Koppel een horloge als je wilt, en je telefoon kan in je zak blijven. AI-functies helpen wanneer je ze nodig hebt, en ik probeer het zo goedkoop mogelijk te houden.",
+"set.aboutText": "Simple Lift is gemaakt voor mensen die hard willen trainen zonder naar een scherm te staren. Plan je workout in seconden, log elke set met een tik en ga weer tillen. Koppel een horloge als je wilt en houd je telefoon in je zak. AI-functies zijn er wanneer je ze nodig hebt.",
 "__ex": {
 "Barbell Bench Press": "Bankdrukken met halterstang",
 "Incline Barbell Bench Press": "Schuin bankdrukken met halterstang",

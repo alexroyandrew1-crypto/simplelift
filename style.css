@@ -61,6 +61,9 @@ section:first-child .sec{margin-top:var(--s1)}
 input,select,textarea{width:100%;background:var(--card2);color:var(--txt);border:1px solid var(--line);border-radius:var(--r2);padding:12px;font-size:max(16px,calc(16px*var(--fs)));font-family:inherit}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--acc);border-color:transparent}
 label{display:block;font-size:calc(14px*var(--fs));color:var(--mut);margin:10px 0 4px}
+/* Sign-in and sign-up errors only. Dark red on a pale chip stays readable on the dark card and on a light page. */
+.auth-err{color:#7f1d1d;background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:8px 10px;margin:8px 0 0;font-size:calc(14px*var(--fs));font-weight:650;line-height:1.35}
+.auth-err:empty{display:none}
 textarea.code{font-family:ui-monospace,monospace;font-size:calc(14px*var(--fs))}
 .codein{font-size:calc(22px*var(--fs));letter-spacing:4px}
 input.range{padding:0}

@@ -284,7 +284,7 @@ const D={en:{
 "set.planFirst": "Make a plan first to send a day to your watch.",
 "set.about": "Free. No ads, no tracking, no account needed. Works offline. Add it to your home screen from your browser menu.",
 "set.free": "I made Simple Lift to be completely free, and I'm trying to keep it free forever. If you ever want to chip in, it's optional and appreciated, never expected.",
-"set.aboutText": "Simple Lift is built for people who want to train hard without babysitting a screen. Plan your workout in seconds, log each set with a tap, and get back to lifting. Pair a watch if you like, and your phone can stay in your pocket. AI features help when you need them, and I'm trying to keep it as cheap as possible.",
+"set.aboutText": "Simple Lift is built for people who want to train hard without babysitting a screen. Plan your workout in seconds, log each set with a tap, and get back to lifting. Pair a watch if you like and keep your phone in your pocket. AI features are there when you need them.",
 "set.donate": "Donate via PayPal (optional)",
 "set.email": "Email support",
 "set.privacy": "Privacy policy",

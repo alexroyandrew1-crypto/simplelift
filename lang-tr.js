@@ -713,7 +713,7 @@ I18N.add('tr',{
 "watch.rmQ": "Bu saati kaldır?",
 "watch.rmMsg": "\"{name}\" eşleşmesi kaldırılacak. \"Eşlenmedi\" gösterecek ve yeni kod isteyebilecek. Diğer saatlerin eşli kalır.",
 "watch.removed": "Saat kaldırıldı",
-"set.aboutText": "Simple Lift, ekrana bakmadan ağır antrenman yapmak isteyenler için. Antrenmanını saniyeler içinde planla, her seti bir dokunuşla kaydet ve kaldırmaya dön. İstersen bir saat eşle, telefonun cebinde kalsın. Yapay zekâ özellikleri ihtiyacın olduğunda yardımcı olur ve mümkün olduğunca ucuz tutmaya çalışıyorum.",
+"set.aboutText": "Simple Lift, ekrana bakmadan ağır antrenman yapmak isteyenler için. Antrenmanını saniyeler içinde planla, her seti bir dokunuşla kaydet ve kaldırmaya dön. İstersen bir saat eşle ve telefonunu cebinde tut. Yapay zekâ özellikleri ihtiyacın olduğunda orada.",
 "__ex": {
 "Barbell Bench Press": "Barbell bench press",
 "Incline Barbell Bench Press": "Eğimli barbell bench press",

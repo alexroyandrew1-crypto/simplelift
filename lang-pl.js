@@ -755,7 +755,7 @@ I18N.add('pl',{
 "watch.rmQ": "Usunąć ten zegarek?",
 "watch.rmMsg": "„{name}” zostanie rozłączony. Pokaże „Nie sparowano” i będzie mógł poprosić o nowy kod. Inne zegarki zostają sparowane.",
 "watch.removed": "Zegarek usunięty",
-"set.aboutText": "Simple Lift jest dla tych, którzy chcą trenować ostro, nie wpatrując się w ekran. Ułóż trening w kilka sekund, zapisz każdą serię jednym stuknięciem i wróć do podnoszenia. Sparuj zegarek, jeśli chcesz — telefon może zostać w kieszeni. Funkcje SI pomagają, gdy ich potrzebujesz, a ja staram się, żeby było jak najtaniej.",
+"set.aboutText": "Simple Lift jest dla tych, którzy chcą trenować ostro, nie wpatrując się w ekran. Ułóż trening w kilka sekund, zapisz każdą serię jednym stuknięciem i wróć do podnoszenia. Sparuj zegarek, jeśli chcesz, i trzymaj telefon w kieszeni. Funkcje SI są na miejscu, gdy ich potrzebujesz.",
 "__ex": {
 "Barbell Bench Press": "Wyciskanie sztangi na ławce płaskiej",
 "Incline Barbell Bench Press": "Wyciskanie sztangi na ławce skośnej",

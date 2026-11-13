@@ -713,7 +713,7 @@ I18N.add('fr',{
 "watch.rmQ": "Retirer cette montre ?",
 "watch.rmMsg": "« {name} » sera désappariée. Elle affichera « Non appariée » et pourra demander un nouveau code. Vos autres montres restent appariées.",
 "watch.removed": "Montre retirée",
-"set.aboutText": "Simple Lift est fait pour ceux qui veulent s'entraîner dur sans garder les yeux collés à un écran. Planifiez votre séance en quelques secondes, notez chaque série d'un toucher, et retournez soulever. Appariez une montre si vous voulez, et votre téléphone peut rester dans votre poche. Les fonctions d'IA aident quand vous en avez besoin, et j'essaie de garder ça aussi peu cher que possible.",
+"set.aboutText": "Simple Lift est fait pour ceux qui veulent s'entraîner dur sans garder les yeux collés à un écran. Planifiez votre séance en quelques secondes, notez chaque série d'un toucher, et retournez soulever. Appariez une montre si vous voulez et gardez votre téléphone dans votre poche. Les fonctions d'IA sont là quand vous en avez besoin.",
 "__ex": {
 "Barbell Bench Press": "Développé couché barre",
 "Incline Barbell Bench Press": "Développé incliné barre",

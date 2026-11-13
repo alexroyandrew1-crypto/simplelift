@@ -713,7 +713,7 @@ I18N.add('de',{
 "watch.rmQ": "Diese Uhr entfernen?",
 "watch.rmMsg": "„{name}“ wird entkoppelt. Sie zeigt „Nicht gekoppelt“ und kann einen neuen Code anfordern. Deine anderen Uhren bleiben gekoppelt.",
 "watch.removed": "Uhr entfernt",
-"set.aboutText": "Simple Lift ist für Leute, die hart trainieren wollen, ohne auf einen Bildschirm zu starren. Plane dein Training in Sekunden, protokolliere jeden Satz mit einem Tipp und geh wieder ans Heben. Kopple eine Uhr, wenn du möchtest, und dein Handy kann in der Tasche bleiben. KI-Funktionen helfen, wenn du sie brauchst, und ich versuche, es so günstig wie möglich zu halten.",
+"set.aboutText": "Simple Lift ist für Leute, die hart trainieren wollen, ohne auf einen Bildschirm zu starren. Plane dein Training in Sekunden, protokolliere jeden Satz mit einem Tipp und geh wieder ans Heben. Kopple eine Uhr, wenn du möchtest, und behalte dein Handy in der Tasche. KI-Funktionen sind da, wenn du sie brauchst.",
 "__ex": {
 "Barbell Bench Press": "Bankdrücken mit der Langhantel",
 "Incline Barbell Bench Press": "Schrägbankdrücken mit der Langhantel",

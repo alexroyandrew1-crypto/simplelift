@@ -713,7 +713,7 @@ I18N.add('it',{
 "watch.rmQ": "Rimuovere questo orologio?",
 "watch.rmMsg": "«{name}» verrà disabbinato. Mostrerà «Non abbinato» e potrà richiedere un nuovo codice. Gli altri orologi restano abbinati.",
 "watch.removed": "Orologio rimosso",
-"set.aboutText": "Simple Lift è fatto per chi vuole allenarsi sodo senza restare incollato a uno schermo. Pianifica l'allenamento in pochi secondi, registra ogni serie con un tocco e torna a sollevare. Abbina un orologio se vuoi, e il telefono può restare in tasca. Le funzioni di IA ti aiutano quando servono, e cerco di tenerlo il più economico possibile.",
+"set.aboutText": "Simple Lift è fatto per chi vuole allenarsi sodo senza restare incollato a uno schermo. Pianifica l'allenamento in pochi secondi, registra ogni serie con un tocco e torna a sollevare. Abbina un orologio se vuoi e tieni il telefono in tasca. Le funzioni di IA ci sono quando ti servono.",
 "__ex": {
 "Barbell Bench Press": "Panca piana con bilanciere",
 "Incline Barbell Bench Press": "Panca inclinata con bilanciere",

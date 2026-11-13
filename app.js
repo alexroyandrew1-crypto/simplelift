@@ -225,10 +225,11 @@ account(){const m=route.p.mode||'in',up=m==='up',a=Sync.a,em=esc(route.p.email||
   <div class="mut">${t('ac.resetNote')}</div>`;
   return `<div class="card"><h3>${up?t('ac.createTitle'):t('ac.signIn')}</h3>
   <label for="acEmail">${t('ac.email')}</label><input id="acEmail" type="email" autocomplete="email" placeholder="you@example.com" value="${em}">
-  <label for="acPw">${up?t('ac.pw8'):t('ac.pw')}</label><input id="acPw" type="password" autocomplete="${up?'new-password':'current-password'}">
+  <label for="acPw">${up?t('ac.pw8'):t('ac.pw')}</label><input id="acPw" type="password" autocomplete="${up?'new-password':'current-password'}" aria-describedby="acNote">
+  <div class="auth-err" id="acNote" role="alert">${esc(route.p.note||'')}</div>
   <button class="btn acc full" data-act="acSubmit" data-mode="${up?'up':'in'}">${up?t('ac.create'):t('ac.signIn')}</button>
   ${up?'':`<div class="right"><button type="button" class="linkbtn" data-act="acForgotGo">${t('ac.forgotQ')}</button></div>`}
-  <button class="btn full" data-act="account" data-mode="${up?'in':'up'}">${up?t('ac.haveAccount'):t('ac.createInstead')}</button>${note}</div>
+  <button class="btn full" data-act="account" data-mode="${up?'in':'up'}">${up?t('ac.haveAccount'):t('ac.createInstead')}</button></div>
   ${up?`<div class="mut">${t('lg.signupNote')}</div>${legalLinks()}`:''}
   <div class="mut">${t('ac.stored')}${up?' '+t('ac.storedUp'):''} ${t('privacy.geo')}</div>`},
 legal(p){const k=LEGAL.docs[p.doc]?p.doc:'terms';
@@ -708,10 +709,12 @@ const ACT={
  finish:()=>finishFlow(),
  // v22: Today's empty screen also opens sign-in / sign-up; after signing in we return to Today (sync pulls the account's data)
  account:b=>{if(route.v!=='account')authFrom=b.dataset.from||'';go('account',{mode:b.dataset.mode||'in'},route.v!=='account')},
- acSubmit:async b=>{const e=$('#acEmail').value.trim(),p=$('#acPw').value,n=$('#acNote');if(!e||!p){n.textContent=t('ac.needBoth');return}
+ acSubmit:async b=>{const e=$('#acEmail').value.trim(),p=$('#acPw').value,n=$('#acNote'),pw=$('#acPw');
+   const fail=msg=>{if(n)n.textContent=msg;if(pw)pw.setAttribute('aria-invalid','true')};
+   if(!e||!p){fail(t('ac.needBoth'));return}
    b.disabled=true;b.textContent=t('working');try{const j=await Sync.signIn(b.dataset.mode,e,p);
      if(j.verified===false){go('account',{mode:'verify',note:j.mailError?Sync.msg({error:j.mailError}):''},false);return}
-     toast(t('ac.signedIn'));stack=[];tab(authFrom==='home'?'home':'settings')}catch(x){n.textContent=errMsg(x);b.disabled=false;b.textContent=b.dataset.mode==='up'?t('ac.create'):t('ac.signIn')}},
+     toast(t('ac.signedIn'));stack=[];tab(authFrom==='home'?'home':'settings')}catch(x){fail(errMsg(x));b.disabled=false;b.textContent=b.dataset.mode==='up'?t('ac.create'):t('ac.signIn')}},
  acVerify:async b=>{const c=($('#acCode').value||'').replace(/\D/g,'');if(c.length!==6){$('#acNote').textContent=t('ac.need6');return}
    b.disabled=true;b.textContent=t('ac.checking');try{await Sync.verify(c);toast(t('ac.verified'));stack=[];tab(authFrom==='home'?'home':'settings')}catch(x){$('#acNote').textContent=x.message;b.disabled=false;b.textContent=t('ac.verify')}},
  acResend:async b=>{b.disabled=true;try{await Sync.resend();$('#acNote').textContent=t('ac.newCode')}catch(x){$('#acNote').textContent=x.status===429?t('ac.wait5'):x.message}setTimeout(()=>{b.disabled=false},60000)},

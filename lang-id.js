@@ -692,7 +692,7 @@ I18N.add('id',{
 "watch.rmQ": "Hapus jam ini?",
 "watch.rmMsg": "\"{name}\" akan dilepas. Jam itu akan menampilkan \"Tidak terpasang\" dan bisa meminta kode baru. Jammu yang lain tetap terpasang.",
 "watch.removed": "Jam dihapus",
-"set.aboutText": "Simple Lift dibuat untuk yang ingin latihan keras tanpa terus menatap layar. Rencanakan latihan dalam hitungan detik, catat setiap set dengan satu ketukan, lalu kembali angkat beban. Pasangkan jam jika mau, dan ponsel bisa tetap di saku. Fitur AI membantu saat kamu membutuhkannya, dan saya berusaha membuatnya semurah mungkin.",
+"set.aboutText": "Simple Lift dibuat untuk yang ingin latihan keras tanpa terus menatap layar. Rencanakan latihan dalam hitungan detik, catat setiap set dengan satu ketukan, lalu kembali angkat beban. Pasangkan jam jika mau dan simpan ponsel di saku. Fitur AI ada saat kamu membutuhkannya.",
 "__ex": {
 "Barbell Bench Press": "Bench press barbel",
 "Incline Barbell Bench Press": "Bench press barbel miring",
