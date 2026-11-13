@@ -15,7 +15,7 @@ class PairView extends WatchUi.View {
         var sy = (Application.getApp() as SimpleLiftApp).sync;
 
         dc.setColor(Theme.ACC, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, H * 0.13, Graphics.FONT_XTINY, "PAIR THIS WATCH", C);
+        dc.drawText(cx, H * 0.13, Graphics.FONT_XTINY, "CONFIRM ON PHONE", C);
 
         var code = sy.pairCode;
         if (code == null) { var s = Storage.getValue("pairCode"); if (s instanceof String) { code = s as String; } }
@@ -30,9 +30,10 @@ class PairView extends WatchUi.View {
 
         dc.setColor(sy.failed ? Theme.WARN : Theme.MUT, Graphics.COLOR_TRANSPARENT);
         var note = sy.pairNote.length() > 0 ? sy.pairNote : "Getting a code…";
+        if (has && note.equals("Enter in Simple Lift")) { note = "Confirm in Simple Lift"; }
         var t = Theme.fit(dc, note, [Graphics.FONT_XTINY], (W * 0.84).toNumber());
         dc.drawText(cx, H * 0.54, Graphics.FONT_XTINY, t[0], C);
-        var sub = has ? "Settings → Pair watch · 10 min" : "Needs phone link or watch Wi-Fi";
+        var sub = has ? "Phone → Watch → Pair a watch" : "Needs phone link or watch Wi-Fi";
         var u = Theme.fit(dc, sub, [Graphics.FONT_XTINY], (W * 0.84).toNumber());
         dc.setColor(Theme.MUT, Graphics.COLOR_TRANSPARENT);
         dc.drawText(cx, H * 0.64, Graphics.FONT_XTINY, u[0], C);
