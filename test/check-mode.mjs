@@ -147,11 +147,26 @@ async function main() {
 
   await page.click('#modePicker button[data-v="none"]');
   await sleep(100);
-  const noneUi = await page.evaluate(() => ({
-    checks: document.querySelectorAll('[data-act="setDone"], [data-act="exDone"]').length,
-    rest: document.querySelectorAll('[data-act="restGo"]').length
-  }));
+  const noneUi = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('.ex-card .settools')];
+    const laid = rows.map(row => {
+      const add = row.querySelector('[data-act="setAdd"]').getBoundingClientRect();
+      const rest = row.querySelector('[data-act="restGo"]').getBoundingClientRect();
+      const card = row.closest('.ex-card').getBoundingClientRect();
+      return {
+        sameRow: Math.abs(add.top - rest.top) < 8,
+        end: document.documentElement.dir === 'rtl' ? rest.left < add.left : rest.left > add.left,
+        flush: document.documentElement.dir === 'rtl' ? rest.left - card.left < 24 : card.right - rest.right < 24
+      };
+    });
+    return {
+      checks: document.querySelectorAll('[data-act="setDone"], [data-act="exDone"]').length,
+      rest: document.querySelectorAll('[data-act="restGo"]').length,
+      laid
+    };
+  });
   check(noneUi.checks === 0 && noneUi.rest === 2, 'no-checks hides every check and offers a manual rest');
+  check(noneUi.laid.length === 2 && noneUi.laid.every(r => r.sameRow && r.end && r.flush), 'Start rest shares the + Set row and sits at the end');
   const skip = await page.$('[data-act="tskip"]');
   if (skip) await skip.click();
   await sleep(100);

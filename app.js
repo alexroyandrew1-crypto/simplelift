@@ -300,8 +300,7 @@ session(){
       <div class="step"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="w" data-d="-1" aria-label="${tA('s.lessW')}, ${L}">−</button><input type="number" inputmode="decimal" data-bind="set.${j}.${k}.w" class="${s.ws==='s'?'sugw':''}" value="${esc(s.w===''||s.w==null?'':fmtW(s.w))}" aria-label="${L}, ${tA('s.weightIn',{u:U()})}"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="w" data-d="1" aria-label="${tA('s.moreW')}, ${L}">+</button></div>
       <div class="step"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="r" data-d="-1" aria-label="${tA('s.fewerR')}, ${L}">−</button><input type="number" inputmode="numeric" data-bind="set.${j}.${k}.r" value="${esc(s.r)}" aria-label="${L}, ${tA('reps')}"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="r" data-d="1" aria-label="${tA('s.moreR')}, ${L}">+</button></div>
       ${checks?`<button class="done ${s.done?'on':''}" data-act="setDone" data-j="${j}" data-k="${k}" aria-label="${L}, ${tA('done')}" aria-pressed="${!!s.done}">✓</button>`:''}</div>`}).join('')}
-    ${mode==='none'?`<button class="btn sm restgo" data-act="restGo" data-j="${j}">${t('cm.rest')}</button>`:''}
-    <div class="row"><button class="btn sm" data-act="setAdd" data-j="${j}">+ ${t('s.set')}</button>${e.sets.length>1?`<button class="btn sm" data-act="setDel" data-j="${j}">− ${t('s.set')}</button>`:''}</div></div>`}).join('')}
+    <div class="row settools"><button class="btn sm" data-act="setAdd" data-j="${j}">+ ${t('s.set')}</button>${e.sets.length>1?`<button class="btn sm" data-act="setDel" data-j="${j}">− ${t('s.set')}</button>`:''}${mode==='none'?`<button class="btn sm restgo" data-act="restGo" data-j="${j}">${t('cm.rest')}</button>`:''}</div></div>`}).join('')}
   <div class="sessfoot"><button class="btn" data-act="sessMenu" aria-label="${tA('s.more')}">⋯</button><button class="btn acc grow" data-act="finish">${t('s.finish')}</button></div>`;
 },
 history({off=0}){
