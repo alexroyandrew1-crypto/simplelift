@@ -80,7 +80,7 @@ async function openApp(browser) {
   await page.evaluateOnNewDocument(bootScript());
   await page.goto('http://127.0.0.1:'+PORT+'/', {waitUntil:'domcontentloaded'});
   await page.evaluate(plan => {
-    localStorage.setItem('simplelift_terms', JSON.stringify({v:'2026-11-03', at:new Date().toISOString()}));
+    localStorage.setItem('simplelift_terms', JSON.stringify({v:'2026-11-11', at:new Date().toISOString()}));
     localStorage.setItem('simplelift_lang', 'en');
     localStorage.setItem('simplelift_lang_toast', 'en');
     const db = {version:1, settings:{units:'lb', unitsChosen:true}, plans:[plan], activePlanId:plan.id, history:[], active:null, updatedAt:1};

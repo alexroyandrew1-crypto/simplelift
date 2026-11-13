@@ -104,7 +104,7 @@ function render(){
   document.querySelectorAll('#tabs button').forEach(b=>{const on=b.dataset.tab===root;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
   const m=$('#view');m.style.animation='none';m.offsetHeight;m.style.animation='';
   m.innerHTML=VIEWS[v](route.p);
-  resumeRest();renderGate();saveFlow();armBack();
+  resumeRest();renderGate();saveFlow();armBack();updateNet();
   afterNav.v=route.v;
 }
 // Entering the workout from another page scrolls to the exercise you were on. Re-rendering a set does not.
@@ -134,7 +134,7 @@ const isPaidLocked=w=>['paid','signin','verify'].includes(w);
 const VIEWS={
 chooser(){return `<div class="mut">${t('chooser.intro')}</div>`+createOpts()},
 home(){
-  const a=db().active,plan=Store.activePlan();let h='';
+  const a=db().active,plan=Store.activePlan();let h=backupNag();
   if(a)h+=`<button class="big acc" data-act="resume">${t('home.resume')}<small>${t('home.inProgress',{day:esc(a.dayName)})}</small></button>`;
   if(plan)return h+todayHTML(plan);
   if(db().plans.length)return h+`<div class="card empty"><h2>${t('home.pickPlan')}</h2><div class="mut">${t('home.pickPlanHint')}</div><button class="btn acc full" data-act="goPlans">${t('home.goPlans')}</button></div>`;
@@ -197,9 +197,10 @@ ai(){
     const aiB=locked?`<button class="big ghost locked" data-act="aiBuild">🔒 ✨ ${t('wiz.buildAI')}<small>${t('wiz.paidMore')}</small></button>`
       :`<button class="big acc" data-act="aiBuild">✨ ${t('wiz.buildAI')}<small>${t('wiz.tailored')}</small></button>`;
     const qB=`<button class="big ${locked?'acc':'ghost'}" data-act="aiQuick">⚡ ${t('wiz.quick')}<small>${t('wiz.instant')}</small></button>`;
+    const pre=aiPrecheck()==='offline'?`<div class="card note">${esc(t('wiz.why.offline'))}</div>`:'';
     return head+`<h2>${t('wiz.ready')}</h2><div class="card recap"><div class="mut">${t('wiz.yourPlan')}</div><b>${esc(aiGoalLine(ai.a))}</b><div class="mut mt1">${esc(aiSummary(ai.a))}</div></div>
     ${busy?`<div class="card center busy"><div class="spin"></div><b>${t('wiz.building')}</b><div class="mut mt1">${t('wiz.takes')}</div><button class="btn full" data-act="aiCancel">${t('cancel')}</button></div>`
-    :`${ai.msg?`<div class="card note">${esc(ai.msg)}</div>`:''}${locked?qB+aiB:aiB+qB}${foot(`<button class="btn" data-act="aiPrev">${t('back')}</button>`)}`}`}
+    :`${pre}${ai.msg?`<div class="card note">${esc(ai.msg)}</div>`:''}${locked?qB+aiB:aiB+qB}${foot(`<button class="btn" data-act="aiPrev">${t('back')}</button>`)}`}`}
   const s=S[ai.step],val=ai.a[s.key],on=v=>s.multi?(val||[]).includes(v):val==v,q=t('q.'+s.key),hint=s.hint?t('qh.'+s.key):'';
   return head+`<h2>${esc(q)}</h2>${hint?`<div class="mut">${esc(hint)}</div>`:''}
   ${s.text?`<label for="aiText" class="sr">${esc(q)}</label><textarea id="aiText" class="mt3" rows="4" placeholder="${tA('wiz.injPh')}">${esc(val||'')}</textarea><div id="injHint" class="mut mt2" aria-live="polite">${injHint(val)}</div>`:''}
@@ -232,7 +233,8 @@ account(){const m=route.p.mode||'in',up=m==='up',a=Sync.a,em=esc(route.p.email||
   <div class="mut">${t('ac.stored')}${up?' '+t('ac.storedUp'):''} ${t('privacy.geo')}</div>`},
 legal(p){const k=LEGAL.docs[p.doc]?p.doc:'terms';
   return `<div class="card legal" lang="en" dir="ltr">${I18N.lang()!=='en'?`<div class="note mut" lang="${I18N.lang()}" dir="${I18N.isRTL()?'rtl':'ltr'}">${t('lg.enNote')}</div>`:''}${LEGAL.docs[k]}</div>${legalLinks(k)}`},
-pair(){return `<div class="card"><h3>⌚ ${t('pair.title')}</h3>
+pair(){const off=navigator.onLine===false?`<div class="card note">${t('pair.needNet')}</div>`:'';
+  return off+`<div class="card"><h3>⌚ ${t('pair.title')}</h3>
   <div class="mut">${t('pair.enter')}</div>
   <label for="pairIn">${t('pair.codeLbl')}</label>
   <input id="pairIn" class="pair-code" inputmode="numeric" maxlength="6" pattern="[0-9]*" autocomplete="one-time-code" aria-describedby="pairNote">
@@ -251,9 +253,10 @@ watch(){const plan=Store.plan(route.p.planId)||Store.activePlan();if(!plan)retur
   <div class="card"><h3>↩ ${t('w.import')}</h3><div class="mut">${t('w.importHint')}</div>
   <label for="watchRes" class="sr">${t('w.result')}</label><textarea id="watchRes" class="code mt2" rows="3" placeholder="SR1~Push~4@95/95/105/105~3@65"></textarea>
   <button class="btn full" data-act="watchImport">${t('w.importBtn')}</button></div>
-  <div class="mut"><b>${t('w.backup')}</b> ${auto}</div>`},
+  <div class="mut"><b>${t('w.backup')}</b> ${auto}</div>
+  <div class="card"><div class="mut">${t('w.linkHow')}</div></div>`},
 paste(){
-  const w=aiPrecheck();const note=w===''?`<div class="mut ainote">${AI_TAG} ${t('p.aiOn')}</div>`:isPaidLocked(w)?`<div class="mut ainote">✨ ${t('p.aiPaid')}</div>`:'';
+  const w=aiPrecheck();const note=w===''?`<div class="mut ainote">${AI_TAG} ${t('p.aiOn')}</div>`:w==='offline'?`<div class="card note">${t('wiz.why.offline')}</div>`:isPaidLocked(w)?`<div class="mut ainote">✨ ${t('p.aiPaid')}</div>`:'';
   return `<div class="mut">${t('p.intro')}</div>
   <div class="grid2 mt3"><button class="btn" data-act="pickPic">🖼 ${t('p.choose')}</button><button class="btn" data-act="takePic">📷 ${t('p.take')}</button></div>
   <input type="file" id="picFile" accept="image/*" multiple hidden><input type="file" id="camFile" accept="image/*" capture="environment" hidden>
@@ -299,8 +302,8 @@ settings(){
   const acct=accountCard()||`<div class="card mut">${t('set.noAccounts')}</div>`;
   const work=`<div class="card"><h3>${t('set.units')}</h3><div class="chips"><button class="chip ${U()==='lb'?'on':''}" data-act="units" data-v="lb" aria-pressed="${U()==='lb'}">lb</button><button class="chip ${U()==='kg'?'on':''}" data-act="units" data-v="kg" aria-pressed="${U()==='kg'}">kg</button></div>
     <div class="mut mt2">${t('set.unitsHint')}</div></div>
-    <div class="card"><div class="between"><div><h3>${t('set.copyW')}</h3><div class="mut">${t('set.copyWHint')}</div></div><button class="chip ${db().settings.copyWeight!==false?'on':''}" data-act="copyW" aria-pressed="${db().settings.copyWeight!==false}">${db().settings.copyWeight!==false?t('on'):t('off')}</button></div></div>`;
-  const look=langCard()+fsCard()+alertCard()+`<div class="card"><h3>${t('set.bg')}</h3><div class="mut">${t('set.bgHint')}</div>
+    <div class="card"><div class="between"><div><h3>${t('set.copyW')}</h3><div class="mut">${t('set.copyWHint')}</div></div><button class="chip ${db().settings.copyWeight!==false?'on':''}" data-act="copyW" aria-pressed="${db().settings.copyWeight!==false}">${db().settings.copyWeight!==false?t('on'):t('off')}</button></div></div>`+alertCard();
+  const look=langCard()+fsCard()+`<div class="card"><h3>${t('set.bg')}</h3><div class="mut">${t('set.bgHint')}</div>
    <div class="bggrid"><button class="bgopt ${bs.kind==='none'?'on':''}" data-act="bgNone" aria-pressed="${bs.kind==='none'}">${t('set.none')}</button>
    ${Object.entries(BGS).map(([k,v])=>`<button class="bgopt ${bs.kind==='preset'&&bs.id===k?'on':''}" style="background:${v}" data-act="bgPreset" data-id="${k}" aria-label="${tA('bg.'+k)}" aria-pressed="${bs.kind==='preset'&&bs.id===k}"><span>${t('bg.'+k)}</span></button>`).join('')}
    <button class="bgopt ${bs.kind==='custom'?'on':''}" data-act="bgPhoto" ${img?`style="background:center/cover url('${img}')"`:''}><span>📷 ${t('set.photo')}</span></button></div>
@@ -308,6 +311,10 @@ settings(){
    <label for="dim">${t('set.dim')} <b id="dimv">${Math.round(bs.dim*100)}%</b></label><input type="range" id="dim" class="range" min="0" max="85" value="${Math.round(bs.dim*100)}"></div>`;
   const data=`<div class="card"><div class="mut">${on?t('set.dataSynced',{email:esc(Sync.a.email||'')}):t('set.dataLocal')}</div>
     <input type="file" id="file" accept="application/json,.json" hidden>
+    <button class="btn full" data-act="export">${t('set.export')}</button>
+    <button class="btn full" data-act="import">${t('set.restore')}</button>
+    <button class="btn full" data-act="importOld">${t('set.old')}</button>
+    <div class="mut mt2">${t('set.oldHint')}</div>
     <button class="btn bad full" data-act="reset">${t('set.reset')}</button></div>`;
   if(on&&Sync.watchList==null){Sync.listWatches().then(()=>{if(route.v==='settings')render()})}
   const wl=Sync.watchList||[];
@@ -315,6 +322,7 @@ settings(){
     <div class="mut">${esc(w.model||'')}${w.lastSeen?` · ${t('watch.last',{d:new Date(w.lastSeen).toLocaleString(I18N.locale())})}`:''}</div></div>
     <button class="btn sm bad" data-act="watchRm" data-id="${esc(w.id)}" data-name="${esc(w.name||w.model||'')}">${t('watch.remove')}</button></div>`).join('');
   const watch=`<div class="card"><h3>${t('set.garmin')}</h3><div class="mut">${on?t('set.garminOn'):t('set.garminOff')}</div>
+    <div class="mut mt2">${t('acc.watchHow')}</div>
     ${on?`<h3 class="mt3">${t('watch.mine')}</h3>${wrows||`<div class="mut">${t('watch.none')}</div>`}
     <button class="btn acc full" data-act="pair">⌚ ${t('pair.enterBtn')}</button>`:''}
     ${plan?`<button class="btn full" data-act="watch" data-i="${Math.max(0,nextDayIndex(plan))}">${t('set.manual')}</button>`:`<div class="mut mt2">${t('set.planFirst')}</div>`}</div>`;
@@ -407,14 +415,34 @@ function progressHTML(off){
     if(p){const d=b.w-p.w,dr=b.r-p.r;c=d?ch(d,U()):dr?ch(dr,t('reps').toLowerCase()):`<span class="mut">${t('pr.same')}</span>`}
     return `<div class="between lrow"><span>${esc(n)}</span><span>${b.w} × ${b.r} · ${c}</span></div>`}).join(''):`<div class="mut">${off===0?t('pr.noneThis'):t('pr.noneThat')}</div>`}</div>`;
 }
+function linkLabel(){const n=typeof netInfo==='function'?netInfo():{on:navigator.onLine!==false,kind:'unknown'};
+  if(!n.on)return t('net.offlineTitle');if(n.kind==='wifi')return t('net.viaWifi');if(n.kind==='cell')return t('net.viaCell');return t('net.viaUnknown')}
+function syncClass(){if(navigator.onLine===false)return 'bad';if(Sync.a.held==='wifi')return 'wait';if(Sync.a.err)return 'bad';if(Sync.busy)return 'wait';return 'ok'}
 function accountCard(){if(typeof API_URL!=='string'||!API_URL)return '';const a=Sync.a;
   if(!a.token)return `<div class="card"><h3>${t('title.account')}</h3><div class="mut">${t('acc.optional')}</div>
-  <div class="row mt2"><button class="btn acc" data-act="account" data-mode="up">${t('acc.signUp')}</button><button class="btn" data-act="account" data-mode="in">${t('ac.signIn')}</button></div></div>`;
-  if(a.verified===false)return `<div class="card"><h3>${t('title.account')}</h3><div>${esc(a.email||'')}</div><div class="mut">⚠ ${t('acc.unverified')}</div>
+  <div class="row mt2"><button class="btn acc" data-act="account" data-mode="up">${t('acc.signUp')}</button><button class="btn" data-act="account" data-mode="in">${t('ac.signIn')}</button></div>
+  <div class="mut mt3">${t('net.thisPhone',{v:esc(linkLabel())})}</div></div>`;
+  if(a.verified===false)return `<div class="card"><h3>${t('title.account')}</h3><div class="acct-email">${esc(a.email||'')}</div><div class="mut">⚠ ${t('acc.unverified')}</div>
   <div class="row wrap mt2"><button class="btn sm acc" data-act="account" data-mode="verify">${t('acc.enterCode')}</button><button class="btn sm" data-act="acOut">${t('ac.signOut')}</button><button class="btn sm bad" data-act="delAcct">${t('acc.del')}</button></div></div>`;
-  return `<div class="card"><h3>${t('title.account')}</h3><div>${esc(a.email||'')}</div>${a.plan?`<div class="mut">${t('acc.plan',{v:a.plan==='paid'?t('acc.paid'):t('acc.free')})}</div>`:''}<div class="mut" id="syncStatus">${esc(Sync.status())}</div>
+  const wifi=!!db().settings.syncWifiOnly;
+  return `<div class="card" id="acctCard"><h3>${t('title.account')}</h3><div class="acct-email">${esc(a.email||'')}</div>${a.plan?`<div class="mut">${t('acc.plan',{v:a.plan==='paid'?t('acc.paid'):t('acc.free')})}</div>`:''}<div class="sync-line ${syncClass()}" id="syncStatus">${esc(Sync.status())}</div>
+  <div class="mut">${t('net.thisPhone',{v:esc(linkLabel())})}</div>
+  <button class="btn full" data-act="syncNow">${t('acc.syncNow')}</button>
+  <div class="between mt3"><div class="grow"><b>${t('acc.wifiOnly')}</b><div class="mut">${t('acc.wifiOnlyHint')}</div></div><button class="chip ${wifi?'on':''}" data-act="wifiOnly" aria-pressed="${wifi}">${wifi?t('on'):t('off')}</button></div>
+  <div class="mut mt2">${t('acc.syncHint')}</div>
   <div class="row wrap mt2"><button class="btn sm" data-act="acOut">${t('ac.signOut')}</button></div>
   <button class="btn sm bad mt3" data-act="delAcct">${t('acc.del')}…</button></div>`}
+function updateNet(){const bar=$('#netbar'),dot=$('#netdot');if(!bar||!dot)return;
+  const n=typeof netInfo==='function'?netInfo():{on:navigator.onLine!==false,kind:'unknown'};
+  const a=(typeof Sync!=='undefined'&&Sync.a)||{};
+  let mode='',title='',body='';
+  if(!n.on){mode='off';title=t('net.offlineTitle');body=t('net.offlineBody')}
+  else if(a.token&&a.held==='wifi'){mode='wait';title=t('net.wifiTitle');body=t('net.wifiBody')}
+  else if(a.token&&a.err&&a.held!=='wifi'){mode='err';title=t('net.errTitle');body=String(a.err).replace(/^⚠\s*/,'')}
+  bar.className='netbar'+(mode?' '+mode:'');bar.hidden=!mode;
+  bar.innerHTML=mode?`<b>${esc(title)}</b><span>${esc(body)}</span>`:'';
+  dot.hidden=false;dot.className='netdot '+(!n.on?'off':n.kind==='cell'?'cell':'on');
+  dot.setAttribute('title',linkLabel());dot.setAttribute('aria-label',linkLabel())}
 // Gentle backup reminder: only without an account, only once workouts exist, at most every 14 days, dismissible.
 const NAG_MS=14*864e5;
 function backupNag(){const s=db().settings,h=db().history;if(Sync.a.token||!h.length)return'';
@@ -761,6 +789,10 @@ const ACT={
  wk:b=>{route.p.off=Math.max(0,+b.dataset.o);render()},
  copyW:()=>{db().settings.copyWeight=db().settings.copyWeight===false;Store.save();render()},
  units:b=>{const to=b.dataset.v,from=U();if(to&&to!==from){try{convertAllUnits(from,to)}catch(e){toast(errMsg(e),'err');return}db().settings.units=to;db().settings.unitsChosen=true;Store.save()}else if(to){db().settings.units=to;db().settings.unitsChosen=true;Store.save()}render()},
+ syncNow:async b=>{if(navigator.onLine===false){toast(t('sy.offline'));updateNet();return}
+   if(Sync.wifiBlocked()){toast(t('sy.wifiWait'));updateNet();return}
+   b.disabled=true;b.textContent=t('acc.syncing');try{await Sync.now()}catch(e){}render()},
+ wifiOnly:()=>{db().settings.syncWifiOnly=!db().settings.syncWifiOnly;Store.save();if(!db().settings.syncWifiOnly)Sync.soon(300);updateNet();render()},
  nagLater:()=>{db().settings.nagAt=Date.now();Store.save();render();toast(t('nag.ok'))},
  export:()=>{const blob=new Blob([Store.exportJSON()],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`simplelift-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();
    db().settings.backupAt=Date.now();Store.save();if(route.v==='home')render();toast(t('set.exported'))},

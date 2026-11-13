@@ -1,0 +1,12 @@
+<strings>
+  <string id="AppName">Simple Lift</string>
+  <string id="CodeTitle">Backup workout code (paste from the phone if sync is down)</string>
+  <string id="ResultTitle">Last result code (paste into Simple Lift if it did not sync)</string>
+  <string id="ApiTitle">Server address. Change only if support asks.</string>
+  <string id="RestAlertTitle">Rest-end alert</string>
+  <string id="AlertVibrate">Vibrate</string>
+  <string id="AlertTone">Tone (watch speaker)</string>
+  <string id="AlertBoth">Vibrate + tone</string>
+  <string id="RepDetectTitle">Live rep count (does not log the set)</string>
+  <string id="AutoDetectTitle">Auto-log a set when you stop moving</string>
+</strings>

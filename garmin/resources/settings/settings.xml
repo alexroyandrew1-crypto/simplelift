@@ -1,0 +1,24 @@
+<settings>
+  <setting propertyKey="@Properties.workoutCode" title="@Strings.CodeTitle">
+    <settingConfig type="alphaNumeric"/>
+  </setting>
+  <setting propertyKey="@Properties.lastResult" title="@Strings.ResultTitle">
+    <settingConfig type="alphaNumeric"/>
+  </setting>
+  <setting propertyKey="@Properties.apiUrl" title="@Strings.ApiTitle">
+    <settingConfig type="alphaNumeric"/>
+  </setting>
+  <setting propertyKey="@Properties.restAlert" title="@Strings.RestAlertTitle">
+    <settingConfig type="list">
+      <listEntry value="0">@Strings.AlertVibrate</listEntry>
+      <listEntry value="1">@Strings.AlertTone</listEntry>
+      <listEntry value="2">@Strings.AlertBoth</listEntry>
+    </settingConfig>
+  </setting>
+  <setting propertyKey="@Properties.repDetect" title="@Strings.RepDetectTitle">
+    <settingConfig type="boolean"/>
+  </setting>
+  <setting propertyKey="@Properties.autoDetectSets" title="@Strings.AutoDetectTitle">
+    <settingConfig type="boolean"/>
+  </setting>
+</settings>
