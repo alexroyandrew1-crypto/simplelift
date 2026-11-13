@@ -120,7 +120,9 @@ function scrollToFocus(){
   const a=db().active;if(!a||route.v!=='session')return;
   const card=document.querySelector(`.ex-card[data-ex="${a.focus|0}"]`);if(!card)return;
   const hdr=($('header')||{getBoundingClientRect:()=>({bottom:0})}).getBoundingClientRect().bottom;
-  scrollTo({top:Math.max(0,scrollY+card.getBoundingClientRect().top-hdr-8),behavior:'auto'});
+  const pick=document.querySelector('#modePicker');
+  const extra=pick?pick.getBoundingClientRect().height+8:0;
+  scrollTo({top:Math.max(0,scrollY+card.getBoundingClientRect().top-hdr-extra-8),behavior:'auto'});
 }
 function noteFocus(j){const a=db().active;if(a&&j>=0&&a.exercises&&j<a.exercises.length)a.focus=j}
 
@@ -246,6 +248,7 @@ pair(){const off=navigator.onLine===false?`<div class="card note">${t('pair.need
   const spec=watchType(type);
   if(!spec||!spec.ready)return off+`<div class="card" id="pairSoon"><h3>${esc(t('watch.type.'+type))}</h3><div class="mut">${t('watch.soon')}</div></div>`;
   if(!route.p.code)return off+`<div class="card" id="pairFlow"><h3>${esc(t('watch.type.'+type))}</h3><div class="mut">${t('pair.lead.'+type)}</div>
+    ${typeof Live!=='undefined'&&Live.bt?`<div class="mut mt2" id="btLine">${t('bt.connected')}</div>`:typeof Live!=='undefined'&&Live.btTried?`<div class="mut mt2" id="btLine">${t('bt.looking')}</div>`:''}
     <div class="right mt2"><button type="button" class="linkbtn" data-act="pairShowCode">${t('pair.trouble')}</button></div></div>`;
   return off+`<div class="card" id="pairCode"><h3>${esc(t('watch.type.'+type))}</h3>
   <div class="mut">${t('pair.enter')}</div>
@@ -283,17 +286,21 @@ paste(){
 },
 session(){
   const a=db().active;if(!a)return`<div class="card">${t('s.none')}</div>`;
+  const mode=sessionMode();
   const done=a.exercises.reduce((s,e)=>s+e.sets.filter(x=>x.done).length,0),tot=a.exercises.reduce((s,e)=>s+e.sets.length,0);
+  const checks=mode==='set';
   return `<div class="between"><h2 class="m0">${esc(a.dayName)}</h2><span class="mut">${t('s.progress',{done,tot})}</span></div>
   <div class="progress"><i style="width:${tot?done/tot*100:0}%"></i></div>
-  ${a.exercises.map((e,j)=>`<div class="card ex-card" data-ex="${j}"><div class="between"><h3>${esc(I18N.exName(e.name))}</h3><span class="mut">${t('s.repsRest',{reps:repTxt(e),rest:restTxt(e.rest)})}</span></div>
+  ${modePicker()}
+  ${a.exercises.map((e,j)=>{const all=e.sets.length&&e.sets.every(x=>x.done);const name=I18N.exName(e.name);
+    return `<div class="card ex-card" data-ex="${j}" data-mode="${mode}"><div class="between exhead"><h3>${esc(name)}</h3><span class="exmeta"><span class="mut">${t('s.repsRest',{reps:repTxt(e),rest:restTxt(e.rest)})}</span>${mode==='exercise'?`<button class="done exdone ${all?'on':''}" data-act="exDone" data-j="${j}" aria-pressed="${!!all}" aria-label="${tA('cm.exDone',{name:name})}">✓</button>`:''}</span></div>
     ${e.note?`<div class="mut">${esc(e.note)}</div>`:''}${e.last?`<div class="mut">${t('s.last',{v:esc(e.last)})}</div>`:''}${sessionSugg(e)}
-    <div class="set set-head" aria-hidden="true"><span>${t('s.set')}</span><span>${U()}</span><span>${t('reps')}</span><span>${t('done')}</span></div>
-    ${e.sets.map((s,k)=>{const L=tA('s.setN',{name:I18N.exName(e.name),n:k+1});return `<div class="set"><span class="mut">${k+1}</span>
+    <div class="set set-head${checks?'':' nock'}" aria-hidden="true"><span>${t('s.set')}</span><span>${U()}</span><span>${t('reps')}</span>${checks?`<span>${t('done')}</span>`:''}</div>
+    ${e.sets.map((s,k)=>{const L=tA('s.setN',{name,n:k+1});return `<div class="set${checks?'':' nock'}"><span class="mut">${k+1}</span>
       <div class="step"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="w" data-d="-1" aria-label="${tA('s.lessW')}, ${L}">−</button><input type="number" inputmode="decimal" data-bind="set.${j}.${k}.w" class="${s.ws==='s'?'sugw':''}" value="${esc(s.w===''||s.w==null?'':fmtW(s.w))}" aria-label="${L}, ${tA('s.weightIn',{u:U()})}"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="w" data-d="1" aria-label="${tA('s.moreW')}, ${L}">+</button></div>
       <div class="step"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="r" data-d="-1" aria-label="${tA('s.fewerR')}, ${L}">−</button><input type="number" inputmode="numeric" data-bind="set.${j}.${k}.r" value="${esc(s.r)}" aria-label="${L}, ${tA('reps')}"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="r" data-d="1" aria-label="${tA('s.moreR')}, ${L}">+</button></div>
-      <button class="done ${s.done?'on':''}" data-act="setDone" data-j="${j}" data-k="${k}" aria-label="${L}, ${tA('done')}" aria-pressed="${!!s.done}">✓</button></div>`}).join('')}
-    <div class="row"><button class="btn sm" data-act="setAdd" data-j="${j}">+ ${t('s.set')}</button>${e.sets.length>1?`<button class="btn sm" data-act="setDel" data-j="${j}">− ${t('s.set')}</button>`:''}</div></div>`).join('')}
+      ${checks?`<button class="done ${s.done?'on':''}" data-act="setDone" data-j="${j}" data-k="${k}" aria-label="${L}, ${tA('done')}" aria-pressed="${!!s.done}">✓</button>`:''}</div>`}).join('')}
+    <div class="row settools"><button class="btn sm" data-act="setAdd" data-j="${j}">+ ${t('s.set')}</button>${e.sets.length>1?`<button class="btn sm" data-act="setDel" data-j="${j}">− ${t('s.set')}</button>`:''}${mode==='none'?`<button class="btn sm restgo" data-act="restGo" data-j="${j}">${t('cm.rest')}</button>`:''}</div></div>`}).join('')}
   <div class="sessfoot"><button class="btn" data-act="sessMenu" aria-label="${tA('s.more')}">⋯</button><button class="btn acc grow" data-act="finish">${t('s.finish')}</button></div>`;
 },
 history({off=0}){
@@ -386,6 +393,17 @@ function aiSummary(a){const eq=t('sum.eq.'+(['full','machines','dumbbells','body
   return [t('sum.days',{n:+a.days||3}),t('unit.min',{n:+a.minutes||45}),eq,...(w.length?[t('sum.inj',{v:w.slice(0,2).map(x=>t('inj.'+x)).join(t('sum.injAnd'))})]:[]),...(f.length?[t('sum.focus',{v:f.slice(0,2).map(x=>t('sum.f.'+x)).join(' & ')})]:[])].join(', ')}
 function injHint(x){const r=parseInjuries(x);return x&&x.trim()?(r.words.length?t('wiz.injOk',{v:`<b class="acc-txt">${r.words.map(x=>esc(t('inj.'+x))).join(', ')}</b>`}):t('wiz.injNone')):''}
 function dayColor(d){return d&&d.color||'#4ade80'}
+const CHECK_MODES=['set','exercise','none'];
+function normMode(m){return CHECK_MODES.includes(m)?m:'set'}
+function checkMode(){return normMode(db().settings&&db().settings.checkMode)}
+function sessionMode(){const a=db().active;return a&&CHECK_MODES.includes(a.checkMode)?a.checkMode:checkMode()}
+function modePicker(){const m=route.v==='session'?sessionMode():checkMode();
+  const stick=route.v==='session'?' stick':'';
+  return `<div class="seg modes${stick}" id="modePicker" role="radiogroup" aria-label="${tA('cm.aria')}">${CHECK_MODES.map(k=>`<button type="button" role="radio" data-act="checkMode" data-v="${k}" aria-checked="${m===k}" aria-pressed="${m===k}">${t('cm.'+k)}</button>`).join('')}</div>`}
+function setCheckMode(v){if(!CHECK_MODES.includes(v))return;db().settings.checkMode=v;
+  const a=db().active,plan=Store.activePlan();
+  const here=a&&(route.v==='session'||(route.v==='home'&&plan&&a.planId===plan.id&&a.dayIndex===(route.p.sel??a.dayIndex)));
+  if(here)a.checkMode=v;Store.save();render();if(here&&typeof Live!=='undefined')Live.push()}
 function todayHTML(plan){
   let sel=route.p.sel;if(sel==null||!plan.days[sel]){sel=nextDayIndex(plan);if(sel<0)sel=0}
   const d=plan.days[sel],c=dayColor(d),nx=nextDayIndex(plan);
@@ -401,6 +419,7 @@ function todayHTML(plan){
   else body+=`<div class="mut">${t('n.exercise',{n:d.exercises.length})} · ${t('n.set',{n:d.exercises.reduce((s,e)=>s+(+e.sets||0),0)})}</div>
     ${live?`<div class="mut">${t('home.inProgress',{day:esc(cur.dayName)})} · ${t('s.progress',{done:liveDone,tot:liveTot})}</div>`:''}
     <div class="exlist">${d.exercises.map(e=>{const g=suggest(e);return `<div class="between lrow"><span>${esc(I18N.exName(e.name))}<br><small class="mut">${esc(sugText(g))}</small></span><span class="right">${e.sets}×${repTxt(e)}<br><small class="dc-txt">${g.w?esc(num(fmtW(g.w)))+' '+U():''}</small></span></div>`}).join('')}</div>
+    ${modePicker()}
     <button class="btn full dc-btn" data-act="start" data-i="${sel}">${live?t('home.resume'):t('t.start')}</button></div>`;
   return tabs+body;
 }
@@ -546,7 +565,8 @@ async function startWorkout(i){
   stopTimer(); // an old interval must not keep alarming over a new workout
   // Reps and weights below live on the session only. The plan's repMin/repMax/weight stay the saved defaults.
   clearSessionMarker();
-  db().active={id:Store.uid(),planId:plan.id,planName:plan.name,dayIndex:i,dayName:d.name,started:Date.now(),focus:0,exercises:ex};Store.save();go('session');
+  db().active={id:Store.uid(),planId:plan.id,planName:plan.name,dayIndex:i,dayName:d.name,started:Date.now(),focus:0,checkMode:checkMode(),rev:0,order:ex.map((_,n)=>n),exercises:ex};Store.save();go('session');
+  if(typeof Live!=='undefined')Live.push();
 }
 // Finish, discard and sign-out all go through here so a later sync cannot revive the session.
 function endSession(){markSessionCleared();stopTimer();if(db().active){db().active=null;Store.save()}
@@ -559,6 +579,7 @@ function fillRemaining(a){const pl=Store.plan(a.planId),day=pl&&pl.days[a.dayInd
       if(st.r===''||st.r==null)st.r=pe?(+pe.repMin||8):8;
       st.done=true})});Store.save()}
 async function finishFlow(){const a=db().active;if(!a)return;
+  if(sessionMode()==='none'){fillRemaining(a);finishWorkout();return}
   const left=a.exercises.reduce((n,e)=>n+e.sets.filter(x=>!x.done).length,0),done=a.exercises.reduce((n,e)=>n+e.sets.filter(x=>x.done).length,0);
   if(!left)return finishWorkout();
   const acts=[{v:'fill',label:t('fin.fill',{n:left}),cls:'acc'}];
@@ -568,6 +589,7 @@ async function finishFlow(){const a=db().active;if(!a)return;
   if(v==='fill'){fillRemaining(a);finishWorkout()}else if(v==='ticked'||v==='close')finishWorkout()}
 function finishWorkout(){
   const a=db().active;if(!a)return;
+  if(typeof Live!=='undefined')Live.finish();
   const exs=a.exercises.map(e=>({name:e.name,oldId:e.oldId,type:e.type,lower:e.lower,sets:e.sets.filter(s=>s.done).map(s=>({w:+s.w||0,r:+s.r||0}))})).filter(e=>e.sets.length);
   if(exs.length)Store.addHistory({id:a.id,date:Date.now(),planId:a.planId,planName:a.planName,dayName:a.dayName,units:U(),minutes:Math.round((Date.now()-a.started)/6e4),exercises:exs});
   const p=Store.plan(a.planId);if(p){p.next=(a.dayIndex+1)%p.days.length;Store.upsertPlan(p)}
@@ -717,7 +739,7 @@ const ACT={
  paste:()=>go('paste',{text:flowGet().paste||''}),
  sessMenu:async()=>{const a=db().active;if(!a)return;const v=await sheet({title:t('s.options'),actions:[{v:'watch',label:'⌚ '+t('s.toWatch')},{v:'discard',label:t('s.discard'),cls:'bad'},{v:null,label:t('close')}]});
    if(v==='watch')go('watch',{i:a.dayIndex,planId:a.planId});
-   else if(v==='discard'&&await ask(t('s.discardQ'),t('s.discardMsg'),t('s.discard'),'bad',t('fin.keep'))){endSession();toast(t('s.discarded'));tab('home')}},
+   else if(v==='discard'&&await ask(t('s.discardQ'),t('s.discardMsg'),t('s.discard'),'bad',t('fin.keep'))){if(typeof Live!=='undefined')Live.drop();endSession();toast(t('s.discarded'));tab('home')}},
  finish:()=>finishFlow(),
  // v22: Today's empty screen also opens sign-in / sign-up; after signing in we return to Today (sync pulls the account's data)
  account:b=>{if(route.v!=='account')authFrom=b.dataset.from||'';go('account',{mode:b.dataset.mode||'in'},route.v!=='account')},
@@ -796,11 +818,18 @@ const ACT={
  stp:(b,e,mult=1)=>{if(e&&e.type==='click'&&holdUntil>Date.now())return; // pointer already handled it
    noteFocus(+b.dataset.j);const s=db().active.exercises[+b.dataset.j].sets[+b.dataset.k],f=b.dataset.f,d=+b.dataset.d;
    const inc=(f==='w'?(U()==='kg'?2.5:5):1)*mult;const cur=f==='w'?fmtW(+s[f]||0):(+s[f]||0);s[f]=Math.max(0,Math.round((cur+d*inc)*10)/10);Store.save();
-   b.parentNode.querySelector('input').value=s[f];if(f==='w'){s.ws='m';b.parentNode.querySelector('input').classList.remove('sugw');cascadeW(+b.dataset.j,+b.dataset.k);Store.save()}},
- setDone:b=>{noteFocus(+b.dataset.j);const e=db().active.exercises[+b.dataset.j],s=e.sets[+b.dataset.k];s.done=!s.done;if(s.done&&s.ws==='s')s.ws='m';Store.save();render();if(s.done&&chimeOn('set'))playChime('set');if(s.done)startTimer(e.rest);if(s.done&&e.sets.every(x=>x.done))setTimeout(()=>autoNext(+b.dataset.j),AUTO_NEXT_MS)},
- setAdd:b=>{const e=db().active.exercises[+b.dataset.j],l=e.sets[e.sets.length-1];e.sets.push({w:l.w,r:l.r,done:false,ws:l.ws==='s'?'s':'c'});Store.save();render()},
- setDel:b=>{db().active.exercises[+b.dataset.j].sets.pop();Store.save();render()},
- t15:()=>{if(!timer)return;timer.end+=15000;saveRest();renderTimer()},tskip:stopTimer,
+   b.parentNode.querySelector('input').value=s[f];if(f==='w'){s.ws='m';b.parentNode.querySelector('input').classList.remove('sugw');cascadeW(+b.dataset.j,+b.dataset.k);Store.save()}if(typeof Live!=='undefined')Live.schedule()},
+ setDone:b=>{noteFocus(+b.dataset.j);const e=db().active.exercises[+b.dataset.j],s=e.sets[+b.dataset.k];s.done=!s.done;if(s.done&&s.ws==='s')s.ws='m';Store.save();render();if(s.done&&chimeOn('set'))playChime('set');if(s.done)startTimer(e.rest);if(s.done&&e.sets.every(x=>x.done))setTimeout(()=>autoNext(+b.dataset.j),AUTO_NEXT_MS);if(typeof Live!=='undefined')Live.push()},
+ exDone:b=>{const j=+b.dataset.j,a=db().active;if(!a)return;const ae=document.activeElement;if(ae&&ae.dataset&&ae.dataset.bind)ae.dispatchEvent(new Event('input',{bubbles:true}));
+   noteFocus(j);const e=a.exercises[j];if(!e)return;const all=e.sets.every(s=>s.done);
+   if(all){e.sets.forEach(s=>{s.done=false});stopTimer();Store.save();render();if(typeof Live!=='undefined')Live.push();return}
+   e.sets.forEach(s=>{if(s.w===''||s.w==null)s.w=0;if(s.r===''||s.r==null)s.r=+e.repMin||8;s.done=true;if(s.ws==='s')s.ws='m'});
+   Store.save();render();if(chimeOn('set'))playChime('set');startTimer(e.rest);setTimeout(()=>autoNext(j),AUTO_NEXT_MS);if(typeof Live!=='undefined')Live.push()},
+ restGo:b=>{const e=db().active&&db().active.exercises[+b.dataset.j];if(!e)return;startTimer(+e.rest|| (typeof DEFAULT_REST_SEC==='number'?DEFAULT_REST_SEC:120));if(typeof Live!=='undefined')Live.push()},
+ checkMode:b=>setCheckMode(b.dataset.v),
+ setAdd:b=>{const e=db().active.exercises[+b.dataset.j],l=e.sets[e.sets.length-1];e.sets.push({w:l.w,r:l.r,done:false,ws:l.ws==='s'?'s':'c'});Store.save();render();if(typeof Live!=='undefined')Live.push()},
+ setDel:b=>{db().active.exercises[+b.dataset.j].sets.pop();Store.save();render();if(typeof Live!=='undefined')Live.push()},
+ t15:()=>{if(!timer)return;timer.end+=15000;saveRest();renderTimer();if(typeof Live!=='undefined')Live.push()},tskip:()=>{stopTimer();if(typeof Live!=='undefined')Live.push()},
  openHist:b=>go('hist',{id:b.dataset.id}),
  delHist:async b=>{if(await ask(t('h.delQ'),t('h.delMsg'),t('h.delBtn'),'bad')){Store.deleteHistory(b.dataset.id);toast(t('h.deleted'));pop()}},
  wk:b=>{route.p.off=Math.max(0,+b.dataset.o);render()},
@@ -852,7 +881,7 @@ document.addEventListener('input',e=>{
   else if(parts[0]==='day')draft.days[route.p.i].name=v;
   else if(parts[0]==='ex'){const ex=draft.days[route.p.i].exercises[+parts[1]],f=parts[2];ex[f]=['sets','repMin','repMax','rest'].includes(f)?(v===''?'':+v):f==='weight'?(v===''?'':+v):v;if(f==='rest')delete ex.restAuto; // user typed it: never auto-replace
     if(f==='name')showAC(+parts[1],v)}
-  else if(parts[0]==='set'){noteFocus(+parts[1]);const s=db().active.exercises[+parts[1]].sets[+parts[2]],old=s.w;s[parts[3]]=v===''?'':+v;if(parts[3]==='w'){s.ws='m';e.target.classList.remove('sugw');if(v!=='')cascadeW(+parts[1],+parts[2])}Store.save()}
+  else if(parts[0]==='set'){noteFocus(+parts[1]);const s=db().active.exercises[+parts[1]].sets[+parts[2]],old=s.w;s[parts[3]]=v===''?'':+v;if(parts[3]==='w'){s.ws='m';e.target.classList.remove('sugw');if(v!=='')cascadeW(+parts[1],+parts[2])}Store.save();if(typeof Live!=='undefined')Live.schedule()}
 });
 // Set weight state ws: 's' suggested (gray), 'c' copied from an edit (white, can be overwritten), 'm' set by the user (white, protected).
 // Copy a set's weight to all LATER sets of the same exercise that aren't marked done or set by the user (Settings toggle, default on).
@@ -877,7 +906,7 @@ function showOldResult(r,manual){
 /* ---------- rest timer alert (v27) ---------- */
 const ALERT_KEY='simplelift_alert',ALERTS=['vib','snd','both','off'];
 function alertGet(){const v=localStorage.getItem(ALERT_KEY);return ALERTS.includes(v)?v:'vib'}
-function restDone(){if(!timer)return;const sid=timer.sid;stopTimer();if(!restOn())return;const a=db().active;if(sid&&(!a||a.id!==sid))return;restAlarm();toast(t('timer.over'))}
+function restDone(){if(!timer)return;const sid=timer.sid;stopTimer();if(typeof Live!=='undefined')Live.push();if(!restOn())return;const a=db().active;if(sid&&(!a||a.id!==sid))return;restAlarm();toast(t('timer.over'))}
 let actx=null;
 // Three short Web Audio chimes. Set logged is one high tick, rest start is two descending notes,
 // rest end is the longer rising alarm. Scheduled only after the context is running, which is what
@@ -953,8 +982,10 @@ else{const fl=flowGet();if(fl.at==='ai'&&fl.ai){ai={step:Math.min(+fl.ai.step||0
 // v27: write anything typed before the app goes to the background
 const flushNow=()=>{const ae=document.activeElement;if(ae&&ae.dataset&&ae.dataset.bind)ae.dispatchEvent(new Event('input',{bubbles:true}));if(db().active)Store.save(true)};
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushNow()});addEventListener('pagehide',flushNow);
+if(typeof Live!=='undefined')Live.start();
 I18N.start(()=>{applyStatic();render()},name=>toast(t('lang.set',{name}))).then(()=>{
   applyStatic();
+  if(typeof Live!=='undefined')Live.start();
   if(!db().oldImportChecked&&oldHasData())importOldApp().then(r=>showOldResult(r,false));
   render();
   if(route.v==='session')scrollToFocus();

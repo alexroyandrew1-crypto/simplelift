@@ -21,4 +21,10 @@
   <setting propertyKey="@Properties.autoDetectSets" title="@Strings.AutoDetectTitle">
     <settingConfig type="boolean"/>
   </setting>
+  <setting propertyKey="@Properties.chime" title="@Strings.ChimeTitle">
+    <settingConfig type="boolean"/>
+  </setting>
+  <setting propertyKey="@Properties.vibration" title="@Strings.VibrationTitle">
+    <settingConfig type="boolean"/>
+  </setting>
 </settings>

@@ -91,6 +91,8 @@ class LiftView extends WatchUi.View {
 
         // 3. "Set X of Y" — plain text, never highlighted or tappable; during rest: what's next
         var st = "Set " + (m.sel + 1) + " of " + n + (m.isDone(m.idx, m.sel) ? "  done" : "");
+        if (!rest && m.logKind.equals("exercise")) { st = "All sets"; }
+        if (!rest && m.logKind.equals("none")) { st = "No checks"; }
         if (rest) { st = "Rest"; }
         var sf = Graphics.FONT_TINY;
         if (rest) { var ff = Theme.fit(dc, st, [Graphics.FONT_TINY, Graphics.FONT_XTINY], (W * 0.80).toNumber()); st = ff[0]; sf = ff[1]; }
@@ -137,7 +139,11 @@ class LiftView extends WatchUi.View {
             dc.setColor(Theme.ACC, Graphics.COLOR_TRANSPARENT); dc.setPenWidth(2); dc.drawCircle(cx, ky, r); dc.setPenWidth(1);
             dc.fillPolygon([[cx - 11, ky - 8], [cx - 1, ky], [cx - 11, ky + 8]]);
             dc.fillPolygon([[cx + 1, ky - 8], [cx + 11, ky], [cx + 1, ky + 8]]);
-        } else if (m.isDone(m.idx, m.sel)) {
+        } else if (m.logKind.equals("none")) {
+            dc.setColor(Theme.ACC, Graphics.COLOR_TRANSPARENT); dc.fillCircle(cx, ky, r);
+            dc.setColor(Theme.ACCINK, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(cx, ky, Graphics.FONT_XTINY, "REST", C);
+        } else if (m.logKind.equals("exercise") ? m.firstOpen(m.idx) < 0 : m.isDone(m.idx, m.sel)) {
             dc.setColor(Theme.ACC2, Graphics.COLOR_TRANSPARENT); dc.fillCircle(cx, ky, r);
             dc.setColor(Theme.ACC, Graphics.COLOR_TRANSPARENT); Theme.check(dc, cx, ky, 10);
         } else {

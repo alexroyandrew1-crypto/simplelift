@@ -50,7 +50,12 @@ module Workout {
         var parts = split(code, "~");
         if (parts.size() < 3 || !parts[0].equals("SL1")) { return null; }
         var ex = [];
+        var logMode = "set";
         for (var i = 2; i < parts.size(); i++) {
+            if (parts[i].length() > 1 && parts[i].substring(0, 1).equals("#")) {
+                logMode = parts[i].substring(1, parts[i].length());
+                continue;
+            }
             var f = split(parts[i], ",");
             if (f.size() < 2) { continue; }
             var sets = num(f[1], 3);
@@ -64,7 +69,7 @@ module Workout {
             });
         }
         if (ex.size() == 0) { return null; }
-        return { :title => parts[1], :ex => ex };
+        return { :title => parts[1], :ex => ex, :logMode => logMode };
     }
 
     function current() as Dictionary {

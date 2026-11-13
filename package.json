@@ -1,7 +1,7 @@
 {
   "private": true,
   "scripts": {
-    "test": "node test/session-persist.mjs"
+    "test": "node test/live-snap.mjs && node test/session-persist.mjs && node test/check-mode.mjs"
   },
   "devDependencies": {
     "puppeteer-core": "23.11.1"

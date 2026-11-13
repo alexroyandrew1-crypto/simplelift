@@ -60,7 +60,7 @@ class LiftDelegate extends WatchUi.BehaviorDelegate {
         if (m.hasUndo()) { m.undoAuto(); return true; }
         if (m.finished) { System.exit(); }
         if (m.focus != FOCUS_NONE) { m.focus = FOCUS_NONE; WatchUi.requestUpdate(); return true; }
-        if (!m.anyDone()) { (Application.getApp() as SimpleLiftApp).showPicker(); return true; }
+        if (!m.anyDone() && !m.logKind.equals("none")) { (Application.getApp() as SimpleLiftApp).showPicker(); return true; }
         var menu = new WatchUi.Menu2({ :title => "Finish workout?" });
         menu.addItem(new WatchUi.MenuItem("Finish & save", "Garmin and the phone", :save, {}));
         menu.addItem(new WatchUi.MenuItem("Keep lifting", null, :resume, {}));
@@ -150,6 +150,7 @@ class LiftDelegate extends WatchUi.BehaviorDelegate {
         if (m.finished) { return hold ? true : start(); }
         var xy = e.getCoordinates(); var x = xy[0]; var y = xy[1];
         var W = System.getDeviceSettings().screenWidth; var H = System.getDeviceSettings().screenHeight; var cx = W / 2;
+        if (!hold && y < H * 0.16 && !m.resting()) { m.cycleKind(); return true; }
         if (y >= H * 0.40 && y < H * 0.585) {
             if (m.resting()) { return true; }               // that row is the rest countdown
             if (m.focus != FOCUS_NONE) {
