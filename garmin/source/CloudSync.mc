@@ -183,19 +183,25 @@ class CloudSync {
     }
 
     function fetchWorkout() as Void {
-        if (base() == null || !paired()) { return; }
+        if (base() == null || !paired() || _reqBusy) { return; }
+        _reqBusy = true;
         Communications.makeWebRequest(base() + "/watch/workout", null,
             { :method => Communications.HTTP_REQUEST_METHOD_GET, :headers => hdr(false),
               :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON }, method(:onWorkout));
     }
 
     function onWorkout(code as Number, data as Dictionary or String or Null) as Void {
+        _reqBusy = false;
         if (code == 200 && data instanceof Dictionary && data["code"] instanceof String && Workout.parse(data["code"] as String) != null) {
             var c = data["code"] as String;
             var changed = !c.equals(Storage.getValue("syncedCode"));
             Storage.setValue("syncedCode", c);
             var ra = RestAlert.fromAny(data["restAlert"]);
             if (ra != null) { Storage.setValue("restAlertServer", ra); }
+            var parsed = Workout.parse(c);
+            var cm = data["checkMode"];
+            if (!(cm instanceof String) && parsed != null && c.find("#") != null) { cm = (parsed as Dictionary)[:logMode]; }
+            if (cm instanceof String) { CheckMode.save(CheckMode.norm(cm as String)); }
             status = "Workout synced";
             if (changed) { (Application.getApp() as SimpleLiftApp).workoutArrived(); }
         } else if (code == 401) {
@@ -242,5 +248,35 @@ class CloudSync {
             status = link().equals("none") ? "Saved on watch" : "Will send when link is back";
         }
         WatchUi.requestUpdate();
+    }
+
+    // Live session. Body is {snap: {...}} both ways. One web request at a time; a newer snap waits in Storage.
+    function pushLive(d as Dictionary) as Void {
+        if (base() == null || !paired()) { return; }
+        if (_reqBusy) { Storage.setValue("livePending", d); return; }
+        _reqBusy = true;
+        Communications.makeWebRequest(base() + "/watch/live", { "snap" => d },
+            { :method => Communications.HTTP_REQUEST_METHOD_POST, :headers => hdr(true),
+              :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON }, method(:onLive));
+    }
+    function pollLive() as Void {
+        if (base() == null || !paired() || _reqBusy) { return; }
+        var pend = Storage.getValue("livePending");
+        if (pend instanceof Dictionary) { Storage.deleteValue("livePending"); pushLive(pend as Dictionary); return; }
+        _reqBusy = true;
+        Communications.makeWebRequest(base() + "/watch/live", null,
+            { :method => Communications.HTTP_REQUEST_METHOD_GET, :headers => hdr(false),
+              :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON }, method(:onLive));
+    }
+    function onLive(code as Number, data as Dictionary or String or Null) as Void {
+        _reqBusy = false;
+        if (code == 200 && data instanceof Dictionary) {
+            var snap = (data as Dictionary)["snap"];
+            if (snap instanceof Dictionary) { LiveLink.deliver(snap as Dictionary); }
+            var cm = (data as Dictionary)["checkMode"];
+            if (cm instanceof String) { CheckMode.save(CheckMode.norm(cm as String)); }
+        }
+        var pend = Storage.getValue("livePending");
+        if (pend instanceof Dictionary) { Storage.deleteValue("livePending"); pushLive(pend as Dictionary); }
     }
 }

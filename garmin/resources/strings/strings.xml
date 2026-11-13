@@ -9,4 +9,6 @@
   <string id="AlertBoth">Vibrate + tone</string>
   <string id="RepDetectTitle">Live rep count (does not log the set)</string>
   <string id="AutoDetectTitle">Auto-log a set when you stop moving</string>
+  <string id="ChimeTitle">Chime (watch speaker)</string>
+  <string id="VibrationTitle">Vibration</string>
 </strings>

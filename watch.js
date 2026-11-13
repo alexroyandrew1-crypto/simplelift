@@ -16,7 +16,8 @@ function watchCode(plan,i){
     if(le){n=le.sets.length;reps=le.sets.map(s=>+s.r||+e.repMin||8);ws=le.sets.map(s=>toLb(s.w))}
     else{n=Math.max(1,Math.min(10,+e.sets||3));const g=suggest(e);reps=Array(n).fill(+e.repMin||8);ws=Array(n).fill(toLb(g.w))}
     return [wClean(e.name),n,joinPer(reps),joinPer(ws),Math.round(restOf(e))].join(',')});
-  return {code:['SL1',title,...items].join('~'),title,names:d.exercises.filter(e=>e.name.trim()).map(e=>e.name)}}
+  const mode=typeof checkMode==='function'?checkMode():'set';
+  return {code:['SL1',title,...items,'#'+mode].join('~'),title,names:d.exercises.filter(e=>e.name.trim()).map(e=>e.name)}}
 function parseResult(t){
   const m=String(t||'').replace(/\s+/g,'').match(/SR1~[^\s]*/i);if(!m)return null;
   const p=m[0].split('~');if(p.length<3)return null;
@@ -37,6 +38,8 @@ function applyResult(r){
     Store.save();return{mode:'live',msg:t('wr.live',{n:c})}}
   const out=exs.map((e,j)=>{const x=r.ex[j];return{name:e.name,oldId:e.oldId,type:e.type,lower:exType(e)==='lower',sets:[...Array(x.n)].map((_,k)=>({w:+wAt(x,k)||0,r:+e.repMin||8}))}}).filter(e=>e.sets.length);
   if(!out.length)throw new Error(t('wr.none'));
+  const recent=db().history.some(h=>h.dayName===day.name&&Math.abs((h.date||0)-Date.now())<180000);
+  if(recent)return{mode:'log',msg:t('wr.log',{day:day.name,n:out.reduce((s,e)=>s+e.sets.length,0)})};
   Store.addHistory({id:Store.uid(),date:Date.now(),planId:plan.id,planName:plan.name,dayName:day.name,units:U(),minutes:0,fromWatch:true,exercises:out});
   if(plan.next===i)plan.next=(i+1)%plan.days.length;Store.upsertPlan(plan);
   return{mode:'log',msg:t('wr.log',{day:day.name,n:out.reduce((s,e)=>s+e.sets.length,0)})}}

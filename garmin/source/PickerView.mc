@@ -59,6 +59,10 @@ class PickerView extends WatchUi.View {
         dc.drawText(cx, H * 0.535, Graphics.FONT_XTINY, first[0], C);
         dc.drawText(cx, H * 0.615, Graphics.FONT_XTINY, ex.size() + " exercises - " + Workout.totalSets(w) + " sets", C);
         Theme.tri(dc, cx, (H * 0.70).toNumber(), 9, false);
+        var mk = CheckMode.current();
+        var ml = Theme.fit(dc, CheckMode.label(mk), [Graphics.FONT_XTINY], (W * 0.80).toNumber());
+        dc.setColor(Theme.ACC, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(cx, H * 0.755, Graphics.FONT_XTINY, ml[0], C);
 
         // START pill
         var label = prog ? "RESUME" : "START";
@@ -96,12 +100,16 @@ class PickerDelegate extends WatchUi.BehaviorDelegate {
     function onTap(e as WatchUi.ClickEvent) as Boolean {
         var y = e.getCoordinates()[1]; var H = System.getDeviceSettings().screenHeight;
         if (y < H * 0.36) { v.step(-1); }
-        else if (y > H * 0.66 && y < H * 0.74) { v.step(1); }
+        else if (y > H * 0.66 && y < H * 0.73) { v.step(1); }
+        else if (y >= H * 0.73 && y < H * 0.78) { CheckMode.cycle(); WatchUi.requestUpdate(); }
         else { pick(); }
         return true;
     }
-    function onMenu() as Boolean {  // hold UP: watch settings (rest alert, rep detection)
+    function onMenu() as Boolean {  // hold UP: watch settings (chime, vibration, rest alert, rep detection)
         var m = new WatchUi.Menu2({ :title => "Settings" });
+        m.addItem(new WatchUi.ToggleMenuItem("Chime", { :enabled => "Watch speaker", :disabled => "Off" }, :chime, Feedback.chimeOn(), {}));
+        m.addItem(new WatchUi.ToggleMenuItem("Vibration", { :enabled => "On", :disabled => "Off" }, :vibe, Feedback.vibeOn(), {}));
+        m.addItem(new WatchUi.MenuItem("Check-off", CheckMode.label(CheckMode.current()), :checkMode, {}));
         m.addItem(new WatchUi.MenuItem("Rest alert", RestAlert.NAMES[RestAlert.mode()], :alert, {}));
         m.addItem(new WatchUi.ToggleMenuItem("Rep count", { :enabled => "Shows reps, does not log", :disabled => "Off" }, :reps, RepDetector.enabled(), {}));
         m.addItem(new WatchUi.ToggleMenuItem("Auto-detect sets", { :enabled => "Log when motion stops", :disabled => "Off" }, :autoSets, AutoDetect.enabled(), {}));
@@ -121,7 +129,18 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
     function initialize() { Menu2InputDelegate.initialize(); }
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
-        if (id == :reps) {
+        if (id == :chime) {
+            Storage.setValue("chimeLocal", (item as WatchUi.ToggleMenuItem).isEnabled());
+        } else if (id == :vibe) {
+            Storage.setValue("vibeLocal", (item as WatchUi.ToggleMenuItem).isEnabled());
+        } else if (id == :checkMode) {
+            var cm = new WatchUi.Menu2({ :title => "Check-off" });
+            var cur = CheckMode.current();
+            cm.addItem(new WatchUi.MenuItem("Check each set", cur.equals("set") ? "Current" : null, "set", {}));
+            cm.addItem(new WatchUi.MenuItem("Check each exercise", cur.equals("exercise") ? "Current" : null, "exercise", {}));
+            cm.addItem(new WatchUi.MenuItem("No checks", cur.equals("none") ? "Current" : null, "none", {}));
+            WatchUi.pushView(cm, new CheckMenuDelegate(item), WatchUi.SLIDE_LEFT);
+        } else if (id == :reps) {
             Storage.setValue("repDetectLocal", (item as WatchUi.ToggleMenuItem).isEnabled());
         } else if (id == :autoSets) {
             Storage.setValue("autoDetectLocal", (item as WatchUi.ToggleMenuItem).isEnabled());
@@ -149,6 +168,17 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         }
     }
 
+}
+
+class CheckMenuDelegate extends WatchUi.Menu2InputDelegate {
+    var parent as WatchUi.MenuItem?;
+    function initialize(p) { Menu2InputDelegate.initialize(); parent = p; }
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        if (id instanceof String) { CheckMode.save(id as String); }
+        if (parent != null) { parent.setSubLabel(CheckMode.label(CheckMode.current())); }
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+    }
 }
 
 class AlertMenuDelegate extends WatchUi.Menu2InputDelegate {

@@ -63,6 +63,12 @@ class LiftModel {
     var order as Array<Number> = [] as Array<Number>;
     var promptOpen as Boolean = false;
     var skipped as Array<Number> = [] as Array<Number>;   // exercises skipped at least once (they sit at the tail of order)     // "garmin" (session) or "estimate" (MET fallback)  // s of rest that must pass before motion can end it
+    var logKind as String = "set";   // set | exercise | none. Same three choices as the phone.
+    var liveId as String = "";
+    var liveRev as Number = 0;
+    var liveDay as Number = 0;
+    var restUntil as Number = 0;     // epoch seconds the rest ends; 0 when not resting
+    var applying as Boolean = false; // a remote snapshot is landing; do not echo it
 
     function initialize(workout as Dictionary) {
         w = workout;
@@ -106,12 +112,17 @@ class LiftModel {
             if (so instanceof Array && validOrder(so)) { order = so as Array<Number>; }
             var sk = st["skipped"];
             if (sk instanceof Array) { skipped = sk as Array<Number>; }
+            var lid = st["liveId"]; if (lid instanceof String) { liveId = lid as String; }
+            var lrv = st["liveRev"]; if (lrv instanceof Number) { liveRev = lrv as Number; }
+            var lk = st["logKind"]; if (lk instanceof String) { logKind = CheckMode.norm(lk as String); }
+            var ld = st["liveDay"]; if (ld instanceof Number) { liveDay = ld as Number; }
             resumed = anyDone();
             var si = st["idx"];
             if (si instanceof Number && si < ex.size()) { idx = si; }
         }
         sel = firstOpen(idx);
         if (sel < 0) { sel = 0; }
+        if (liveId.length() == 0) { logKind = CheckMode.current(); }
         Storage.setValue("lastPick", w[:code]);
         if (RepDetector.enabled() || AutoDetect.enabled()) { det = new RepDetector(method(:onRep)); det.start(); }
         if (self has :dbgStart) { dbgStart(); }
@@ -156,7 +167,7 @@ class LiftModel {
             setLive = true; repBase = 0; liveReps = c;
         }
         // Auto-detect sets: restart a stillness timer on every clean rep of an open set.
-        if (AutoDetect.enabled() && !resting() && !isDone(idx, sel) && focus == FOCUS_NONE && det.fast == 0) {
+        if (logKind.equals("set") && AutoDetect.enabled() && !resting() && !isDone(idx, sel) && focus == FOCUS_NONE && det.fast == 0) {
             if (stillTimer == null) { motionStartN = det.n; }
             cancelStill();
             stillTimer = new Timer.Timer();
@@ -168,7 +179,7 @@ class LiftModel {
     // Stillness after a sequence of clean reps: log the set if the thresholds pass.
     function onMotionStill() as Void {
         stillTimer = null;
-        if (!AutoDetect.enabled() || finished || promptOpen || resting() || isDone(idx, sel) || focus != FOCUS_NONE) { return; }
+        if (!logKind.equals("set") || !AutoDetect.enabled() || finished || promptOpen || resting() || isDone(idx, sel) || focus != FOCUS_NONE) { return; }
         if (det == null || det.fast != 0) { return; }
         if (Time.now().value() < autoBlockUntil) { return; }
         var detected = liveReps > 0 ? liveReps : det.count;
@@ -221,9 +232,31 @@ class LiftModel {
 
     // ---------- persistence ----------
     function save() as Void {
+        if (!applying) { liveRev += 1; }
+        if (liveId.length() == 0) { liveId = "w" + Time.now().value(); }
         var rs = [];
         for (var i = 0; i < ex.size(); i++) { rs.add((ex[i] as Dictionary)[:reps]); }
-        Storage.setValue("state", { "code" => w[:code], "done" => done, "weights" => weights, "reps" => rs, "idx" => idx, "start" => startedAt, "order" => order, "skipped" => skipped });
+        Storage.setValue("state", { "code" => w[:code], "done" => done, "weights" => weights, "reps" => rs, "idx" => idx, "start" => startedAt, "order" => order, "skipped" => skipped, "liveId" => liveId, "liveRev" => liveRev, "logKind" => logKind, "liveDay" => liveDay });
+        if (!applying) { LiveLink.send(snapshot(0, 0)); }
+    }
+    function publish() as Void { if (!applying && !finished) { save(); } }
+    function snapshot(fin as Number, drop as Number) as Dictionary {
+        var rows = [];
+        for (var i = 0; i < ex.size(); i++) {
+            var sets = [];
+            var reps = (ex[i] as Dictionary)[:reps] as Array;
+            var ws = weights[i] as Array;
+            var ds = done[i] as Array;
+            var restS = (ex[i] as Dictionary)[:rest];
+            for (var s = 0; s < reps.size(); s++) { sets.add({ "w" => ws[s], "r" => reps[s], "d" => (ds[s] == true ? 1 : 0) }); }
+            rows.add({ "n" => (ex[i] as Dictionary)[:name], "rest" => restS, "s" => sets });
+        }
+        return {
+            "t" => "snap", "id" => liveId, "rev" => liveRev, "src" => "w", "at" => Time.now().value(),
+            "mode" => logKind, "day" => liveDay, "name" => w[:title], "plan" => "", "code" => w[:code],
+            "idx" => idx, "ord" => order, "rest" => (resting() && restUntil > 0 ? restUntil : 0),
+            "fin" => fin, "drop" => drop, "ex" => rows
+        };
     }
     function reset() as Void { Storage.deleteValue("state"); }
 
@@ -254,16 +287,24 @@ class LiftModel {
     }
 
     // ---------- feedback ----------
+    // Vibration and chime both default ON (same as current behaviour). Every buzz and
+    // playTone goes through these helpers so the Settings toggles always apply.
     function buzz(ms as Number) as Void {
+        if (!Feedback.vibeOn()) { return; }
         if (Attention has :vibrate) { Attention.vibrate([new Attention.VibeProfile(100, ms)]); }
     }
+    function playChime(tone as Attention.Tone) as Void {
+        if (!Feedback.chimeOn()) { return; }
+        if (Attention has :playTone) {
+            try { Attention.playTone(tone); } catch (e) { }
+        }
+    }
     // Rest-end alert: 0 = vibrate, 1 = tone (watch speaker/beeper), 2 = both. See RestAlert.mode().
+    // Master Chime / Vibration switches can still silence the chosen alerts.
     function restAlert() as Void {
         var m = RestAlert.mode();
         if (m != 1) { buzz(800); }
-        if (m != 0 && (Attention has :playTone)) {
-            try { Attention.playTone(Attention.TONE_INTERVAL_ALERT); } catch (e) { }
-        }
+        if (m != 0) { playChime(Attention.TONE_INTERVAL_ALERT); }
     }
 
     // ---------- FIT recording ----------
@@ -286,8 +327,14 @@ class LiftModel {
     }
 
     // ---------- actions ----------
-    // START / checkmark
+    // START / checkmark. exercise = one tap logs every set of this exercise. none = start rest only.
     function check() as Void {
+        if (finished) { return; }
+        if (logKind.equals("none")) { manualRest(); return; }
+        if (logKind.equals("exercise")) { checkExercise(); return; }
+        checkOne();
+    }
+    function checkOne() as Void {
         if (finished) { return; }
         cancelStill();
         if (undoInfo != null) { cancelUndo(); }   // a later manual check dismisses the undo window
@@ -304,16 +351,54 @@ class LiftModel {
         var row = done[idx] as Array; row[sel] = true;
         if (session != null) { session.addLap(); }
         buzz(150);
-        save();
         if (allDone()) { finish(); return; }
+        armRest();
+    }
+    function checkExercise() as Void {
+        if (finished) { return; }
+        cancelStill();
+        if (undoInfo != null) { cancelUndo(); }
+        focus = FOCUS_NONE; stopFlash();
+        if (resting()) { endRest(false); return; }
+        if (firstOpen(idx) < 0) { advance(); return; }
+        startRecording();
+        if (startedAt == null) { startedAt = Time.now().value(); }
+        clearLive();
+        var row = done[idx] as Array;
+        for (var s = 0; s < row.size(); s++) { row[s] = true; }
+        if (session != null) { session.addLap(); }
+        buzz(150);
+        if (allDone()) { finish(); return; }
+        armRest();
+    }
+    // No-checks: START starts this exercise's rest and does not log a set. Finish logs the plan.
+    function manualRest() as Void {
+        if (finished) { return; }
+        cancelStill();
+        focus = FOCUS_NONE; stopFlash();
+        if (resting()) { endRest(false); return; }
+        armRest();
+    }
+    function armRest() as Void {
         restEx = idx; restSet = sel;
         var r = (ex[idx] as Dictionary)[:rest] as Number;
         if (r <= 0) { endRest(true); return; }
         restTotal = r; restLeft = r;
+        restUntil = Time.now().value() + r;
+        if (restTimer != null) { restTimer.stop(); }
         restTimer = new Timer.Timer();
         restTimer.start(method(:tick), 1000, true);
+        save();
         WatchUi.requestUpdate();
     }
+    function markAll() as Void {
+        for (var i = 0; i < done.size(); i++) {
+            var row = done[i] as Array;
+            for (var s = 0; s < row.size(); s++) { row[s] = true; }
+        }
+    }
+    function cycleKind() as Void { setKind(CheckMode.cycle()); }
+    function setKind(n as String) as Void { logKind = CheckMode.norm(n); CheckMode.save(logKind); save(); WatchUi.requestUpdate(); }
 
     function tick() as Void {
         restLeft -= 1;
@@ -324,7 +409,7 @@ class LiftModel {
     // Rest over (or skipped): the rested set's dot lights green and we advance.
     function endRest(alert as Boolean) as Void {
         if (restTimer != null) { restTimer.stop(); restTimer = null; }
-        restLeft = 0;
+        restLeft = 0; restUntil = 0;
         if (alert) { restAlert(); }
         clearLive();
         var e = restEx >= 0 ? restEx : idx;
@@ -472,6 +557,74 @@ class LiftModel {
     function endFlash() as Void { flashTimer = null; WatchUi.requestUpdate(); }
     function stopFlash() as Void { if (flashTimer != null) { flashTimer.stop(); flashTimer = null; } }
 
+    // A snapshot from the phone. Same id + higher rev updates sets, rest, and check mode.
+    function applySnap(d as Dictionary) as Void {
+        var src = d["src"];
+        if (src instanceof String && (src as String).equals("w")) { return; }
+        var rev = d["rev"];
+        var id = d["id"];
+        if (!(rev instanceof Number) || !(id instanceof String)) { return; }
+        var sid = id as String;
+        if (liveId.length() > 0 && sid.equals(liveId) && (rev as Number) <= liveRev) { return; }
+        var drop = d["drop"];
+        if (drop instanceof Number && (drop as Number) != 0) {
+            applying = true;
+            reset();
+            (Application.getApp() as SimpleLiftApp).showPicker();
+            return;
+        }
+        applying = true;
+        liveId = sid;
+        liveRev = rev as Number;
+        var day = d["day"]; if (day instanceof Number) { liveDay = day as Number; }
+        var mode = d["mode"];
+        if (mode instanceof String) { logKind = CheckMode.norm(mode as String); CheckMode.save(logKind); }
+        var rows = d["ex"];
+        if (rows instanceof Array) {
+            var ra = rows as Array;
+            for (var i = 0; i < ra.size() && i < ex.size(); i++) {
+                var row = ra[i];
+                if (!(row instanceof Dictionary)) { continue; }
+                var sets = (row as Dictionary)["s"];
+                if (!(sets instanceof Array)) { continue; }
+                var sa = sets as Array;
+                var reps = (ex[i] as Dictionary)[:reps] as Array;
+                var ws = weights[i] as Array;
+                var ds = done[i] as Array;
+                for (var s = 0; s < sa.size() && s < reps.size(); s++) {
+                    var one = sa[s];
+                    if (!(one instanceof Dictionary)) { continue; }
+                    var od = one as Dictionary;
+                    if (od["w"] instanceof Number) { ws[s] = od["w"] as Number; }
+                    if (od["r"] instanceof Number) { reps[s] = od["r"] as Number; }
+                    var bit = od["d"];
+                    ds[s] = bit instanceof Number && (bit as Number) != 0;
+                }
+            }
+        }
+        var ord = d["ord"];
+        if (ord instanceof Array && validOrder(ord as Array)) { order = ord as Array<Number>; }
+        var ix = d["idx"];
+        if (ix instanceof Number && (ix as Number) >= 0 && (ix as Number) < ex.size()) { idx = ix as Number; }
+        var nx = firstOpen(idx); sel = nx >= 0 ? nx : 0;
+        if (restTimer != null) { restTimer.stop(); restTimer = null; }
+        restLeft = 0; restTotal = 0; restUntil = 0; restEx = -1; restSet = -1;
+        var rest = d["rest"];
+        if (rest instanceof Number && (rest as Number) > Time.now().value()) {
+            restUntil = rest as Number;
+            restLeft = restUntil - Time.now().value();
+            if (restLeft < 1) { restLeft = 1; }
+            restTotal = restLeft; restEx = idx; restSet = sel;
+            restTimer = new Timer.Timer();
+            restTimer.start(method(:tick), 1000, true);
+        }
+        var fin = d["fin"];
+        save();
+        if (fin instanceof Number && (fin as Number) != 0) { finish(); }
+        applying = false;
+        WatchUi.requestUpdate();
+    }
+
     // ---------- finishing ----------
     // Result code for the web app: SR1~Title~N@w1/w2/...~...  (N = sets checked, weights in lb; one weight if all equal)
     function resultCode() as String {
@@ -494,13 +647,19 @@ class LiftModel {
         if (restTimer != null) { restTimer.stop(); restTimer = null; }
         cancelStill(); cancelUndo();
         restLeft = 0; focus = FOCUS_NONE; stopFlash();
+        if (logKind.equals("none")) { markAll(); }
         finished = true;
         stopSensors(); setLive = false;
         result = resultCode();
         try { Properties.setValue("lastResult", result); } catch (e) { }
         Storage.setValue("lastResult", result);
         Storage.setValue("lastDone", w[:code]);
-        (Application.getApp() as SimpleLiftApp).sync.sendResult(result);
+        if (!applying) {
+            liveRev += 1;
+            if (liveId.length() == 0) { liveId = "w" + Time.now().value(); }
+            LiveLink.send(snapshot(1, 0));
+            (Application.getApp() as SimpleLiftApp).sync.sendResult(result);
+        }
         computeCalories();
         computeTime();
         // The FIT activity is dated now (today). If the app was closed mid-workout the old session was
@@ -595,6 +754,20 @@ class DbgSignal {
         t++;
         (m.det as RepDetector).feed(xs, ys, zs);
     }
+}
+
+// Master chime / vibration switches. Watch menu (hold UP in the picker) wins over Garmin Connect app settings.
+// Defaults ON so existing rest-end alerts and buzzes keep their current behaviour until the user turns one off.
+module Feedback {
+    function flagOn(localKey as String, propKey as String) as Boolean {
+        var localVal = Storage.getValue(localKey);
+        if (localVal instanceof Boolean) { return localVal; }
+        var propVal = null;
+        try { propVal = Properties.getValue(propKey); } catch (e) { }
+        return propVal instanceof Boolean ? propVal : true;
+    }
+    function chimeOn() as Boolean { return flagOn("chimeLocal", "chime"); }
+    function vibeOn() as Boolean { return flagOn("vibeLocal", "vibration"); }
 }
 
 // Rest-end alert choice. Order: watch menu choice (hold UP in the picker) > phone/server payload ("restAlert") > app setting.

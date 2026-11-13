@@ -1,0 +1,21 @@
+apply plugin: 'com.android.library'
+
+android {
+    namespace "com.simplelift.garmin"
+    compileSdk 35
+    defaultConfig {
+        minSdk 24
+        targetSdk 35
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation "androidx.appcompat:appcompat:1.7.0"
+    implementation "com.garmin.connectiq:ciq-companion-app-sdk:2.2.0@aar"
+    // Provided by the Capacitor app that includes this module.
+    implementation project(':capacitor-android')
+}

@@ -88,6 +88,10 @@ const Sync={
     finally{if(this.busy===me)this.busy=0;if(epoch!==this.epoch)return;if(typeof updateNet==='function')updateNet();if(typeof route!=='undefined'&&route.v==='settings')render();if(this.again){this.again=false;this.soon(500)}}},
   async pair(){return this.req('POST','/pair/start',{},this.a.token)}, // leftover for older clients; v31 phone uses pairClaim
   async pairClaim(code){return this.req('POST','/pair/claim',{code},this.a.token)},
+  // Live workout channel. Separate from `active` so a second phone cannot revive a finished session.
+  // 404 means this server build does not have the route yet; the caller backs off.
+  async pushLive(snap){if(!this.on()||!snap)return null;return this.req('POST','/live',{snap},this.a.token)},
+  async pullLive(){if(!this.on())return null;return this.req('GET','/live',null,this.a.token)},
   watchList:null,
   async listWatches(){try{const j=await this.req('GET','/watches',null,this.a.token);this.watchList=j.watches||[]}catch(e){this.watchList=[]}return this.watchList},
   async removeWatch(id){return this.req('POST','/watches/remove',{id},this.a.token)},
