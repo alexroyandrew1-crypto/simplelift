@@ -192,6 +192,7 @@ var Live = {
       checkMode: LiveSnap.norm(snap.mode), rev: snap.rev | 0, revAt: snap.at | 0,
       order: Array.isArray(snap.ord) ? snap.ord.slice() : [],
       restEnd: (snap.rest | 0) > Math.floor(Date.now() / 1000) ? snap.rest * 1000 : null,
+      restTotal: (snap.restTotal | 0) > 0 ? snap.restTotal * 1000 : null,
       exercises: (snap.ex || []).map(ex => ({
         name: ex.n, rest: +ex.rest || 0, repMin: ex.s && ex.s[0] ? +ex.s[0].r || 8 : 8, repMax: ex.s && ex.s[0] ? +ex.s[0].r || 8 : 8,
         sets: (ex.s || []).map(s => ({ w: LiveSnap.fromLb(s.w, units), r: +s.r || 0, done: !!s.d, ws: s.d ? 'm' : 's' }))
@@ -202,6 +203,7 @@ var Live = {
     a.rev = snap.rev | 0; a.revAt = snap.at | 0; a.checkMode = LiveSnap.norm(snap.mode); a.focus = snap.idx | 0;
     if (Array.isArray(snap.ord)) a.order = snap.ord.slice();
     a.restEnd = (snap.rest | 0) > Math.floor(Date.now() / 1000) ? snap.rest * 1000 : null;
+    a.restTotal = (snap.restTotal | 0) > 0 ? snap.restTotal * 1000 : null;
     (snap.ex || []).forEach(ex => {
       const le = a.exercises.find(x => x.name === ex.n) || a.exercises[(snap.ex || []).indexOf(ex)];
       if (!le) return;

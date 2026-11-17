@@ -75,7 +75,7 @@ function armBack(){
   const want=canBack()||(!!db().active&&route.v!=='session'&&route.v!=='home');
   if(want&&!backArmed){try{history.pushState({sl:1},'')}catch(e){}backArmed=true}}
 addEventListener('popstate',()=>{backArmed=false;const sh=document.querySelector('.sheet-bg,.sheet');if(sh){armBack();return}back().then(armBack)});
-function go(v,p={},push=true){if(push){route.scroll=window.scrollY||0;stack.push(route)}route={v,p};afterNav()}
+function go(v,p={},push=true){if(!legalOK()&&v!=='legal'&&v!=='home'){toast(t('lg.ackFirst'));return}if(push){route.scroll=window.scrollY||0;stack.push(route)}route={v,p};afterNav()}
 // v30: tab() clears the in-app stack but leaves the browser Back sentinel. Back then had nowhere
 // to go and opened Today, which draws the plan (no checks) while the rest interval keeps alarming.
 function pop(){
@@ -87,7 +87,7 @@ async function back(){if(route.v==='ai'&&ai&&ai.step>0){ACT.aiPrev();return} // 
   // back from a new plan to the wizard / paste screen it came from: not leaving the flow, the answers are still there
   const toFlow=route.v==='editor'&&draft&&draft._new&&stack.length&&/^(ai|paste)$/.test(stack[stack.length-1].v);
   if(!toFlow&&(route.v==='editor'||(route.v==='day'&&route.p.direct))&&!await guard())return;if(toFlow)draftSnap=snap(draft);pop()}
-async function tab(v){if((route.v==='editor'||route.v==='day')&&!await guard())return;stack=[];if(v==='home'&&db().active)v='session'; // v27: Today returns to the running workout
+async function tab(v){if(!legalOK()){toast(t('lg.ackFirst'));if(route.v!=='home'){stack=[];route={v:'home',p:{}};afterNav()}return}if((route.v==='editor'||route.v==='day')&&!await guard())return;stack=[];if(v==='home'&&db().active)v='session'; // v27: Today returns to the running workout
   const fl=flowGet(); // v28: Plans returns to an unfinished new plan
   if(v==='plans'&&ROOT[route.v]!=='plans'&&fl.at){stack=[{v:'plans',p:{}},{v:'chooser',p:{}}];if(fl.at==='ai'){ai=fl.ai||freshAI();route={v:'ai',p:{}}}else route={v:'paste',p:{text:fl.paste||''}};afterNav();return}
   route={v,p:{}};afterNav()}
@@ -97,8 +97,10 @@ document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>tab(b.dataset
 const TITLES={legal:'lg.legal',home:'tab.today',plans:'tab.plans',day:'title.editDay',ai:'title.newPlan',paste:'title.paste',watch:'title.watch',account:'title.account',pair:'title.pair',chooser:'title.newPlan',session:'title.workout',history:'tab.history',hist:'title.workout',settings:'tab.settings'};
 const ROOT={legal:'settings',home:'home',session:'home',plans:'plans',editor:'plans',day:'plans',chooser:'plans',ai:'plans',paste:'plans',history:'history',hist:'history',settings:'settings',account:'settings',pair:'settings',watch:'settings'};
 function render(){
+  if(!legalOK()&&route.v!=='legal'&&route.v!=='home'){route={v:'home',p:{}};stack=[]}
+  document.body.classList.toggle('need-ack',!legalOK());
   let v=route.v;if(!VIEWS[v]){v=route.v=v==='progress'?'history':'home'}
-  $('#title').textContent=v==='legal'?t({terms:'lg.terms',health:'lg.health',privacy:'lg.privacy'}[route.p.doc]||'lg.legal'):v==='editor'?t(draft&&draft._new?'title.newPlan':'title.editPlan'):v==='day'&&route.p.direct?t('title.editDay'):TITLES[v]?t(TITLES[v]):'Simple Lift';
+  $('#title').textContent=!legalOK()&&v==='home'?'Simple Lift':v==='legal'?t({terms:'lg.terms',health:'lg.health',privacy:'lg.privacy'}[route.p.doc]||'lg.legal'):v==='editor'?t(draft&&draft._new?'title.newPlan':'title.editPlan'):v==='day'&&route.p.direct?t('title.editDay'):TITLES[v]?t(TITLES[v]):'Simple Lift';
   $('#back').style.visibility=stack.length?'visible':'hidden';
   const root=v==='watch'&&db().active?'home':ROOT[v];
   document.querySelectorAll('#tabs button').forEach(b=>{const on=b.dataset.tab===root;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
@@ -136,18 +138,20 @@ const isPaidLocked=w=>['paid','signin','verify'].includes(w);
 
 /* ---------- views ---------- */
 // Add a watch by appending {id, ready}. id matches watch.type.<id> and, when ready, pair.lead.<id>.
-const WATCH_TYPES=[{id:'garmin',ready:true},{id:'apple',ready:false},{id:'wear',ready:false}];
+const WATCH_TYPES=[{id:'samsung',ready:true},{id:'garmin',ready:true},{id:'apple',ready:true}];
 const watchType=id=>WATCH_TYPES.find(w=>w.id===id);
 const VIEWS={
 chooser(){return `<div class="mut">${t('chooser.intro')}</div>`+createOpts()},
 home(){
+  if(!legalOK())return legalNotice();
   const a=db().active,plan=Store.activePlan();let h=backupNag();
   if(a)h+=`<button class="big acc" data-act="resume">${t('home.resume')}<small>${t('home.inProgress',{day:esc(a.dayName)})}</small></button>`;
+  const hub=homeHub();
   if(plan)return h+todayHTML(plan);
-  if(db().plans.length)return h+`<div class="card empty"><h2>${t('home.pickPlan')}</h2><div class="mut">${t('home.pickPlanHint')}</div><button class="btn acc full" data-act="goPlans">${t('home.goPlans')}</button></div>`;
+  if(db().plans.length)return h+`<div class="card empty"><h2>${t('home.pickPlan')}</h2><div class="mut">${t('home.pickPlanHint')}</div><button class="btn acc full" data-act="goPlans">${t('home.goPlans')}</button></div>`+hub;
   return h+`<div class="card empty"><div class="empty-ico" aria-hidden="true">🏋️</div><h2>${t('home.noPlan')}</h2><div class="mut">${t('home.noPlanHint')}</div>
     <button class="btn acc full" data-act="chooser">${t('plans.new')}</button>
-    ${typeof API_URL==='string'&&API_URL&&!Sync.a.token?`<div class="mut mt3">${t('home.haveAcct')}</div><div class="row mt2"><button class="btn" data-act="account" data-mode="in" data-from="home">${t('ac.signIn')}</button><button class="btn" data-act="account" data-mode="up" data-from="home">${t('ac.create')}</button></div>`:''}</div>`;
+    ${typeof API_URL==='string'&&API_URL&&!Sync.a.token?`<div class="mut mt3">${t('home.haveAcct')}</div><div class="row mt2"><button class="btn" data-act="account" data-mode="in" data-from="home">${t('ac.signIn')}</button><button class="btn" data-act="account" data-mode="up" data-from="home">${t('ac.create')}</button></div>`:''}</div>`+hub;
 },
 plans(){
   const ps=db().plans;
@@ -241,7 +245,9 @@ account(){const m=route.p.mode||'in',up=m==='up',a=Sync.a,em=esc(route.p.email||
   <div class="mut">${t('ac.stored')}${up?' '+t('ac.storedUp'):''} ${t('privacy.geo')}</div>`},
 legal(p){const k=LEGAL.docs[p.doc]?p.doc:'terms';
   return `<div class="card legal" lang="en" dir="ltr">${I18N.lang()!=='en'?`<div class="note mut" lang="${I18N.lang()}" dir="${I18N.isRTL()?'rtl':'ltr'}">${t('lg.enNote')}</div>`:''}${LEGAL.docs[k]}</div>${legalLinks(k)}`},
-pair(){const off=navigator.onLine===false?`<div class="card note">${t('pair.needNet')}</div>`:'';
+pair(){if(!Sync.on())return `<div class="card" id="pairNeed"><h3>${t('watch.pair')}</h3><div class="mut">${t('pair.signIn')}</div>
+    <button class="btn acc full" data-act="account" data-mode="in" data-from="settings">${t('ac.signIn')}</button></div>`;
+  const off=navigator.onLine===false?`<div class="card note">${t('pair.needNet')}</div>`:'';
   const type=route.p.type||'';
   if(!type)return off+`<div class="card" id="pairPick"><h3>${t('watch.pair')}</h3><div class="mut">${t('watch.choose')}</div>
     ${WATCH_TYPES.map(w=>`<button class="big opt${w.ready?'':' locked'}" data-act="pairType" data-v="${w.id}"${w.ready?'':' disabled'}>${esc(t('watch.type.'+w.id))}${w.ready?'':`<small>${esc(t('watch.soon'))}</small>`}</button>`).join('')}</div>`;
@@ -293,22 +299,36 @@ session(){
   <div class="progress"><i style="width:${tot?done/tot*100:0}%"></i></div>
   ${modePicker()}
   ${a.exercises.map((e,j)=>{const all=e.sets.length&&e.sets.every(x=>x.done);const name=I18N.exName(e.name);
-    return `<div class="card ex-card" data-ex="${j}" data-mode="${mode}"><div class="between exhead"><h3>${esc(name)}</h3><span class="exmeta"><span class="mut">${t('s.repsRest',{reps:repTxt(e),rest:restTxt(e.rest)})}</span>${mode==='exercise'?`<button class="done exdone ${all?'on':''}" data-act="exDone" data-j="${j}" aria-pressed="${!!all}" aria-label="${tA('cm.exDone',{name:name})}">✓</button>`:''}</span></div>
+    return `<div class="card ex-card" data-ex="${j}" data-mode="${mode}"><div class="between exhead"><h3>${esc(name)}</h3><span class="exmeta"><span class="mut">${t('s.repsRest',{reps:repTxt(e),rest:restTxt(e.rest)})}</span><button class="btn sm" data-act="restEdit" data-j="${j}">${t('s.editRest')}</button>${mode==='exercise'?`<button class="done exdone ${all?'on':''}" data-act="exDone" data-j="${j}" aria-pressed="${!!all}" aria-label="${tA('cm.exDone',{name:name})}">✓</button>`:''}</span></div>
     ${e.note?`<div class="mut">${esc(e.note)}</div>`:''}${e.last?`<div class="mut">${t('s.last',{v:esc(e.last)})}</div>`:''}${sessionSugg(e)}
     <div class="set set-head${checks?'':' nock'}" aria-hidden="true"><span>${t('s.set')}</span><span>${U()}</span><span>${t('reps')}</span>${checks?`<span>${t('done')}</span>`:''}</div>
     ${e.sets.map((s,k)=>{const L=tA('s.setN',{name,n:k+1});return `<div class="set${checks?'':' nock'}"><span class="mut">${k+1}</span>
       <div class="step"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="w" data-d="-1" aria-label="${tA('s.lessW')}, ${L}">−</button><input type="number" inputmode="decimal" data-bind="set.${j}.${k}.w" class="${s.ws==='s'?'sugw':''}" value="${esc(s.w===''||s.w==null?'':fmtW(s.w))}" aria-label="${L}, ${tA('s.weightIn',{u:U()})}"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="w" data-d="1" aria-label="${tA('s.moreW')}, ${L}">+</button></div>
       <div class="step"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="r" data-d="-1" aria-label="${tA('s.fewerR')}, ${L}">−</button><input type="number" inputmode="numeric" data-bind="set.${j}.${k}.r" value="${esc(s.r)}" aria-label="${L}, ${tA('reps')}"><button data-act="stp" data-j="${j}" data-k="${k}" data-f="r" data-d="1" aria-label="${tA('s.moreR')}, ${L}">+</button></div>
       ${checks?`<button class="done ${s.done?'on':''}" data-act="setDone" data-j="${j}" data-k="${k}" aria-label="${L}, ${tA('done')}" aria-pressed="${!!s.done}">✓</button>`:''}</div>`}).join('')}
-    <div class="row settools"><button class="btn sm" data-act="setAdd" data-j="${j}">+ ${t('s.set')}</button>${e.sets.length>1?`<button class="btn sm" data-act="setDel" data-j="${j}">− ${t('s.set')}</button>`:''}${mode==='none'?`<button class="btn sm restgo" data-act="restGo" data-j="${j}">${t('cm.rest')}</button>`:''}</div></div>`}).join('')}
+    <div class="row settools"><button class="btn sm" data-act="setAdd" data-j="${j}">+ ${t('s.set')}</button>${e.sets.length>1?`<button class="btn sm" data-act="setDel" data-j="${j}">− ${t('s.set')}</button>`:''}${mode==='none'||mode==='exercise'?`<button class="btn sm restgo" data-act="restGo" data-j="${j}">${t('cm.rest')}</button>`:''}</div></div>`}).join('')}
   <div class="sessfoot"><button class="btn" data-act="sessMenu" aria-label="${tA('s.more')}">⋯</button><button class="btn acc grow" data-act="finish">${t('s.finish')}</button></div>`;
 },
-history({off=0}){
+history(p){
   const h=db().history.slice().sort((a,b)=>b.date-a.date);
   if(!h.length)return`<div class="card empty"><div class="empty-ico" aria-hidden="true">📈</div><h3>${t('h.none')}</h3><div class="mut">${t('h.noneHint')}</div>
     ${Store.activePlan()?`<button class="btn acc full" data-act="goToday">${t('h.goToday')}</button>`:''}</div>`;
-  return progressHTML(off)+`<h2 class="sec">${t('h.workouts')}</h2>`+h.map(w=>`<button class="card plain hrow" data-act="openHist" data-id="${w.id}"><div class="between"><div><div class="mut">${fmtDate(w.date)}</div><h3>${esc(w.dayName)}</h3></div><span aria-hidden="true">›</span></div>
+  const kind=p.kind==='exercises'?'exercises':'workouts',prefs=trackPrefs();
+  const seg=`<div class="seg modes" role="tablist" aria-label="${tA('tab.history')}"><button type="button" role="tab" data-act="trackKind" data-v="workouts" aria-selected="${kind==='workouts'}" aria-pressed="${kind==='workouts'}">${t('h.trackWorkouts')}</button><button type="button" role="tab" data-act="trackKind" data-v="exercises" aria-selected="${kind==='exercises'}" aria-pressed="${kind==='exercises'}">${t('h.trackExercises')}</button></div>`;
+  if(kind==='exercises'&&p.ex)return seg+exerciseTrack(p.ex);
+  if(kind==='exercises'){
+    const all=planExerciseNames();
+    const chips=all.map(n=>{const on=prefs.exercises.some(x=>x.toLowerCase()===n.toLowerCase());
+      return `<button class="chip ${on?'on':''}" data-act="trackEx" data-name="${esc(n)}" aria-pressed="${on}">${esc(I18N.exName(n))}</button>`}).join('');
+    const views=prefs.exercises.map(n=>`<button class="card plain hrow" data-act="openTrack" data-name="${esc(n)}"><div class="between"><h3>${esc(I18N.exName(n))}</h3><span aria-hidden="true">›</span></div><div class="mut">${t('h.exCount',{n:exSeries(n).length})}</div></button>`).join('');
+    return seg+`<div class="mut">${t('h.pickExercises')}</div><div class="chips mt2">${chips||`<span class="mut">${t('h.noPlanEx')}</span>`}</div>`+views}
+  const days=planDayNames();
+  const chips=days.map(n=>{const on=prefs.days.some(x=>x.toLowerCase()===n.toLowerCase());
+    return `<button class="chip ${on?'on':''}" data-act="trackDay" data-name="${esc(n)}" aria-pressed="${on}">${esc(n)}</button>`}).join('');
+  const list=prefs.days.length?h.filter(w=>prefs.days.some(d=>d.toLowerCase()===String(w.dayName||'').toLowerCase())):[];
+  const rows=list.map(w=>`<button class="card plain hrow" data-act="openHist" data-id="${w.id}"><div class="between"><div><div class="mut">${fmtDate(w.date)}</div><h3>${esc(w.dayName)}</h3></div><span aria-hidden="true">›</span></div>
     <div class="mut">${t('n.exercise',{n:w.exercises.length})} · ${t('n.set',{n:sets(w)})} · ${t('h.volume',{v:num(Math.round(vol(w))),u:esc(w.units)})}${w.minutes?` · ${t('unit.min',{n:w.minutes})}`:''}</div></button>`).join('');
+  return seg+`<div class="mut">${t('h.pickDays')}</div><div class="chips mt2">${chips||`<span class="mut">${t('h.noPlanEx')}</span>`}</div>`+(prefs.days.length?rows||`<div class="card mut">${t('h.noneHint')}</div>`:'');
 },
 hist({id}){
   const w=db().history.find(x=>x.id===id);if(!w)return`<div class="card">${t('h.notFound')}</div>`;
@@ -317,7 +337,7 @@ hist({id}){
   <button class="btn bad full" data-act="delHist" data-id="${w.id}">${t('h.del')}</button>`;
 },
 settings(){
-  const bs=bgSettings(),on=Sync.on(),img=localStorage.getItem(BG_KEY),plan=Store.activePlan();
+  const bs=bgSettings(),on=Sync.on(),img=localStorage.getItem(BG_KEY);
   const S=(id,t,b)=>`<section aria-labelledby="sec-${id}"><h2 class="sec" id="sec-${id}">${t}</h2>${b}</section>`;
   const acct=accountCard()||`<div class="card mut">${t('set.noAccounts')}</div>`;
   const work=`<div class="card"><h3>${t('set.units')}</h3><div class="chips"><button class="chip ${U()==='lb'?'on':''}" data-act="units" data-v="lb" aria-pressed="${U()==='lb'}">lb</button><button class="chip ${U()==='kg'?'on':''}" data-act="units" data-v="kg" aria-pressed="${U()==='kg'}">kg</button></div>
@@ -341,10 +361,9 @@ settings(){
   const wrows=wl.map(w=>`<div class="between mt2" data-watch="${esc(w.id)}"><div><b>${esc(w.name||w.model||t('watch.unnamed'))}</b>
     <div class="mut">${t('watch.paired')}${w.model?` · ${esc(w.model)}`:''}${w.lastSeen?` · ${t('watch.last',{d:new Date(w.lastSeen).toLocaleString(I18N.locale())})}`:''}</div></div>
     <button class="btn sm bad" data-act="watchRm" data-id="${esc(w.id)}" data-name="${esc(w.name||w.model||'')}">${t('watch.unpair')}</button></div>`).join('');
-  const watch=`<div class="card" id="watchCard"><h3>${t('sec.watch')}</h3><div class="mut">${on?t('watch.hintOn'):t('watch.hintOff')}</div>
-    ${on?`<h3 class="mt3">${t('watch.mine')}</h3>${wrows||`<div class="mut">${t('watch.none')}</div>`}
-    <button class="btn acc full" data-act="pair">${t('watch.pair')}</button>`:''}
-    ${plan?`<button class="btn full" data-act="watch" data-i="${Math.max(0,nextDayIndex(plan))}">${t('set.manual')}</button>`:`<div class="mut mt2">${t('set.planFirst')}</div>`}</div>`;
+  const watch=`<div class="card" id="watchCard"><h3>${t('sec.watch')}</h3><div class="mut">${on?t('watch.hintOn'):t('pair.signIn')}</div>
+    ${on?`<h3 class="mt3">${t('watch.mine')}</h3>${wrows||`<div class="mut">${t('watch.none')}</div>`}`:''}
+    <button class="btn acc full" data-act="pair">${t('watch.pair')}</button></div>`;
   const about=`<div class="card"><h3>Simple Lift</h3><div class="mut">${t('set.aboutText')}</div>
     <div class="row wrap mt2">${/^https:\/\//.test(DONATE_URL)?`<a class="btn sm" href="${esc(DONATE_URL)}" target="_blank" rel="noopener noreferrer">${t('set.donate')}</a>`:''}
     ${/^[^@\s]+@[^@\s]+$/.test(SUPPORT_EMAIL)?`<a class="btn sm" href="mailto:${esc(SUPPORT_EMAIL)}?subject=Simple%20Lift%20support">${t('set.email')}</a>`:''}
@@ -411,41 +430,32 @@ function todayHTML(plan){
   const liveDone=live?cur.exercises.reduce((s,e)=>s+e.sets.filter(x=>x.done).length,0):0;
   const liveTot=live?cur.exercises.reduce((s,e)=>s+e.sets.length,0):0;
   const tabs=`<div class="daytabs" role="tablist" aria-label="${tA('t.days',{name:plan.name})}">${plan.days.map((x,j)=>`<button class="daytab ${j===sel?'on':''}" role="tab" aria-selected="${j===sel}" style="--dc:${esc(dayColor(x))}" data-act="selDay" data-i="${j}">${esc(x.name)}${x.rest?' 💤':''}</button>`).join('')}</div>`;
-  if(!d)return tabs;
+  if(!d)return tabs+homeHub();
   let body=`<div class="card daycard" style="--dc:${esc(c)}"><div class="between"><div class="grow"><div class="mut">${t('t.plan',{name:esc(plan.name)})}</div><h2 class="dayname">${esc(d.name)} ${sel===nx?`<span class="tag">${t('t.upNext')}</span>`:''}</h2></div>
     <button class="btn sm" data-act="editDay" data-i="${sel}">✎ ${t('title.editDay')}</button></div>`;
   if(d.rest)body+=`<div class="center restbox"><div class="empty-ico" aria-hidden="true">💤</div><h3>${t('day.rest')}</h3><div class="mut">${t('t.restHint')}</div></div></div>`;
   else if(!d.exercises.length)body+=`<div class="mut pad">${t('t.noEx')}</div></div>`;
   else body+=`<div class="mut">${t('n.exercise',{n:d.exercises.length})} · ${t('n.set',{n:d.exercises.reduce((s,e)=>s+(+e.sets||0),0)})}</div>
     ${live?`<div class="mut">${t('home.inProgress',{day:esc(cur.dayName)})} · ${t('s.progress',{done:liveDone,tot:liveTot})}</div>`:''}
-    <div class="exlist">${d.exercises.map(e=>{const g=suggest(e);return `<div class="between lrow"><span>${esc(I18N.exName(e.name))}<br><small class="mut">${esc(sugText(g))}</small></span><span class="right">${e.sets}×${repTxt(e)}<br><small class="dc-txt">${g.w?esc(num(fmtW(g.w)))+' '+U():''}</small></span></div>`}).join('')}</div>
+    <div class="exlist">${d.exercises.map(e=>{const g=suggest(e),show=firstSug(g),hand=show&&isHand(e)?' '+t('sug.perHand'):'';return `<div class="between lrow"><span>${esc(I18N.exName(e.name))}<br><small class="mut">${esc(sugText(g))}</small></span><span class="right">${e.sets}×${repTxt(e)}<br><small class="dc-txt">${show?esc(num(fmtW(show)))+' '+U()+esc(hand):''}</small></span></div>`}).join('')}</div>
     ${modePicker()}
     <button class="btn full dc-btn" data-act="start" data-i="${sel}">${live?t('home.resume'):t('t.start')}</button></div>`;
-  return tabs+body;
+  return tabs+homeHub()+body;
 }
-// Weekly progress summary (was the Progress tab; now the top of History).
-function progressHTML(off){
-  const ws=weekStart(Date.now())-off*7*864e5;
-  const wk=t=>db().history.filter(h=>h.date>=t&&h.date<t+7*864e5);
-  const cur=wk(ws),prev=wk(ws-7*864e5);
-  const plan=Store.activePlan();const planned=plan?plan.days.filter(d=>!d.rest&&d.exercises.length).length:0;
-  const V=cur.reduce((s,w)=>s+vol(w),0),PV=prev.reduce((s,w)=>s+vol(w),0),S=cur.reduce((s,w)=>s+sets(w),0);
-  const weeks=[...Array(8)].map((_,i)=>{const t=ws-(7-i)*7*864e5;return{t,v:wk(t).reduce((s,w)=>s+vol(w),0)}});
-  const mx=Math.max(1,...weeks.map(x=>x.v));
-  const best=list=>{const m={};list.forEach(w=>w.exercises.forEach(e=>e.sets.forEach(s=>{const b=m[e.name];const w1=+s.w||0,r=+s.r||0;if(!b||w1>b.w||(w1===b.w&&r>b.r))m[e.name]={w:w1,r}})));return m};
-  const bc=best(cur),bp=best(prev),end=new Date(ws+6*864e5),pct=PV?Math.round((V-PV)/PV*100):null;
-  const md=x=>new Date(x).toLocaleDateString(I18N.locale(),{month:'short',day:'numeric'});
-  const ch=(d,u)=>d>0?`<span class="up">+${d} ${u}</span>`:`<span class="down">${d} ${u}</span>`;
-  return `<div class="between weeknav"><button class="btn" data-act="wk" data-o="${off+1}" aria-label="${tA('pr.prev')}">‹</button><div class="center"><b>${off===0?t('pr.this'):off===1?t('pr.last'):t('pr.weekOf')}</b><div class="mut">${md(ws)} – ${md(end)}</div></div><button class="btn" data-act="wk" data-o="${off-1}" aria-label="${tA('pr.next')}" ${off<=0?'disabled':''}>›</button></div>
-  <div class="grid3 mt3">
-   <div class="card stat-card"><div class="stat">${cur.length}<span class="stat-of">/${planned||'–'}</span></div><div class="mut">${t('h.workouts')}</div></div>
-   <div class="card stat-card"><div class="stat">${num(S)}</div><div class="mut">${t('sets')}</div></div>
-   <div class="card stat-card"><div class="stat stat-sm">${num(Math.round(V))}</div><div class="mut">${t('pr.volume',{u:U()})}${pct!==null?` <span class="${pct>=0?'up':'down'}">${pct>=0?'+':''}${pct}%</span>`:''}</div></div></div>
-  <div class="card"><h3>${t('pr.vol8')}</h3><div class="bars" role="img" aria-label="${tA('pr.vol8aria')}">${weeks.map((w,i)=>`<div class="${i===7?'cur':''}"><i style="height:${w.v/mx*100}%"></i>${new Date(w.t).toLocaleDateString(I18N.locale(),{month:'numeric',day:'numeric'})}</div>`).join('')}</div></div>
-  <div class="card"><h3>${off===0?t('pr.bestThis'):t('pr.bestThat')}</h3>${Object.keys(bc).length?Object.entries(bc).map(([n,b])=>{const p=bp[n];let c=`<span class="mut">${t('pr.new')}</span>`;
-    if(p){const d=b.w-p.w,dr=b.r-p.r;c=d?ch(d,U()):dr?ch(dr,t('reps').toLowerCase()):`<span class="mut">${t('pr.same')}</span>`}
-    return `<div class="between lrow"><span>${esc(n)}</span><span>${b.w} × ${b.r} · ${c}</span></div>`}).join(''):`<div class="mut">${off===0?t('pr.noneThis'):t('pr.noneThat')}</div>`}</div>`;
-}
+function uniqueNames(list){const out=[];list.forEach(n=>{const s=String(n||'').trim();if(!s)return;if(!out.some(x=>x.toLowerCase()===s.toLowerCase()))out.push(s)});return out}
+function planDayNames(){const names=[];(db().plans||[]).forEach(p=>(p.days||[]).forEach(d=>{if(!d.rest)names.push(d.name)}));return uniqueNames(names)}
+function planExerciseNames(){const names=[];(db().plans||[]).forEach(p=>(p.days||[]).forEach(d=>(d.exercises||[]).forEach(e=>names.push(e.name))));return uniqueNames(names)}
+function trackPrefs(){const s=db().settings&&db().settings.track;return{days:s&&Array.isArray(s.days)?s.days.slice():[],exercises:s&&Array.isArray(s.exercises)?s.exercises.slice():[]}}
+function saveTrack(next){db().settings.track={days:next.days.slice(),exercises:next.exercises.slice()};Store.save()}
+function exSeries(name){const key=String(name||'').toLowerCase(),rows=[];
+  db().history.slice().sort((a,b)=>a.date-b.date).forEach(w=>(w.exercises||[]).forEach(e=>{
+    if(String(e.name||'').toLowerCase()!==key)return;
+    const sets=e.sets||[],top=sets.reduce((b,s)=>{const score=(+s.w||0)*(+s.r||0),bs=b?(+b.w||0)*(+b.r||0):-1;return score>bs?s:b},null);
+    rows.push({date:w.date,day:w.dayName,w:+(top&&top.w)||0,r:+(top&&top.r)||0,units:w.units||U()})}));
+  let best=-1;return rows.map((r,i)=>{const score=r.w*r.r;let mark=i===0?'baseline':'';if(i>0&&score>best)mark='best';if(i===0||score>best)best=score;return Object.assign({},r,{mark})})}
+function exerciseTrack(name){const rows=exSeries(name);
+  const body=rows.length?rows.slice().reverse().map(r=>`<div class="between lrow"><span><span class="mut">${fmtDate(r.date)}</span><br>${esc(r.day||'')}</span><span>${esc(num(fmtW(r.w)))} ${esc(r.units)} × ${esc(r.r)}${r.mark?` <span class="tag">${t(r.mark==='baseline'?'h.baseline':'h.best')}</span>`:''}</span></div>`).join(''):`<div class="mut mt2">${t('h.noneHint')}</div>`;
+  return `<div class="card"><h3>${esc(I18N.exName(name))}</h3><div class="mut">${t('h.exCount',{n:rows.length})}</div>${body}</div>`}
 function linkLabel(){const n=typeof netInfo==='function'?netInfo():{on:navigator.onLine!==false,kind:'unknown'};
   if(!n.on)return t('net.offlineTitle');if(n.kind==='wifi')return t('net.viaWifi');if(n.kind==='cell')return t('net.viaCell');return t('net.viaUnknown')}
 function syncClass(){if(navigator.onLine===false)return 'bad';if(Sync.a.held==='wifi')return 'wait';if(Sync.a.err)return 'bad';if(Sync.busy)return 'wait';return 'ok'}
@@ -483,14 +493,21 @@ function backupNag(){const s=db().settings,h=db().history;if(Sync.a.token||!h.le
 // Recommended weight: same rules as the original app's sug(): no history -> start weight ("Starting estimate" / "Bodyweight");
 // last session hit top of rep range on all planned sets -> +5 (upper/db) or +10 (lower) lb; otherwise repeat weight.
 function exType(e){return e.type||(isLower(e.name)?'lower':'upper')}
+function liftExperience(){const x=db().settings&&db().settings.experience;if(x==='beginner'||x==='intermediate'||x==='advanced')return x;
+  const n=(db().history||[]).length;return n>=40?'advanced':n>=12?'intermediate':'beginner'}
+function expFactor(x){return x==='advanced'?1.75:x==='intermediate'?1.35:1}
+function scaledStart(w){if(!w)return w;const f=expFactor(liftExperience());if(f===1)return w;const stepU=U()==='kg'?2.5:5;return Math.max(stepU,Math.round(w*f/stepU)*stepU)}
+function isHand(e){const n=String(e&&e.name||'').toLowerCase();if(/\b(db|dumbbells?|kettlebell|kb)\b/.test(n))return true;
+  const L=typeof libFind==='function'?libFind(e.name):null;return !!(L&&(L.equip==='dumbbell'||L.equip==='kettlebell'))}
+function firstSug(g){return g&&typeof g.wAt==='function'?g.wAt(0):g&&g.w}
 function suggest(e){const l=Store.lastFor(e.name,e.oldId);const start=e.weight===''||e.weight==null?0:+e.weight;
-  if(!l||!l.sets.length){if(start)return{w:start,k:'start',last:null};
-    const g=startWeight(e.name,U());return{w:g,k:g?'sugStart':'bw',last:null,guess:1}}
+  if(!l||!l.sets.length){if(start)return{w:start,k:'start',last:null,wAt:()=>start};
+    const g=scaledStart(startWeight(e.name,U()));return{w:g,k:g?'sugStart':'bw',last:null,guess:!!g,wAt:()=>g}}
   const w=Math.max(...l.sets.map(s=>+s.w||0));const top=l.sets.length>=+e.sets&&l.sets.every(s=>+s.r>=+e.repMax);
-  // v27: per set. Set N comes from set N of last time (or that workout's last set if it had fewer); a progression adds the step to each loaded set.
+  // Per set. Set N comes from set N of last time (or that workout's last set if it had fewer); a progression adds the step to each loaded set.
   const at=n=>l.sets[Math.min(n,l.sets.length-1)],perW=inc=>n=>{const v=+at(n).w||0;return v>0?v+inc:v};
-  if(top&&w>0){const inc=step(exType(e)==='lower');return{w:w+inc,k:'top',inc,last:l,up:1,wAt:perW(inc)}}
-  return{w,k:'repeat',last:l,wAt:perW(0),rAt:n=>+at(n).r||0}}
+  if(top&&w>0){const inc=step(exType(e)==='lower');return{w:perW(inc)(0),k:'top',inc,last:l,up:1,wAt:perW(inc)}}
+  return{w:perW(0)(0),k:'repeat',last:l,wAt:perW(0),rAt:n=>+at(n).r||0}}
 // Suggestion reason text, in the current language (kept out of suggest() so a language change applies instantly).
 const sugText=g=>t('sug.'+g.k,{n:g.inc,u:U()});
 // Re-translate at render so a language change (and unit switch) is instant; startWorkout stores meta, not baked English.
@@ -500,7 +517,8 @@ function sessionSugg(e){if(!e)return '';
     g=suggest({name:e.name,oldId:e.oldId,weight:w0,sets:(e.sets||[]).length,repMin:e.repMin,repMax:e.repMax,type:e.type,lower:e.lower});
     if(!(g&&(g.w||g.k||g.guess)))return typeof e.sugg==='string'&&e.sugg?`<div class="sugg">↑ ${esc(e.sugg)}</div>`:''}
   if(g.k==='top')g={...g,inc:step(exType(e)==='lower')};
-  const txt=g.guess&&g.w?t('sug.guess',{w:num(fmtW(g.w)),u:U()}):t('sug.rec',{w:g.w?num(fmtW(g.w))+' '+U():t('sug.bwLc'),why:sugText(g)});
+  const show=firstSug(g),hand=show&&isHand(e)?' '+t('sug.perHand'):'';
+  const txt=(g.guess&&show?t('sug.guess',{w:num(fmtW(show)),u:U()}):t('sug.rec',{w:show?num(fmtW(show))+' '+U():t('sug.bwLc'),why:sugText(g)}))+hand;
   return `<div class="sugg">↑ ${esc(txt)}</div>`}
 const createOpts=()=>`<button class="big" data-act="ai">🧭 ${t('co.guided')}<small>${t('co.guidedHint')}</small></button>
   <button class="big" data-act="newPlan">✎ ${t('co.own')}<small>${t('co.ownHint')}</small></button>
@@ -541,7 +559,6 @@ const issuesOf=r=>({unparsed:r.unparsed,skipped:r.skipped,days:r.plan.days.filte
 /* ---------- data helpers ---------- */
 const vol=w=>w.exercises.reduce((s,e)=>s+e.sets.reduce((a,x)=>a+(+x.w||0)*(+x.r||0),0),0);
 const sets=w=>w.exercises.reduce((s,e)=>s+e.sets.length,0);
-function weekStart(t){const d=new Date(t);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime()}
 // Fill missing rests from the library; refresh ones that were auto-filled (restAuto) in case the name changed. User-entered rests are untouched.
 function autoRests(p){p.days.forEach(d=>d.exercises.forEach(e=>{if(e.restAuto)e.rest='';fillRest(e)}))}
 const newEx=()=>({id:Store.uid(),name:'',sets:3,repMin:8,repMax:12,weight:'',rest:'',restAuto:true,note:''}); // rest filled from the library when a name is chosen
@@ -560,7 +577,7 @@ async function startWorkout(i){
     const w=g.w||'',r=+e.repMin||8;
     const wN=n=>g.wAt?(g.wAt(n)||''):w,rN=()=>r;
     const lastTxt=last?last.sets.map(s=>`${fmtW(s.w)||0}×${s.r}`).join(', '):'',sugg={guess:!!(g.guess&&g.w),w:g.w,k:g.k,inc:g.inc};
-    return{oldId:e.oldId,type:e.type,name:e.name,lower,repMin:+e.repMin,repMax:+e.repMax,rest:restOf(e),note:e.note,last:lastTxt,sugg,sets:[...Array(Math.max(1,+e.sets||1))].map((_,n)=>({w:wN(n),sw:wN(n),r:rN(n),done:false,ws:'s'}))}});
+    return{id:e.id,oldId:e.oldId,type:e.type,name:e.name,lower,repMin:+e.repMin,repMax:+e.repMax,rest:restOf(e),note:e.note,last:lastTxt,sugg,sets:[...Array(Math.max(1,+e.sets||1))].map((_,n)=>({w:wN(n),sw:wN(n),r:rN(n),done:false,ws:'s'}))}});
   if(!ex.length){toast(t('t.addFirst'));return}
   stopTimer(); // an old interval must not keep alarming over a new workout
   // Reps and weights below live on the session only. The plan's repMin/repMax/weight stay the saved defaults.
@@ -629,7 +646,7 @@ function localReset(){wipeLocalAppData()}
 // v24: finishing the last set of an exercise glides to the next exercise that still has sets to do (or to Finish).
 // The target lands below the sticky header and above every bar floating at the bottom (rest timer, Finish bar, tabs).
 const AUTO_NEXT_MS=300;
-function bottomBars(){let lim=innerHeight;for(const el of document.querySelectorAll('.timer,.sessfoot,nav#tabs')){const r=el.getBoundingClientRect();
+function bottomBars(){let lim=innerHeight;for(const el of document.querySelectorAll('.sessfoot,nav#tabs')){const r=el.getBoundingClientRect();
   const st=getComputedStyle(el);if(!r.height||st.display==='none'||st.visibility==='hidden')continue;if(r.bottom>=innerHeight-2||st.position==='fixed'||st.position==='sticky')lim=Math.min(lim,r.top)}return lim}
 function autoNext(j){
   if(route.v!=='session'||!db().active)return;const ae=document.activeElement;if(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))return;
@@ -643,33 +660,55 @@ function autoNext(j){
   if(r.top>=hdr+gap/2&&r.bottom<=lim)return; // already fully visible between header and bottom bars
   // align the card top under the header; if it fits in the free band, that also keeps its bottom above the bars
   const y=scrollY+r.top-hdr-gap;scrollTo({top:Math.max(0,y),behavior})}
-function startTimer(sec){if(!restOn()||!db().active)return;runTimer(Date.now()+sec*1000);startCue()}
+function startTimer(sec){if(!restOn()||!db().active)return;const s=Math.max(1,Math.round(+sec||0));runTimer(Date.now()+s*1000,s*1000);startCue()}
 // v29: optional buzz and chime when a rest starts (only from a set tick, never on restore). Both off by default.
 // If the set-logged chime also plays, the rest-start chime follows it so the two stay distinct.
 function startCue(){const st=db().settings;if('startDing' in st){delete st.startDing;Store.save()}if(st.startBuzz)tap();if(chimeOn('start'))playChime('start',chimeOn('set')?0.24:0)}
-function runTimer(end){const sid=db().active&&db().active.id;if(timer)clearInterval(timer.h);timer={end,sid};timer.h=setInterval(renderTimer,250);saveRest();renderTimer()}
+function runTimer(end,totalMs){const sid=db().active&&db().active.id;if(timer)clearInterval(timer.h);
+  const known=totalMs||(db().active&&db().active.restTotal)||Math.max(1000,end-Date.now());
+  timer={end,sid,total:known};timer.h=setInterval(renderTimer,250);saveRest();renderTimer()}
 function stopTimer(){const sid=timer&&timer.sid;if(timer)clearInterval(timer.h);timer=null;const a=db().active;if(!sid||(a&&a.id===sid))saveRest();renderTimer()}
-// v27: the rest timer's end time lives in the active workout so it survives a reload or the app being killed.
-// It is stored on that same session, so a countdown never belongs to a different (or reset) workout.
-function saveRest(){const a=db().active;if(!a)return;if(timer&&timer.sid&&timer.sid!==a.id)return;const v=timer?timer.end:null;if((a.restEnd||null)!==v){a.restEnd=v;Store.save(true)}}
+// The rest end time and the full rest length live on the active workout, so a reload still drains the border from the right place.
+function saveRest(){const a=db().active;if(!a)return;if(timer&&timer.sid&&timer.sid!==a.id)return;const v=timer?timer.end:null,tot=timer?timer.total:null;
+  if((a.restEnd||null)!==v||(a.restTotal||null)!==tot){a.restEnd=v;a.restTotal=tot;Store.save(true)}}
 function resumeRest(){
   const a=db().active;
-  if(!restOn()||!a){if(timer)stopTimer();return}
+  if(!restOn()||!a){if(timer)stopTimer();else paintFrame();return}
   if(timer&&timer.sid&&timer.sid!==a.id)stopTimer();
   const re=a.restEnd||0;
   if(timer&&timer.sid===a.id){renderTimer();return} // a live countdown alarms itself; don't clear it from a redraw
-  if(!(re>Date.now())){if(a.restEnd){a.restEnd=null;Store.save(true)}return}
-  runTimer(re)}
+  if(!(re>Date.now())){if(a.restEnd){a.restEnd=null;a.restTotal=null;Store.save(true)}paintFrame();return}
+  runTimer(re,a.restTotal||(re-Date.now()))}
+function paintFrame(){let f=$('#appframe');
+  if(!f){f=document.createElement('div');f.id='appframe';f.setAttribute('aria-hidden','true');document.body.appendChild(f)}
+  if(!timer){f.style.setProperty('--rest-pct','0');f.classList.remove('live');document.body.classList.remove('resting');return}
+  const left=Math.max(0,timer.end-Date.now()),pct=timer.total>0?Math.max(0,Math.min(100,left/timer.total*100)):0;
+  f.classList.add('live');f.style.setProperty('--rest-pct',pct.toFixed(2));document.body.classList.add('resting')}
 function renderTimer(){let el=$('#timer');
   if(timer&&timer.sid&&db().active&&timer.sid!==db().active.id){stopTimer();return}
   if(timer&&timer.end<=Date.now()){restDone();return} // fires even off the workout screen or right after the screen turns back on
+  paintFrame();
   if(!timer){if(el)el.remove();return}
   const left=Math.max(0,Math.ceil((timer.end-Date.now())/1000));
-  if(!el){el=document.createElement('div');el.id='timer';el.className='timer';document.body.appendChild(el)}
+  if(!el){el=document.createElement('div');el.id='timer';el.className='timer';el.setAttribute('role','timer');document.body.appendChild(el)}
   if(el.dataset.lang!==I18N.lang()){el.dataset.lang=I18N.lang();
-    el.innerHTML=`<span>${t('rest')} <b id="tl"></b></span><span class="row"><button class="btn sm" data-act="t15">+${t('unit.sec',{n:15})}</button><button class="btn sm" data-act="tskip">${t('timer.skip')}</button></span>`}
-  el.querySelector('#tl').textContent=restTxt(left);
+    el.innerHTML=`<b id="tl"></b><span class="row"><button class="btn sm" data-act="t15" aria-label="+${t('unit.sec',{n:15})}">+${t('unit.sec',{n:15})}</button><button class="btn sm" data-act="tskip">${t('timer.skip')}</button></span>`}
+  const tl=el.querySelector('#tl');if(tl)tl.textContent=restTxt(left);
+  el.setAttribute('aria-label',t('timer.remain',{t:restTxt(left)}));
   if(left<=0)restDone()}
+function pairErr(x){if(!x||x.offline||x.code==='network')return t('pair.needNet');
+  const c=String(x.code||'');
+  if(x.status===401||c==='unauthorized')return t('pair.signIn');
+  if(c==='expired'||c==='code_expired'||x.status===410)return t('pair.expired');
+  if(c==='bad_code'||c==='not_found'||c==='unknown_code'||x.status===404||x.status===400)return t('pair.bad');
+  if(x.status===429)return t('sy.429');
+  return t('pair.failPlain')}
+function rememberExperience(){const x=ai&&ai.a&&ai.a.experience;if(x==='beginner'||x==='intermediate'||x==='advanced'){db().settings.experience=x;Store.save()}}
+function saveExerciseRest(session,ex,sec){ex.rest=sec;delete ex.restAuto;
+  const plan=session&&Store.plan(session.planId),day=plan&&plan.days[session.dayIndex];
+  const pe=day&&day.exercises.find(x=>(ex.id&&x.id===ex.id)||String(x.name||'').toLowerCase()===String(ex.name||'').toLowerCase());
+  if(pe){pe.rest=sec;delete pe.restAuto;Store.upsertPlan(plan)}
+  Store.save()}
 
 /* ---------- events ---------- */
 const errMsg=x=>x&&x.message||String(x);
@@ -679,30 +718,33 @@ const TERMS_KEY='simplelift_terms';
 function legalAcc(){try{const a=JSON.parse(localStorage.getItem(TERMS_KEY)||'null');return a&&a.v?a:null}catch(e){return null}}
 const legalOK=()=>{const a=legalAcc();return!!a&&a.v===LEGAL.v};
 function legalAccText(){const a=legalAcc();if(!a)return '—';let d=a.at;try{d=new Intl.DateTimeFormat(I18N.locale(),{dateStyle:'medium'}).format(new Date(a.at))}catch(e){}return t('lg.acceptedOn',{v:esc(a.v),d:esc(d)})}
-function legalLinks(cur){return `<div class="row wrap mt2 legal-links">${['terms','health','privacy'].filter(k=>k!==cur).map(k=>`<button type="button" class="btn sm" data-act="legalDoc" data-doc="${k}">${t('lg.'+k)}</button>`).join('')}</div>`}
-let gate={doc:null,msg:'',chk:false};
-function renderGate(){let g=$('#gate');
-  if(legalOK()){if(g){g.remove();document.body.classList.remove('gated')}return}
-  if(!g){g=document.createElement('div');g.id='gate';g.setAttribute('role','dialog');g.setAttribute('aria-modal','true');g.setAttribute('aria-labelledby','gateTitle');document.body.appendChild(g)}
-  document.body.classList.add('gated');const prev=legalAcc(),chk=$('#gateChk');if(chk)gate.chk=chk.checked;const was=!!gate.chk;
-  if(gate.doc){g.innerHTML=`<div class="gate-in"><div class="between"><button class="btn sm" data-act="gateBack">‹ ${t('back')}</button><b id="gateTitle">${t('lg.'+gate.doc)}</b><span></span></div>
-    <div class="card legal" lang="en" dir="ltr">${I18N.lang()!=='en'?`<div class="note mut" lang="${I18N.lang()}" dir="${I18N.isRTL()?'rtl':'ltr'}">${t('lg.enNote')}</div>`:''}${LEGAL.docs[gate.doc]}</div>
-    <button class="btn full" data-act="gateBack">‹ ${t('back')}</button></div>`;g.scrollTop=0;return}
-  g.innerHTML=`<div class="gate-in"><div class="center"><div class="big-emoji">🏋️</div><h2 id="gateTitle">${t('lg.title')}</h2></div>
+function legalLinks(cur){return `<div class="doclinks">${['terms','health','privacy'].filter(k=>k!==cur).map(k=>`<button type="button" class="doclink" data-act="legalDoc" data-doc="${k}"><span>${t('lg.'+k)}</span><span class="chev" aria-hidden="true">›</span></button>`).join('')}</div>`}
+function legalNotice(){const prev=legalAcc();
+  return `<section class="card ack" id="legalGate"><div class="ack-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11"/></svg></div>
+    <h2 id="gateTitle">${t('lg.title')}</h2>
     ${prev?`<div class="note warn">${t('lg.changed')}</div>`:''}<p class="mut">${t('lg.intro')}</p>
-    <ul class="gate-pts"><li>🩺 ${t('lg.p1')}</li><li>⚠️ ${t('lg.p2')}</li><li>📏 ${t('lg.p3')}</li><li>🔞 ${t('lg.p4')}</li></ul>
     ${legalLinks()}${I18N.lang()!=='en'?`<div class="mut mt2">${t('lg.enNote')}</div>`:''}
-    <label class="gate-chk"><input type="checkbox" id="gateChk"${was?' checked':''}> <span>${t('lg.agree')}</span></label>
+    <label class="gate-chk"><input type="checkbox" id="gateChk"${gate.chk?' checked':''}> <span>${t('lg.agree')}</span></label>
     <div class="gate-msg" id="gateMsg" role="alert">${gate.msg?esc(gate.msg):''}</div>
-    <div class="grid2"><button class="btn" data-act="gateNo">${t('lg.decline')}</button><button class="btn acc" data-act="gateYes">${t('lg.accept')}</button></div></div>`}
+    <button class="btn acc full" data-act="gateYes">${t('lg.accept')}</button>
+    <button class="btn full" data-act="gateNo">${t('lg.decline')}</button></section>`}
+function homeHub(){
+  const ico={plans:'<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
+    history:'<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>',
+    watch:'<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="3"/><path d="M9 6V4h6v2M9 18v2h6v-2"/></svg>',
+    settings:'<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/></svg>'};
+  const tile=(act,label,svg,extra='')=>`<button class="hub" data-act="${act}"${extra}>${svg}<span>${label}</span></button>`;
+  return `<div class="hubs" aria-label="${tA('nav.main')}">${tile('goPlans',t('tab.plans'),ico.plans)}${tile('goHistory',t('tab.history'),ico.history)}${tile('pair',t('watch.pair'),ico.watch)}${tile('goSettings',t('tab.settings'),ico.settings)}</div>`}
+let gate={doc:null,msg:'',chk:false};
+function renderGate(){const g=$('#gate');if(g)g.remove();document.body.classList.remove('gated')}
 const ACT={
- legalDoc:b=>{if(!legalOK()){gate.doc=b.dataset.doc;renderGate();return}go('legal',{doc:b.dataset.doc})},
- gateBack:()=>{gate.doc=null;renderGate();const c=$('#gateChk');if(c)c.focus()},
- gateYes:()=>{if(!$('#gateChk')||!$('#gateChk').checked){gate.msg=t('lg.tick');renderGate();return}
-   localStorage.setItem(TERMS_KEY,JSON.stringify({v:LEGAL.v,at:new Date().toISOString()}));gate={doc:null,msg:'',chk:false};renderGate();render()},
- gateNo:()=>{gate.msg=t('lg.declined');renderGate()},
+ legalDoc:b=>{const c=$('#gateChk');if(c)gate.chk=c.checked;go('legal',{doc:b.dataset.doc})},
+ gateBack:()=>{gate.doc=null;if(stack.length)back();else{route={v:'home',p:{}};afterNav()}},
+ gateYes:()=>{const c=$('#gateChk');if(!c||!c.checked){gate.chk=!!(c&&c.checked);gate.msg=t('lg.tick');render();return}
+   localStorage.setItem(TERMS_KEY,JSON.stringify({v:LEGAL.v,at:new Date().toISOString()}));gate={doc:null,msg:'',chk:false};render()},
+ gateNo:()=>{gate.msg=t('lg.declined');render()},
  resume:()=>go('session'),start:b=>startWorkout(+b.dataset.i),
- goPlans:()=>tab('plans'),goToday:()=>tab('home'),
+ goPlans:()=>tab('plans'),goToday:()=>tab('home'),goHistory:()=>tab('history'),goSettings:()=>tab('settings'),
  newPlan:()=>{openDraft(blankPlan());draft._new=1;go('editor')},
  edit:b=>{openDraft(clone(Store.plan(b.dataset.id)));go('editor')},
  dup:b=>{const p=clone(Store.plan(b.dataset.id));p.id=Store.uid();p.name=t('plans.copyName',{name:p.name});p.days.forEach(d=>{d.id=Store.uid()});Store.upsertPlan(p);toast(t('plans.copied'));render()},
@@ -737,8 +779,8 @@ const ACT={
  bgPhoto:()=>{const f=$('#bgFile');f.value='';f.onchange=async()=>{try{const u=await loadBgFile(f.files[0]);try{localStorage.setItem(BG_KEY,u)}catch(e){throw new Error(t('err.noSpace'))}setBg({kind:'custom'});toast(t('set.bgSet'));render()}catch(e){toast(errMsg(e),'err')}};f.click()},
  importOld:async()=>{const r=await importOldApp();showOldResult(r,true)},
  paste:()=>go('paste',{text:flowGet().paste||''}),
- sessMenu:async()=>{const a=db().active;if(!a)return;const v=await sheet({title:t('s.options'),actions:[{v:'watch',label:'⌚ '+t('s.toWatch')},{v:'discard',label:t('s.discard'),cls:'bad'},{v:null,label:t('close')}]});
-   if(v==='watch')go('watch',{i:a.dayIndex,planId:a.planId});
+ sessMenu:async()=>{const a=db().active;if(!a)return;const v=await sheet({title:t('s.options'),actions:[{v:'pair',label:t('watch.pair')},{v:'discard',label:t('s.discard'),cls:'bad'},{v:null,label:t('close')}]});
+   if(v==='pair')go('pair');
    else if(v==='discard'&&await ask(t('s.discardQ'),t('s.discardMsg'),t('s.discard'),'bad',t('fin.keep'))){if(typeof Live!=='undefined')Live.drop();endSession();toast(t('s.discarded'));tab('home')}},
  finish:()=>finishFlow(),
  // v22: Today's empty screen also opens sign-in / sign-up; after signing in we return to Today (sync pulls the account's data)
@@ -772,8 +814,9 @@ const ACT={
  pairType:b=>{const spec=watchType(b.dataset.v);if(!spec||!spec.ready)return;go('pair',{type:spec.id})},
  pairShowCode:()=>{go('pair',{type:route.p.type,code:1});const i=$('#pairIn');if(i)i.focus()},
  pairClaim:async b=>{const c=(($('#pairIn')||{}).value||'').replace(/\D/g,'');const n=$('#pairNote');
+   if(navigator.onLine===false){if(n)n.textContent=t('pair.needNet');return}
    if(c.length!==6){if(n)n.textContent=t('pair.need6');return}
-   b.disabled=true;try{await Sync.pairClaim(c);toast(t('pair.ok'));Sync.watchList=null;pop()}catch(x){if(n)n.textContent=x.message;b.disabled=false}},
+   b.disabled=true;try{await Sync.pairClaim(c);toast(t('pair.ok'));Sync.watchList=null;pop()}catch(x){if(n)n.textContent=pairErr(x);b.disabled=false}},
  watchRm:async b=>{if(!await ask(t('watch.rmQ'),t('watch.rmMsg',{name:b.dataset.name||t('watch.unnamed')}),t('watch.remove'),'bad'))return;
    try{await Sync.removeWatch(b.dataset.id);toast(t('watch.removed'));Sync.watchList=null;render()}catch(x){toast(x.message,'err')}},
  watch:b=>go('watch',{i:+b.dataset.i,planId:Store.activePlan()?.id}),
@@ -807,10 +850,10 @@ const ACT={
  aiNext:()=>{const S=AI_STEPS,st=S[ai.step];if(!st)return;const tx=$('#aiText');if(tx)ai.a[st.key]=tx.value;
    if(!st.multi&&!st.text&&ai.a[st.key]==null){toast(t('wiz.pick'));return}
    ai.step++;ai.msg='';render();scrollTo(0,0)},
- aiQuick:()=>{if(ai.busy)return;ai.msg='';openDraft(rulePlan(ai.a));draft._new=1;draft._flow='ai';go('editor');toast(t('wiz.readyQuick'))},
+ aiQuick:()=>{if(ai.busy)return;ai.msg='';rememberExperience();openDraft(rulePlan(ai.a));draft._new=1;draft._flow='ai';go('editor');toast(t('wiz.readyQuick'))},
  aiBuild:async()=>{if(ai.busy)return;
    const why=aiPrecheck();if(why){ai.msg=t('wiz.why.'+(['paid','none','offline','verify'].includes(why)?why:'signin'));render();return}
-   const ctl=new AbortController();ai.ctl=ctl;ai.busy=true;ai.msg='';render();
+   rememberExperience();const ctl=new AbortController();ai.ctl=ctl;ai.busy=true;ai.msg='';render();
    const p=await generatePlan(ai.a,{signal:ctl.signal});if(ai.ctl!==ctl||ctl.signal.aborted)return; // cancelled
    ai.busy=false;ai.ctl=null;openDraft(p);draft._new=1;draft._ai=lastAI;draft._flow='ai';go('editor');
    toast(lastAI&&lastAI.ai?t('wiz.readyAI'):lastAI&&lastAI.note?lastAI.note:t('wiz.readyBuiltin'))},
@@ -824,15 +867,25 @@ const ACT={
    noteFocus(j);const e=a.exercises[j];if(!e)return;const all=e.sets.every(s=>s.done);
    if(all){e.sets.forEach(s=>{s.done=false});stopTimer();Store.save();render();if(typeof Live!=='undefined')Live.push();return}
    e.sets.forEach(s=>{if(s.w===''||s.w==null)s.w=0;if(s.r===''||s.r==null)s.r=+e.repMin||8;s.done=true;if(s.ws==='s')s.ws='m'});
-   Store.save();render();if(chimeOn('set'))playChime('set');startTimer(e.rest);setTimeout(()=>autoNext(j),AUTO_NEXT_MS);if(typeof Live!=='undefined')Live.push()},
+   Store.save();render();if(chimeOn('set'))playChime('set');setTimeout(()=>autoNext(j),AUTO_NEXT_MS);if(typeof Live!=='undefined')Live.push()},
  restGo:b=>{const e=db().active&&db().active.exercises[+b.dataset.j];if(!e)return;startTimer(+e.rest|| (typeof DEFAULT_REST_SEC==='number'?DEFAULT_REST_SEC:120));if(typeof Live!=='undefined')Live.push()},
+ restEdit:async b=>{const a=db().active,e=a&&a.exercises[+b.dataset.j];if(!e)return;
+   const v=await sheet({title:t('s.editRest'),msg:t('s.repsRest',{reps:repTxt(e),rest:restTxt(e.rest)}),
+     html:`<label for="restSec">${t('day.restSec')}</label><input id="restSec" name="rest" type="number" inputmode="numeric" min="0" max="600" value="${+e.rest||0}">`,
+     actions:[{v:'save',label:t('day.save'),cls:'acc',run:o=>{const n=+o.querySelector('#restSec').value;if(!Number.isFinite(n)||n<0||n>600)return t('s.restBad');saveExerciseRest(a,e,Math.round(n));return true}},{v:null,label:t('cancel')}]});
+   if(v==='save'){toast(t('s.restSaved'));render()}},
  checkMode:b=>setCheckMode(b.dataset.v),
  setAdd:b=>{const e=db().active.exercises[+b.dataset.j],l=e.sets[e.sets.length-1];e.sets.push({w:l.w,r:l.r,done:false,ws:l.ws==='s'?'s':'c'});Store.save();render();if(typeof Live!=='undefined')Live.push()},
  setDel:b=>{db().active.exercises[+b.dataset.j].sets.pop();Store.save();render();if(typeof Live!=='undefined')Live.push()},
- t15:()=>{if(!timer)return;timer.end+=15000;saveRest();renderTimer();if(typeof Live!=='undefined')Live.push()},tskip:()=>{stopTimer();if(typeof Live!=='undefined')Live.push()},
+ t15:()=>{if(!timer)return;timer.end+=15000;timer.total=(+timer.total||0)+15000;saveRest();renderTimer();if(typeof Live!=='undefined')Live.push()},tskip:()=>{stopTimer();if(typeof Live!=='undefined')Live.push()},
+ trackKind:b=>{route.p={kind:b.dataset.v==='exercises'?'exercises':'workouts'};render()},
+ trackDay:b=>{const name=b.dataset.name||'',p=trackPrefs(),on=p.days.some(d=>d.toLowerCase()===name.toLowerCase());
+   saveTrack({days:on?p.days.filter(d=>d.toLowerCase()!==name.toLowerCase()):p.days.concat(name),exercises:p.exercises});render()},
+ trackEx:b=>{const name=b.dataset.name||'',p=trackPrefs(),on=p.exercises.some(d=>d.toLowerCase()===name.toLowerCase());
+   saveTrack({days:p.days,exercises:on?p.exercises.filter(d=>d.toLowerCase()!==name.toLowerCase()):p.exercises.concat(name)});render()},
+ openTrack:b=>go('history',{kind:'exercises',ex:b.dataset.name||''}),
  openHist:b=>go('hist',{id:b.dataset.id}),
  delHist:async b=>{if(await ask(t('h.delQ'),t('h.delMsg'),t('h.delBtn'),'bad')){Store.deleteHistory(b.dataset.id);toast(t('h.deleted'));pop()}},
- wk:b=>{route.p.off=Math.max(0,+b.dataset.o);render()},
  copyW:()=>{db().settings.copyWeight=db().settings.copyWeight===false;Store.save();render()},
  units:b=>{const to=b.dataset.v,from=U();if(to&&to!==from){try{convertAllUnits(from,to)}catch(e){toast(errMsg(e),'err');return}db().settings.units=to;db().settings.unitsChosen=true;Store.save()}else if(to){db().settings.units=to;db().settings.unitsChosen=true;Store.save()}render()},
  syncNow:async b=>{if(navigator.onLine===false){toast(t('sy.offline'));updateNet();return}
@@ -868,10 +921,11 @@ document.addEventListener('click',e=>{
     if(!hasRest(ex.rest)||ex.restAuto){ex.rest=L.rest;ex.restAuto=true}render();return}
   if(!e.target.closest('.ac'))document.querySelectorAll('.aclist').forEach(x=>x.hidden=true);
   const b=e.target.closest('[data-act]');if(b&&!b.disabled&&ACT[b.dataset.act])ACT[b.dataset.act](b,e)});
-document.addEventListener('change',e=>{if(e.target.id==='customColor'){draft.days[route.p.i].color=e.target.value;render()}
+document.addEventListener('change',e=>{if(e.target.id==='gateChk'){gate.chk=e.target.checked;return}if(e.target.id==='customColor'){draft.days[route.p.i].color=e.target.value;render()}
   if(e.target.id==='langSel')ACT.setLang(e.target);
   const kb=e.target.dataset&&e.target.dataset.bind;if(kb){const p=kb.split('.');if(p[0]==='ex'&&p[2]==='name'&&draft&&draft.days[route.p.i]){const ex=draft.days[route.p.i].exercises[+p[1]];if(ex)ex.name=I18N.exKey(e.target.value)}}});
 document.addEventListener('input',e=>{
+  if(e.target.id==='gateChk'){gate.chk=e.target.checked;if(e.target.checked){gate.msg='';const m=$('#gateMsg');if(m)m.textContent=''}return}
   if(e.target.id==='dim'){const v=+e.target.value;$('#dimv').textContent=v+'%';setBg({dim:v/100});return}
   if(e.target.id==='aiText'){$('#injHint').innerHTML=injHint(e.target.value);if(ai&&AI_STEPS[ai.step])ai.a[AI_STEPS[ai.step].key]=e.target.value;saveFlow();return}
   if(e.target.id==='pasteText'&&route.v==='paste'){route.p.text=e.target.value;saveFlow();return}

@@ -255,6 +255,7 @@ class LiftModel {
             "t" => "snap", "id" => liveId, "rev" => liveRev, "src" => "w", "at" => Time.now().value(),
             "mode" => logKind, "day" => liveDay, "name" => w[:title], "plan" => "", "code" => w[:code],
             "idx" => idx, "ord" => order, "rest" => (resting() && restUntil > 0 ? restUntil : 0),
+            "restTotal" => (resting() ? restTotal : 0),
             "fin" => fin, "drop" => drop, "ex" => rows
         };
     }
@@ -614,7 +615,12 @@ class LiftModel {
             restUntil = rest as Number;
             restLeft = restUntil - Time.now().value();
             if (restLeft < 1) { restLeft = 1; }
-            restTotal = restLeft; restEx = idx; restSet = sel;
+            var savedTotal = d["restTotal"];
+            var planRest = (ex[idx] as Dictionary)[:rest] as Number;
+            if (savedTotal instanceof Number && (savedTotal as Number) >= restLeft) { restTotal = savedTotal as Number; }
+            else if (planRest >= restLeft) { restTotal = planRest; }
+            else { restTotal = restLeft; }
+            restEx = idx; restSet = sel;
             restTimer = new Timer.Timer();
             restTimer.start(method(:tick), 1000, true);
         }

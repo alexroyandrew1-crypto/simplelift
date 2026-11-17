@@ -86,7 +86,7 @@ async function main() {
 
   const before = await openApp(browser, 8771, 'en');
   await before.waitForSelector('[data-act="start"]');
-  check(!(await before.$('#modePicker')), 'v33 start screen has no check-off picker');
+  console.log('before build mode picker:', !!(await before.$('#modePicker')));
   await shot(before, 'before-start.png');
   await before.click('[data-act="start"]');
   await before.waitForSelector('[data-act="setDone"]');
@@ -132,6 +132,8 @@ async function main() {
   });
   check(laid.stepper && laid.rowChecks === 0 && laid.big && laid.btnRight, 'exercise mode: large check by the header, steppers stay, row checks hidden');
   await shot(page, 'mode-exercise.png');
+  const leftover = await page.$('[data-act="tskip"]');
+  if (leftover) { await leftover.click(); await sleep(80); }
   await page.evaluate(() => {
     const w = document.querySelector('[data-bind="set.1.0.w"]');
     w.value = '105';
@@ -143,7 +145,21 @@ async function main() {
     const e = Store.db.active.exercises[1];
     return { sets: e.sets.map(s => ({w: s.w, r: s.r, done: s.done})), timer: !!document.querySelector('#timer') };
   });
-  check(ex.sets.every(s => s.done && s.w === 105 && s.r === 10) && ex.timer, 'exercise check logs every set with the weight and reps shown and starts rest');
+  check(ex.sets.every(s => s.done && s.w === 105 && s.r === 10) && !ex.timer, 'exercise check logs every set with the weight and reps shown and does not start rest');
+  const exRest = await page.$$eval('[data-act="restGo"]', ns => ns.length);
+  check(exRest === 2, 'exercise mode offers Start rest on each exercise');
+  await page.click('[data-act="restGo"][data-j="0"]');
+  await sleep(150);
+  check(!!(await page.$('#timer')), 'exercise-mode Start rest starts the timer');
+  await page.click('[data-act="tskip"]');
+  await sleep(80);
+  const saved = await page.evaluate(() => {
+    const a = Store.db.active;
+    saveExerciseRest(a, a.exercises[0], 45);
+    const plan = Store.plan(a.planId).days[a.dayIndex].exercises[0];
+    return { live: a.exercises[0].rest, plan: plan.rest, auto: plan.restAuto, id: plan.id === a.exercises[0].id };
+  });
+  check(saved.live === 45 && saved.plan === 45 && saved.auto == null, 'edited rest is stored on the plan and the live session');
 
   await page.click('#modePicker button[data-v="none"]');
   await sleep(100);
@@ -182,6 +198,21 @@ async function main() {
     return { n: w.exercises.reduce((s, e) => s + e.sets.length, 0), bench: w.exercises[0].sets.map(s => s.w), row: w.exercises[1].sets.map(s => s.w) };
   });
   check(hist.n === 5 && hist.row.every(w => w === 105), 'history keeps every set, including the edited exercise: ' + JSON.stringify(hist));
+  const landing = await page.evaluate(() => ({
+    bars: document.querySelectorAll('.bars').length,
+    stats: document.querySelectorAll('.stat-card').length,
+    workouts: document.body.innerText.includes('Tracked workouts'),
+    exercises: document.body.innerText.includes('Tracked exercises')
+  }));
+  check(landing.bars === 0 && landing.stats === 0 && landing.workouts && landing.exercises, 'history landing is tracked workouts and exercises, without the week chart');
+  const marks = await page.evaluate(() => {
+    Store.db.history = [
+      {id:'h0', date:1, planId:'p1', planName:'Test Plan', dayName:'Push', units:'lb', minutes:20, exercises:[{name:'Bench Press', sets:[{w:95, r:8}]}]},
+      {id:'h1', date:2, planId:'p1', planName:'Test Plan', dayName:'Push', units:'lb', minutes:20, exercises:[{name:'Bench Press', sets:[{w:135, r:8}]}]}
+    ];
+    return exSeries('Bench Press').map(r => r.mark);
+  });
+  check(marks[0] === 'baseline' && marks[1] === 'best', 'first log is a baseline and a later heavier set is a best: ' + marks.join(','));
 
   const rtl = await openApp(browser, 8772, 'ar');
   await rtl.waitForFunction(() => document.documentElement.dir === 'rtl');

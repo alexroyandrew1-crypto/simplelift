@@ -54,16 +54,16 @@ class LiftView extends WatchUi.View {
         var n = m.setsIn(m.idx);
         var rest = m.resting();
 
-        // rest ring around the edge
-        if (rest) {
-            var frac = m.restLeft.toFloat() / (m.restTotal > 0 ? m.restTotal : 1);
-            dc.setColor(Theme.LINE, Graphics.COLOR_TRANSPARENT); dc.setPenWidth(6);
-            dc.drawCircle(cx, H / 2, cx - 4);
+        // Subtle edge, then the same draining border the phone uses while rest runs.
+        dc.setColor(Theme.LINE, Graphics.COLOR_TRANSPARENT); dc.setPenWidth(8);
+        dc.drawCircle(cx, H / 2, cx - 5);
+        if (rest && m.restTotal > 0 && m.restLeft > 0) {
+            var frac = m.restLeft.toFloat() / m.restTotal;
             dc.setColor(m.restLeft <= 10 ? Theme.WARN : Theme.ACC, Graphics.COLOR_TRANSPARENT);
-            if (frac >= 0.999) { dc.drawCircle(cx, H / 2, cx - 4); }
-            else if (frac > 0) { dc.drawArc(cx, H / 2, cx - 4, Graphics.ARC_CLOCKWISE, 90, 90 - (360 * frac).toNumber()); }
-            dc.setPenWidth(1);
+            if (frac >= 0.999) { dc.drawCircle(cx, H / 2, cx - 5); }
+            else { dc.drawArc(cx, H / 2, cx - 5, Graphics.ARC_CLOCKWISE, 90, 90 - (360 * frac).toNumber()); }
         }
+        dc.setPenWidth(1);
 
         // 1. workout name (small)
         // (while motion says the set is under way, this row shows the live rep counter instead)
