@@ -31,3 +31,11 @@ Token lookup has to match the existing tables. The module takes `userIdFromBeare
 Add `checkMode` from `settings.checkMode` in the user's data blob. The phone also appends `~#set`, `~#exercise`, or `~#none` to the SL1 code, which older watch builds skip.
 
 Do not write this snapshot into `active`. A second phone must not revive a finished workout from the account blob.
+
+`migrations/0006_live_session.sql` is that table. It is not applied from this repo.
+
+## GET /watch/plans
+
+`worker/watch-plans.js` is a second module, also not deployed. A paired watch calls it for every saved plan and today's day. `GET /watch/workout` stays the existing route and is the fallback when `/watch/plans` is not on the server yet.
+
+The phone has no auto-detect control. If `settings.autoDetectSets` is a boolean in the account blob, `/live`, `/watch/live`, and `/watch/plans` include it. Otherwise the field is left off.

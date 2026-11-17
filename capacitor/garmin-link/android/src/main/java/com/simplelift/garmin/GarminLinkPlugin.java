@@ -29,6 +29,7 @@ import org.json.JSONObject;
 @CapacitorPlugin(name = "GarminLink")
 public class GarminLinkPlugin extends Plugin implements ConnectIQ.ConnectIQListener {
     static final String TAG = "GarminLink";
+    static volatile GarminLinkPlugin current;
     /** UUID form of the Connect IQ application id in garmin/manifest.xml. */
     static final String APP_ID = "b7241870-4562-4031-be10-8c6b6e5c76b6";
 
@@ -36,15 +37,28 @@ public class GarminLinkPlugin extends Plugin implements ConnectIQ.ConnectIQListe
     private IQApp app;
     private IQDevice device;
     private boolean ready;
+    private WearBridge wear;
 
     @Override
     public void load() {
+        current = this;
         connect = ConnectIQ.getInstance(getContext(), IQConnectType.WIRELESS);
         app = new IQApp(APP_ID);
+        wear = new WearBridge(getContext(), this::onWearJson);
+        wear.start();
+    }
+
+    void onWearJson(String json) {
+        JSObject data = new JSObject();
+        data.put("json", json);
+        data.put("connected", true);
+        notifyListeners("message", data);
+        notifyListeners("status", status());
     }
 
     @PluginMethod
     public void start(PluginCall call) {
+        if (wear != null) wear.send("{\"t\":\"hello\",\"src\":\"p\"}");
         try {
             connect.initialize(getContext(), false, this);
             call.resolve(status());
@@ -57,9 +71,16 @@ public class GarminLinkPlugin extends Plugin implements ConnectIQ.ConnectIQListe
     @PluginMethod
     public void send(PluginCall call) {
         String json = call.getString("json", "");
-        if (!ready || device == null || json == null || json.length() == 0) {
+        if (json == null || json.length() == 0) {
             JSObject ret = status();
             ret.put("ok", false);
+            call.resolve(ret);
+            return;
+        }
+        if (wear != null) wear.send(json);
+        if (!ready || device == null) {
+            JSObject ret = status();
+            ret.put("ok", true);
             call.resolve(ret);
             return;
         }
@@ -182,6 +203,7 @@ public class GarminLinkPlugin extends Plugin implements ConnectIQ.ConnectIQListe
             Map<String, Object> hello = new HashMap<>();
             hello.put("t", "hello");
             hello.put("src", "p");
+            if (wear != null) wear.send("{\"t\":\"hello\",\"src\":\"p\"}");
             connect.sendMessage(device, app, hello, (d, a, s) -> emit());
         } catch (Exception e) {
             Log.w(TAG, "hello", e);

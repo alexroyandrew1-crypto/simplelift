@@ -53,3 +53,5 @@ await link.send({ json: JSON.stringify(snapshot) });
 ```
 
 `start` initializes `ConnectIQ` with `IQConnectType.WIRELESS`. `send` calls `sendMessage` on app id `b7241870-4562-4031-be10-8c6b6e5c76b6`. Incoming watch messages arrive from `registerForAppEvents`.
+
+The same `send` also forwards the JSON to a paired Galaxy Watch over the Wear OS data layer (`WearBridge`, capability `simplelift_wear`, path `/simplelift/msg`). Incoming Wear messages use the same `message` listener. If no Wear node is reachable, nothing about the Garmin link changes and the web app keeps using the server.
