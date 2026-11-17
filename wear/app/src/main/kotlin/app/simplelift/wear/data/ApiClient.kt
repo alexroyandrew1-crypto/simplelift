@@ -1,10 +1,14 @@
 package app.simplelift.wear.data
 
+import android.os.Looper
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /** HTTPS client for the same Worker routes the Garmin watch already calls. */
 class ApiClient(private val base: String = API) {
+    private val io = Executors.newSingleThreadExecutor()
     fun requestCode(deviceId: String, model: String): HttpResult {
         val body = """{"deviceId":${json(deviceId)},"model":${json(model)},"name":"Galaxy Watch"}"""
         return call("POST", "/pair/request", body, null)
@@ -26,6 +30,13 @@ class ApiClient(private val base: String = API) {
     fun postResult(token: String, code: String): HttpResult = call("POST", "/watch/result", """{"code":${json(code)}}""", token)
 
     private fun call(method: String, path: String, body: String?, token: String?): HttpResult {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            return io.submit<HttpResult> { open(method, path, body, token) }.get(20, TimeUnit.SECONDS)
+        }
+        return open(method, path, body, token)
+    }
+
+    private fun open(method: String, path: String, body: String?, token: String?): HttpResult {
         val conn = (URL(base.trimEnd('/') + path).openConnection() as HttpURLConnection)
         return try {
             conn.requestMethod = method

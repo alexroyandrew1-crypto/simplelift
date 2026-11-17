@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.ButtonDefaults
+import androidx.wear.compose.material.Chip
+import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.Text
 import app.simplelift.wear.DrainBorder
 import app.simplelift.wear.model.CheckMode
@@ -60,9 +62,12 @@ fun PairScreen(code: String?, note: String, onRetry: () -> Unit, onSkip: () -> U
         Text(shown, fontSize = 28.sp, color = Txt, textAlign = TextAlign.Center)
         Text(note, fontSize = 11.sp, color = Mut, textAlign = TextAlign.Center)
         Text("Settings → Watch → Samsung Galaxy Watch", fontSize = 10.sp, color = Mut, textAlign = TextAlign.Center)
-        Button(onClick = if (code == null) onRetry else onSkip, modifier = Modifier.padding(top = 8.dp)) {
-            Text(if (code == null) "Retry" else "Not now")
-        }
+        Chip(
+            onClick = if (code == null) onRetry else onSkip,
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+            colors = ChipDefaults.primaryChipColors(),
+            label = { Text(if (code == null) "Retry" else "Not now", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
+        )
     }
 }
 
