@@ -26,6 +26,8 @@ Mode = watch menu choice > `restAlert` from the server's GET /watch/workout JSON
 Tone uses Attention.playTone (watch speaker/beeper; follows the watch's own Tones setting). Connect IQ cannot send audio to Bluetooth headphones.
 Master switches (default ON): picker hold-UP → Settings → **Chime** and **Vibration**, or the Garmin Connect settings `chime` and `vibration` (watch menu wins). Every tone goes through `playChime()`. Every buzz goes through `buzz()`. Turning Chime off silences rest-end tones even if Rest alert is Tone or Vibrate + tone.
 
+The phone can change these from Settings → Watch → Watch settings, only while a watch is paired. `GET /watch/workout` includes `watchSettings` (`chime`, `vibration`, `autoDetectSets`, `showHr`, `repDetect`, `saveActivity`, `restAlert` 0|1|2, `rev`). Apply it when `rev` is newer than the rev stored on the watch. After a change on the watch, `POST /watch/settings` with the watch token (same auth as `POST /watch/result`) so the phone shows the watch's values. There is no laps setting. The top-level `restAlert` field is unchanged for older builds.
+
 ## Build
 
 Needs the Connect IQ SDK and a Forerunner 955 device, plus a developer key that is not in this repo.
