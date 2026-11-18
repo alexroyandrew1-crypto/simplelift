@@ -117,6 +117,7 @@ function afterNav(){
   // A fresh screen opens at the top. Back (in-app or the browser) returns to the scroll that was saved on the way in.
   if(entered)scrollToFocus();
   else if(route.v!=='session')scrollTo(0,y);
+  const pin=route.v==='pair'&&$('#pairIn');if(pin)pin.focus();
 }
 function scrollToFocus(){
   const a=db().active;if(!a||route.v!=='session')return;
@@ -253,7 +254,8 @@ pair(){if(!Sync.on())return `<div class="card" id="pairNeed"><h3>${t('watch.pair
     ${WATCH_TYPES.map(w=>`<button class="big opt${w.ready?'':' locked'}" data-act="pairType" data-v="${w.id}"${w.ready?'':' disabled'}>${esc(t('watch.type.'+w.id))}${w.ready?'':`<small>${esc(t('watch.soon'))}</small>`}</button>`).join('')}</div>`;
   const spec=watchType(type);
   if(!spec||!spec.ready)return off+`<div class="card" id="pairSoon"><h3>${esc(t('watch.type.'+type))}</h3><div class="mut">${t('watch.soon')}</div></div>`;
-  if(!route.p.code)return off+`<div class="card" id="pairFlow"><h3>${esc(t('watch.type.'+type))}</h3><div class="mut">${t('pair.lead.'+type)}</div>
+  // Galaxy Watch and Apple Watch show a 6-digit code the user types here. Garmin claims over Bluetooth and keeps this box behind the fallback link.
+  if(!route.p.code&&type!=='samsung'&&type!=='apple')return off+`<div class="card" id="pairFlow"><h3>${esc(t('watch.type.'+type))}</h3><div class="mut">${t('pair.lead.'+type)}</div>
     ${typeof Live!=='undefined'&&Live.bt?`<div class="mut mt2" id="btLine">${t('bt.connected')}</div>`:typeof Live!=='undefined'&&Live.btTried?`<div class="mut mt2" id="btLine">${t('bt.looking')}</div>`:''}
     <div class="right mt2"><button type="button" class="linkbtn" data-act="pairShowCode">${t('pair.trouble')}</button></div></div>`;
   return off+`<div class="card" id="pairCode"><h3>${esc(t('watch.type.'+type))}</h3>
