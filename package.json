@@ -1,7 +1,7 @@
 {
   "private": true,
   "scripts": {
-    "test": "node test/live-snap.mjs && node test/session-persist.mjs && node test/check-mode.mjs"
+    "test": "node --test worker/watch-settings.test.mjs && node test/live-snap.mjs && node test/session-persist.mjs && node test/check-mode.mjs && node test/watch-settings-ui.mjs && node test/pair-entry.mjs"
   },
   "devDependencies": {
     "puppeteer-core": "23.11.1"

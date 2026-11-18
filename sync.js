@@ -94,6 +94,8 @@ const Sync={
   async pullLive(){if(!this.on())return null;return this.req('GET','/live',null,this.a.token)},
   watchList:null,
   async listWatches(){try{const j=await this.req('GET','/watches',null,this.a.token);this.watchList=j.watches||[]}catch(e){this.watchList=[]}return this.watchList},
+  async getWatchSettings(){return this.req('GET','/watch/settings',null,this.a.token)},
+  async putWatchSettings(watchSettings){return this.req('PUT','/watch/settings',{watchSettings},this.a.token)},
   async removeWatch(id){return this.req('POST','/watches/remove',{id},this.a.token)},
   async renameWatch(id,name){return this.req('POST','/watches/rename',{id,name},this.a.token)},
   status(){const a=this.a;

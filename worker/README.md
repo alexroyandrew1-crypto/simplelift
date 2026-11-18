@@ -31,3 +31,24 @@ Token lookup has to match the existing tables. The module takes `userIdFromBeare
 Add `checkMode` from `settings.checkMode` in the user's data blob. The phone also appends `~#set`, `~#exercise`, or `~#none` to the SL1 code, which older watch builds skip.
 
 Do not write this snapshot into `active`. A second phone must not revive a finished workout from the account blob.
+
+## Watch settings (not deployed)
+
+`worker/watch-settings.mjs` stores one `watchSettings` object per account. Run `WATCH_SETTINGS_SQL` once on D1. Do not deploy this from the pull request.
+
+| Method | Path | Auth | Body |
+| --- | --- | --- | --- |
+| GET | `/watch/settings` | phone bearer | |
+| PUT | `/watch/settings` | phone bearer | `{ "watchSettings": { ... } }` |
+| POST | `/watch/settings` | watch bearer (same as `/watch/result`) | the fields, or `{ "watchSettings": { ... } }` |
+
+`rev` is server time in milliseconds. The client cannot set it. A write with an older server timestamp does not replace a newer row.
+
+Fields: `chime`, `vibration`, `autoDetectSets` (default false), `showHr` (default true), `repDetect`, `saveActivity`, `restAlert` (`0` vibrate, `1` tone, `2` both). There is no laps field.
+
+On the existing `GET /watch/workout` response, call `attachWatchSettings(body, await readWatchSettings(env.DB, userId))`. That adds `watchSettings` and, once a row exists, sets the legacy `restAlert` to the same number. With no row, a legacy string such as `"tone"` stays put.
+
+```js
+const settings = await watchSettingsRoutes(request, env, { userIdFromBearer, userIdFromWatch });
+if (settings) return settings;
+```

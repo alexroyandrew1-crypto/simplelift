@@ -94,8 +94,8 @@ async function tab(v){if(!legalOK()){toast(t('lg.ackFirst'));if(route.v!=='home'
 $('#back').onclick=back;
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>tab(b.dataset.tab));
 
-const TITLES={legal:'lg.legal',home:'tab.today',plans:'tab.plans',day:'title.editDay',ai:'title.newPlan',paste:'title.paste',watch:'title.watch',account:'title.account',pair:'title.pair',chooser:'title.newPlan',session:'title.workout',history:'tab.history',hist:'title.workout',settings:'tab.settings'};
-const ROOT={legal:'settings',home:'home',session:'home',plans:'plans',editor:'plans',day:'plans',chooser:'plans',ai:'plans',paste:'plans',history:'history',hist:'history',settings:'settings',account:'settings',pair:'settings',watch:'settings'};
+const TITLES={legal:'lg.legal',home:'tab.today',plans:'tab.plans',day:'title.editDay',ai:'title.newPlan',paste:'title.paste',watch:'title.watch',account:'title.account',pair:'title.pair',chooser:'title.newPlan',session:'title.workout',history:'tab.history',hist:'title.workout',settings:'tab.settings',watchSettings:'title.watchSettings'};
+const ROOT={legal:'settings',home:'home',session:'home',plans:'plans',editor:'plans',day:'plans',chooser:'plans',ai:'plans',paste:'plans',history:'history',hist:'history',settings:'settings',account:'settings',pair:'settings',watch:'settings',watchSettings:'settings'};
 function render(){
   if(!legalOK()&&route.v!=='legal'&&route.v!=='home'){route={v:'home',p:{}};stack=[]}
   document.body.classList.toggle('need-ack',!legalOK());
@@ -117,6 +117,7 @@ function afterNav(){
   // A fresh screen opens at the top. Back (in-app or the browser) returns to the scroll that was saved on the way in.
   if(entered)scrollToFocus();
   else if(route.v!=='session')scrollTo(0,y);
+  const pin=route.v==='pair'&&$('#pairIn');if(pin)pin.focus();
 }
 function scrollToFocus(){
   const a=db().active;if(!a||route.v!=='session')return;
@@ -253,7 +254,8 @@ pair(){if(!Sync.on())return `<div class="card" id="pairNeed"><h3>${t('watch.pair
     ${WATCH_TYPES.map(w=>`<button class="big opt${w.ready?'':' locked'}" data-act="pairType" data-v="${w.id}"${w.ready?'':' disabled'}>${esc(t('watch.type.'+w.id))}${w.ready?'':`<small>${esc(t('watch.soon'))}</small>`}</button>`).join('')}</div>`;
   const spec=watchType(type);
   if(!spec||!spec.ready)return off+`<div class="card" id="pairSoon"><h3>${esc(t('watch.type.'+type))}</h3><div class="mut">${t('watch.soon')}</div></div>`;
-  if(!route.p.code)return off+`<div class="card" id="pairFlow"><h3>${esc(t('watch.type.'+type))}</h3><div class="mut">${t('pair.lead.'+type)}</div>
+  // Galaxy Watch and Apple Watch show a 6-digit code the user types here. Garmin claims over Bluetooth and keeps this box behind the fallback link.
+  if(!route.p.code&&type!=='samsung'&&type!=='apple')return off+`<div class="card" id="pairFlow"><h3>${esc(t('watch.type.'+type))}</h3><div class="mut">${t('pair.lead.'+type)}</div>
     ${typeof Live!=='undefined'&&Live.bt?`<div class="mut mt2" id="btLine">${t('bt.connected')}</div>`:typeof Live!=='undefined'&&Live.btTried?`<div class="mut mt2" id="btLine">${t('bt.looking')}</div>`:''}
     <div class="right mt2"><button type="button" class="linkbtn" data-act="pairShowCode">${t('pair.trouble')}</button></div></div>`;
   return off+`<div class="card" id="pairCode"><h3>${esc(t('watch.type.'+type))}</h3>
@@ -361,8 +363,9 @@ settings(){
   const wrows=wl.map(w=>`<div class="between mt2" data-watch="${esc(w.id)}"><div><b>${esc(w.name||w.model||t('watch.unnamed'))}</b>
     <div class="mut">${t('watch.paired')}${w.model?` · ${esc(w.model)}`:''}${w.lastSeen?` · ${t('watch.last',{d:new Date(w.lastSeen).toLocaleString(I18N.locale())})}`:''}</div></div>
     <button class="btn sm bad" data-act="watchRm" data-id="${esc(w.id)}" data-name="${esc(w.name||w.model||'')}">${t('watch.unpair')}</button></div>`).join('');
+  const wsBtn=on&&wl.length?`<button class="btn full" id="watchSettingsBtn" data-act="watchSettings">${t('ws.open')}</button>`:'';
   const watch=`<div class="card" id="watchCard"><h3>${t('sec.watch')}</h3><div class="mut">${on?t('watch.hintOn'):t('pair.signIn')}</div>
-    ${on?`<h3 class="mt3">${t('watch.mine')}</h3>${wrows||`<div class="mut">${t('watch.none')}</div>`}`:''}
+    ${on?`<h3 class="mt3">${t('watch.mine')}</h3>${wrows||`<div class="mut" id="watchNone">${t('watch.none')}</div>`}${wsBtn}`:''}
     <button class="btn acc full" data-act="pair">${t('watch.pair')}</button></div>`;
   const about=`<div class="card"><h3>Simple Lift</h3><div class="mut">${t('set.aboutText')}</div>
     <div class="row wrap mt2">${/^https:\/\//.test(DONATE_URL)?`<a class="btn sm" href="${esc(DONATE_URL)}" target="_blank" rel="noopener noreferrer">${t('set.donate')}</a>`:''}
@@ -370,6 +373,15 @@ settings(){
     </div></div>
   <div class="card" id="legalCard"><h3>⚖️ ${t('lg.legal')}</h3>${legalLinks()}<div class="mut mt2" id="legalAcc"><b>${t('lg.yours')}:</b> ${legalAccText()}</div></div>`;
   return S('acct',t('sec.acct'),acct)+S('work',t('sec.work'),work)+S('look',t('sec.look'),look)+S('data',t('sec.data'),data)+S('watch',t('sec.watch'),watch)+S('about',t('sec.about'),about);
+},
+watchSettings(){
+  if(!Sync.on())return `<div class="card" id="wsNeed"><div class="mut">${t('pair.signIn')}</div></div>`;
+  if(Sync.watchList==null){Sync.listWatches().then(()=>{if(route.v==='watchSettings')render()})}
+  if(Sync.watchList&&!Sync.watchList.length)return `<div class="card" id="wsNone"><div class="mut">${t('watch.none')}</div></div>`;
+  ensureWatchSettings();
+  if(!watchSet||(watchSet.state==='load'&&!watchSet.settings))return `<div class="card" id="wsLoading"><div class="mut">${t('ws.loading')}</div></div>`;
+  if(watchSet.state==='err'&&!watchSet.settings)return `<div class="card" id="wsErr"><div class="mut">${esc(watchSet.err||t('ws.loadFail'))}</div><button class="btn full" data-act="wsRetry">${t('ws.retry')}</button></div>`;
+  return watchSettingsForm();
 }};
 
 const BGS={
@@ -737,6 +749,64 @@ function homeHub(){
   return `<div class="hubs" aria-label="${tA('nav.main')}">${tile('goPlans',t('tab.plans'),ico.plans)}${tile('goHistory',t('tab.history'),ico.history)}${tile('pair',t('watch.pair'),ico.watch)}${tile('goSettings',t('tab.settings'),ico.settings)}</div>`}
 let gate={doc:null,msg:'',chk:false};
 function renderGate(){const g=$('#gate');if(g)g.remove();document.body.classList.remove('gated')}
+/* Watch settings live on the account. Saving PUTs them; the watch reads them on its next sync. */
+const WS_KEYS=['chime','vibration','autoDetectSets','showHr','repDetect','saveActivity'];
+let watchSet=null,watchSetSeq=0;
+function watchSettingsFrom(raw){
+  const d={chime:true,vibration:true,autoDetectSets:false,showHr:true,repDetect:true,saveActivity:true,restAlert:0,rev:0};
+  const s=raw&&typeof raw==='object'?raw:{};
+  const out={};
+  WS_KEYS.forEach(k=>{out[k]=typeof s[k]==='boolean'?s[k]:d[k]});
+  out.restAlert=s.restAlert===0||s.restAlert===1||s.restAlert===2?s.restAlert:0;
+  out.rev=Number.isFinite(+s.rev)?Math.trunc(+s.rev):0;
+  return out;
+}
+function watchSettingsBody(s){const o={restAlert:s.restAlert};WS_KEYS.forEach(k=>{o[k]=!!s[k]});return o}
+function watchSettingsSame(a,b){return !!a&&!!b&&WS_KEYS.every(k=>!!a[k]===!!b[k])&&a.restAlert===b.restAlert}
+function ensureWatchSettings(){
+  if(watchSet)return;
+  const seq=++watchSetSeq;
+  watchSet={state:'load',settings:null,err:''};
+  Sync.getWatchSettings().then(j=>{
+    if(seq!==watchSetSeq)return;
+    watchSet={state:'ready',settings:watchSettingsFrom(j&&j.watchSettings),err:''};
+    if(route.v==='watchSettings')render();
+  }).catch(e=>{
+    if(seq!==watchSetSeq)return;
+    watchSet={state:'err',settings:null,err:(e&&e.message)||t('ws.loadFail')};
+    if(route.v==='watchSettings')render();
+  });
+}
+function watchSettingsForm(){
+  const s=watchSet.settings,busy=watchSet.state==='save',dis=busy?' disabled':'';
+  const row=(key,title,hint)=>`<div class="between rtrow" id="ws-${key}"><div><b>${title}</b>${hint?`<div class="mut">${hint}</div>`:''}</div><button type="button" class="chip ${s[key]?'on':''}" data-act="wsToggle" data-k="${key}" aria-pressed="${!!s[key]}" aria-label="${esc(title)}: ${s[key]?t('on'):t('off')}"${dis}>${s[key]?t('on'):t('off')}</button></div>`;
+  const alert=s.restAlert===1||s.restAlert===2?s.restAlert:0;
+  const seg=[0,1,2].map(n=>`<button type="button" role="radio" data-act="wsAlert" data-v="${n}" aria-checked="${alert===n}" aria-pressed="${alert===n}"${dis}>${t('ws.alert'+n)}</button>`).join('');
+  const when=s.rev?`<div class="mut" id="wsRev">${t('ws.updated',{d:esc(new Date(s.rev).toLocaleString(I18N.locale()))})}</div>`:`<div class="mut" id="wsWait">${t('ws.waiting')}</div>`;
+  return `<div class="card" id="wsCard"><h3>${t('title.watchSettings')}</h3><div class="mut" id="wsHint">${t('ws.hint')}</div>${when}`+
+    row('chime',t('ws.chime'),t('ws.chimeHint'))+row('vibration',t('ws.vibration'),'')+
+    row('autoDetectSets',t('ws.auto'),t('ws.autoHint'))+row('showHr',t('ws.hr'),'')+
+    row('repDetect',t('ws.reps'),t('ws.repsHint'))+row('saveActivity',t('ws.save'),'')+
+    `</div><div class="card" id="wsAlert"><h3 id="wsAlertT">${t('ws.alert')}</h3><div class="seg modes" role="radiogroup" aria-labelledby="wsAlertT">${seg}</div></div>`;
+}
+async function pushWatchSettings(next){
+  const prev=watchSet&&watchSet.settings;
+  const seq=++watchSetSeq;
+  watchSet={state:'save',settings:next,err:''};
+  if(route.v==='watchSettings')render();
+  try{
+    const j=await Sync.putWatchSettings(watchSettingsBody(next));
+    if(seq!==watchSetSeq)return;
+    const got=watchSettingsFrom(j&&j.watchSettings);
+    watchSet={state:'ready',settings:got,err:''};
+    toast(watchSettingsSame(got,next)?t('ws.saved'):t('ws.newer'));
+  }catch(e){
+    if(seq!==watchSetSeq)return;
+    watchSet={state:'ready',settings:prev,err:''};
+    toast((e&&e.message)||t('ws.fail'),'err');
+  }
+  if(route.v==='watchSettings')render();
+}
 const ACT={
  legalDoc:b=>{const c=$('#gateChk');if(c)gate.chk=c.checked;go('legal',{doc:b.dataset.doc})},
  gateBack:()=>{gate.doc=null;if(stack.length)back();else{route={v:'home',p:{}};afterNav()}},
@@ -817,6 +887,12 @@ const ACT={
    if(navigator.onLine===false){if(n)n.textContent=t('pair.needNet');return}
    if(c.length!==6){if(n)n.textContent=t('pair.need6');return}
    b.disabled=true;try{await Sync.pairClaim(c);toast(t('pair.ok'));Sync.watchList=null;pop()}catch(x){if(n)n.textContent=pairErr(x);b.disabled=false}},
+ watchSettings:()=>{watchSet=null;go('watchSettings')},
+ wsRetry:()=>{watchSet=null;render()},
+ wsToggle:b=>{if(!watchSet||watchSet.state==='save'||!watchSet.settings)return;const k=b.dataset.k;if(!WS_KEYS.includes(k))return;
+   pushWatchSettings(Object.assign({},watchSet.settings,{[k]:!watchSet.settings[k]}))},
+ wsAlert:b=>{if(!watchSet||watchSet.state==='save'||!watchSet.settings)return;const n=+b.dataset.v;if(n!==0&&n!==1&&n!==2||watchSet.settings.restAlert===n)return;
+   pushWatchSettings(Object.assign({},watchSet.settings,{restAlert:n}))},
  watchRm:async b=>{if(!await ask(t('watch.rmQ'),t('watch.rmMsg',{name:b.dataset.name||t('watch.unnamed')}),t('watch.remove'),'bad'))return;
    try{await Sync.removeWatch(b.dataset.id);toast(t('watch.removed'));Sync.watchList=null;render()}catch(x){toast(x.message,'err')}},
  watch:b=>go('watch',{i:+b.dataset.i,planId:Store.activePlan()?.id}),
