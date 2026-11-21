@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -32,6 +33,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.foundation.ExperimentalWearFoundationApi
+import androidx.wear.compose.foundation.LocalReduceMotion
+import androidx.wear.compose.foundation.ReduceMotion
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.itemsIndexed
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
@@ -134,8 +137,15 @@ fun WorkoutScreen(
     val left = session.restLeft(nowSec)
     val listState = rememberScalingLazyListState()
     val focusRequester = remember { FocusRequester() }
+    val reduceMotion = remember {
+        object : ReduceMotion {
+            @Composable
+            override fun enabled(): Boolean = false
+        }
+    }
     Box(Modifier.fillMaxSize()) {
         DrainBorder(left, session.restTotal)
+        CompositionLocalProvider(LocalReduceMotion provides reduceMotion) {
         ScalingLazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -185,6 +195,7 @@ fun WorkoutScreen(
                 }
             }
             item { SetRow("Finish", true, onFinish) }
+        }
         }
         if (session.undo != null) {
             Button(onClick = onUndo, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp)) {
