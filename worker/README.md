@@ -52,3 +52,11 @@ On the existing `GET /watch/workout` response, call `attachWatchSettings(body, a
 const settings = await watchSettingsRoutes(request, env, { userIdFromBearer, userIdFromWatch });
 if (settings) return settings;
 ```
+
+`migrations/0006_live_session.sql` is the live-session table. It is not applied from this repo.
+
+## GET /watch/plans
+
+`worker/watch-plans.js` is a second module, also not deployed. A paired watch calls it for every saved plan and today's day. `GET /watch/workout` stays the existing route and is the fallback when `/watch/plans` is not on the server yet.
+
+The phone Watch settings screen writes `autoDetectSets` on `watchSettings`, not in the account blob. The Galaxy Watch reads that nested object from `GET /watch/workout` (and from a plans or live body when the object is present) and applies it when `rev` is newer. `live-routes.js` and `watch-plans.js` still copy a top-level `autoDetectSets` from `settings.autoDetectSets` in the account blob when that value is a boolean, and leave the field off otherwise. The watch uses the nested `watchSettings` object when it is present, and the top-level boolean only when the nested object is absent.

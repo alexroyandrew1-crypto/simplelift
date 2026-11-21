@@ -375,6 +375,8 @@ const D={en:{
 "cm.rest": "Start rest",
 "cm.exDone": "Mark {name} done",
 "bt.connected": "Connected to your watch over Bluetooth.",
+"link.connected": "Connected",
+"link.offline": "Not connected",
 "bt.looking": "Looking for your watch over Bluetooth. You can still enter the code if it does not connect.",
 "t.addFirst": "Add exercises to this day first",
 "pr.prev": "Previous week",

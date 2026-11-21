@@ -343,6 +343,8 @@ I18N.add('id',{
 "cm.rest": "Mulai istirahat",
 "cm.exDone": "Tandai {name} selesai",
 "bt.connected": "Terhubung ke jam lewat Bluetooth.",
+"link.connected": "Terhubung",
+"link.offline": "Tidak terhubung",
 "bt.looking": "Mencari jam lewat Bluetooth. Kode tetap bisa diketik jika tidak tersambung.",
 "t.addFirst": "Tambahkan latihan ke hari ini dulu",
 "pr.prev": "Minggu sebelumnya",

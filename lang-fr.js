@@ -353,6 +353,8 @@ I18N.add('fr',{
 "cm.rest": "Lancer le repos",
 "cm.exDone": "Marquer {name} fait",
 "bt.connected": "Connecté à la montre en Bluetooth.",
+"link.connected": "Connecté",
+"link.offline": "Non connecté",
 "bt.looking": "Recherche de la montre en Bluetooth. Vous pouvez encore saisir le code si elle ne se connecte pas.",
 "t.addFirst": "Ajoutez d'abord des exercices à ce jour",
 "pr.prev": "Semaine précédente",

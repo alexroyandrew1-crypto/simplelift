@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Simple Lift</string>
+    <string name="workout_channel">Workout</string>
+    <string name="workout_running">Workout in progress</string>
+</resources>

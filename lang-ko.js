@@ -343,6 +343,8 @@ I18N.add('ko',{
 "cm.rest": "휴식 시작",
 "cm.exDone": "{name} 완료로 표시",
 "bt.connected": "블루투스 시계에 연결됨.",
+"link.connected": "연결됨",
+"link.offline": "연결 안 됨",
 "bt.looking": "블루투스로 시계를 찾는 중. 연결되지 않으면 코드를 입력할 수 있습니다.",
 "t.addFirst": "먼저 이 요일에 운동을 추가하세요",
 "pr.prev": "이전 주",
