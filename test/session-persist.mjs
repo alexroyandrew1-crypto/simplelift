@@ -106,8 +106,18 @@ async function startAndLog(page) {
     r.dispatchEvent(new Event('input', {bubbles:true}));
   });
   await page.click('[data-act="setDone"][data-j="0"][data-k="0"]');
-  await page.click('[data-act="stp"][data-j="1"][data-k="0"][data-f="w"][data-d="1"]');
-  await sleep(100);
+  await page.waitForSelector('#timer');
+  // The + button steps on pointerdown, then ignores the click that follows.
+  // Dispatch that event on the button itself so a headless browser that misses
+  // the scrolled coordinate still hits the same handler.
+  const stepped = await page.evaluate(() => {
+    const b = document.querySelector('[data-act="stp"][data-j="1"][data-k="0"][data-f="w"][data-d="1"]');
+    if (!b) return false;
+    b.dispatchEvent(new PointerEvent('pointerdown', {bubbles: true, cancelable: true, button: 0, pointerId: 1, pointerType: 'mouse'}));
+    document.dispatchEvent(new PointerEvent('pointerup', {bubbles: true, cancelable: true, button: 0, pointerId: 1, pointerType: 'mouse'}));
+    return true;
+  });
+  if (!stepped) throw new Error('weight stepper was not on the workout screen');
 }
 
 async function main() {
