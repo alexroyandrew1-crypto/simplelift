@@ -6,13 +6,14 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import {fileURLToPath} from 'url';
+import {artifactDir, chromePath, legalVersion} from './browser-env.mjs';
 
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
-const SHOTS = path.join(ROOT, 'docs/screenshots/watch-settings');
-const CHROME = process.env.CHROME || '/usr/local/bin/google-chrome';
+const SHOTS = artifactDir('watch-settings');
+const CHROME = chromePath();
 
 const KEYS = ['title.watchSettings','ws.open','ws.hint','ws.chime','ws.chimeHint','ws.vibration','ws.auto','ws.autoHint','ws.hr','ws.reps','ws.repsHint','ws.save','ws.alert','ws.alert0','ws.alert1','ws.alert2','ws.saved','ws.newer','ws.fail','ws.loadFail','ws.loading','ws.waiting','ws.updated','ws.retry'];
 const LANGS = ['i18n.js','lang-es.js','lang-fr.js','lang-de.js','lang-pt.js','lang-it.js','lang-nl.js','lang-ru.js','lang-tr.js','lang-pl.js','lang-zh.js','lang-ja.js','lang-ko.js','lang-ar.js','lang-hi.js','lang-id.js'];
@@ -61,7 +62,7 @@ async function openApp(browser, port, boot) {
   await page.setViewport(boot.viewport);
   page.on('pageerror', e => console.log('PAGEERROR', e.message));
   await page.evaluateOnNewDocument(start => {
-    localStorage.setItem('simplelift_terms', JSON.stringify({v:'2026-11-11', at:new Date().toISOString()}));
+    localStorage.setItem('simplelift_terms', JSON.stringify({v: start.terms, at: new Date().toISOString()}));
     localStorage.setItem('simplelift_lang', start.lang);
     localStorage.setItem('simplelift_lang_toast', start.lang);
     localStorage.setItem('simplelift_auth', JSON.stringify({token:'tok', email:'alex@example.com', verified:true, plan:'free'}));
@@ -90,7 +91,7 @@ async function openApp(browser, port, boot) {
       if (u.includes('/geo')) return json({country:'US'});
       return json({});
     };
-  }, boot);
+  }, { ...boot, terms: legalVersion(ROOT) });
   await page.goto('http://127.0.0.1:' + port + '/', {waitUntil:'domcontentloaded'});
   await page.waitForFunction(() => document.querySelector('#tabs button[data-tab="settings"]'));
   await sleep(300);

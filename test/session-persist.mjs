@@ -10,13 +10,14 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import {fileURLToPath} from 'url';
+import {artifactDir, chromePath} from './browser-env.mjs';
 
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const ART = '/opt/cursor/artifacts';
+const ART = artifactDir('session');
 const PORT = 8766;
-const CHROME = process.env.CHROME || '/usr/local/bin/google-chrome';
+const CHROME = chromePath();
 
 const server = http.createServer((req, res) => {
   let u = decodeURIComponent(req.url.split('?')[0]);
@@ -80,7 +81,7 @@ async function openApp(browser) {
   await page.evaluateOnNewDocument(bootScript());
   await page.goto('http://127.0.0.1:'+PORT+'/', {waitUntil:'domcontentloaded'});
   await page.evaluate(plan => {
-    localStorage.setItem('simplelift_terms', JSON.stringify({v:'2026-11-11', at:new Date().toISOString()}));
+    localStorage.setItem('simplelift_terms', JSON.stringify({v: LEGAL.v, at: new Date().toISOString()}));
     localStorage.setItem('simplelift_lang', 'en');
     localStorage.setItem('simplelift_lang_toast', 'en');
     const db = {version:1, settings:{units:'lb', unitsChosen:true}, plans:[plan], activePlanId:plan.id, history:[], active:null, updatedAt:1};

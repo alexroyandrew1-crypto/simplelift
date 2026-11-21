@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dayCode, plansFromData, todayIndex, toLb } from './watch-plans.js';
+import { dayCode, plansFromData, todayIndex, toLb } from './src/watch-plans.js';
 
 test('pounds stay whole and kilograms convert', () => {
   assert.equal(toLb(30, 'lb'), 30);
