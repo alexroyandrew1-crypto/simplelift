@@ -44,7 +44,7 @@ public class GarminLinkPlugin extends Plugin implements ConnectIQ.ConnectIQListe
         current = this;
         connect = ConnectIQ.getInstance(getContext(), IQConnectType.WIRELESS);
         app = new IQApp(APP_ID);
-        wear = new WearBridge(getContext(), this::onWearJson);
+        wear = new WearBridge(getContext(), this::onWearJson, this::emit);
         wear.start();
     }
 
@@ -217,8 +217,10 @@ public class GarminLinkPlugin extends Plugin implements ConnectIQ.ConnectIQListe
 
     private JSObject status() {
         JSObject o = new JSObject();
+        boolean wearUp = wear != null && wear.connected();
         o.put("ready", ready);
-        o.put("connected", ready && device != null);
+        o.put("wearConnected", wearUp);
+        o.put("connected", (ready && device != null) || wearUp);
         o.put("appId", APP_ID);
         return o;
     }

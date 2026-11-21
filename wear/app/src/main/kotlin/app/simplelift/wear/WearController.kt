@@ -9,6 +9,8 @@ import app.simplelift.wear.model.AutoSession
 import app.simplelift.wear.model.CheckMode
 import app.simplelift.wear.model.Codes
 import app.simplelift.wear.model.Incoming
+import app.simplelift.wear.model.LinkSession
+import app.simplelift.wear.model.WatchSettings
 import app.simplelift.wear.model.PairPoll
 import app.simplelift.wear.model.Payloads
 import app.simplelift.wear.model.PlanDay
@@ -28,6 +30,7 @@ data class UiState(
     val nowMs: Long = 0,
     val bpm: Int? = null,
     val autoOn: Boolean = false,
+    val showHr: Boolean = true,
     val phoneNear: Boolean = false,
     val syncNote: String = ""
 )
@@ -54,6 +57,8 @@ class WearController(
     private var loop = true
     private var applying = false
     private var queued: Session? = null
+    private var greeted = false
+    private var settings = WatchSettings(autoDetectSets = store.autoOn())
 
     init { auto.enabled = store.autoOn() }
 
@@ -205,10 +210,11 @@ class WearController(
     }
 
     fun toggleAuto(on: Boolean) {
-        val at = clock() / 1000
-        store.setAuto(on, at)
+        settings = settings.copy(autoDetectSets = on, rev = clock())
+        store.setAuto(on, settings.rev)
         auto.enabled = on
         publish(ui.copy(autoOn = on))
+        queuedSettings = settings
         if (ui.session != null) pushSoon()
     }
 
@@ -261,16 +267,24 @@ class WearController(
 
     fun onWear(raw: String) {
         when (val msg = Payloads.message(raw)) {
-            is Incoming.Settings -> noteAuto(msg.auto, msg.at)
+            is Incoming.Settings -> applySettings(msg.settings)
             is Incoming.Snap -> applySnap(msg.snap)
+            Incoming.Hello -> publish(ui.copy(phoneNear = !store.token().isNullOrBlank()))
             else -> {}
         }
     }
 
     suspend fun replyHello() {
-        val code = ui.pairCode
-        if (store.token() == null && code != null) link.send("""{"t":"pair","code":"$code","src":"w"}""")
-        else ui.session?.let { push(it, forceServer = false) }
+        val decision = LinkSession.onNode(true, store.token())
+        publish(ui.copy(phoneNear = decision.connected))
+        if (decision.offerCode) {
+            val code = ui.pairCode
+            if (code != null) link.send("""{"t":"pair","code":"$code","src":"w"}""")
+            else if (!previewing) wantsPair = true
+            return
+        }
+        link.send(settings.text())
+        ui.session?.let { push(it, forceServer = false) }
     }
 
     fun bpm(value: Int?) {
@@ -302,7 +316,14 @@ class WearController(
         if (screen == Screen.Workout) onWorkout(true)
     }
 
+    private var queuedSettings: WatchSettings? = null
+
     private suspend fun tick() {
+        refreshLink()
+        queuedSettings?.let {
+            queuedSettings = null
+            try { link.send(it.text()) } catch (e: Exception) { }
+        }
         val nowSec = clock() / 1000
         val nowMs = clock()
         val session = ui.session ?: return
@@ -408,7 +429,28 @@ class WearController(
         } catch (e: Exception) { }
     }
 
-    private fun linkNote(fallback: String) = if (link.phoneNear) "Phone linked" else fallback
+    private suspend fun refreshLink() {
+        if (previewing) return
+        val near = try { link.nearby() } catch (e: Exception) { false }
+        val decision = LinkSession.onNode(near, store.token())
+        if (ui.phoneNear != decision.connected) publish(ui.copy(phoneNear = decision.connected))
+        if (decision.hello && near && !greeted) {
+            greeted = true
+            try { link.send("""{"t":"hello","src":"w"}""") } catch (e: Exception) { greeted = false }
+        }
+        if (!near) greeted = false
+    }
+
+    private fun applySettings(remote: WatchSettings) {
+        val next = settings.apply(remote)
+        if (next == settings) return
+        settings = next
+        store.setAuto(next.autoDetectSets, next.rev)
+        auto.enabled = next.autoDetectSets
+        publish(ui.copy(autoOn = next.autoDetectSets, showHr = next.showHr))
+    }
+
+    private fun linkNote(fallback: String) = if (ui.phoneNear) "Connected" else fallback
 
     private fun publish(next: UiState) {
         ui = next

@@ -173,7 +173,7 @@ object Payloads {
         return when (kind) {
             "hello" -> Incoming.Hello
             "pair" -> text(obj, "code")?.let { Incoming.Pair(it) }
-            "settings" -> Incoming.Settings(bool(obj, "autoDetectSets"), long(obj, "at") ?: 0L)
+            "settings" -> Incoming.Settings(watchSettings(obj))
             "snap", "" -> WireSnap.parse(raw)?.let { Incoming.Snap(it) }
             else -> if (obj["ex"] != null) WireSnap.parse(raw)?.let { Incoming.Snap(it) } else null
         }
@@ -193,6 +193,19 @@ object Payloads {
 
     private fun bool(obj: JsonObject, key: String): Boolean? = obj[key]?.jsonPrimitive?.booleanOrNull
 
+    private fun watchSettings(obj: JsonObject): WatchSettings {
+        return WatchSettings(
+            rev = long(obj, "rev") ?: 0L,
+            chime = bool(obj, "chime") ?: true,
+            vibration = bool(obj, "vibration") ?: true,
+            autoDetectSets = bool(obj, "autoDetectSets") ?: false,
+            showHr = bool(obj, "showHr") ?: true,
+            repDetect = bool(obj, "repDetect") ?: true,
+            saveActivity = bool(obj, "saveActivity") ?: true,
+            restAlert = int(obj, "restAlert") ?: 0
+        )
+    }
+
     private fun mode(obj: JsonObject): CheckMode? {
         val raw = text(obj, "checkMode") ?: return null
         return if (raw == "set" || raw == "exercise" || raw == "none") CheckMode.norm(raw) else null
@@ -202,7 +215,7 @@ object Payloads {
 sealed interface Incoming {
     data object Hello : Incoming
     data class Pair(val code: String) : Incoming
-    data class Settings(val auto: Boolean?, val at: Long) : Incoming
+    data class Settings(val settings: WatchSettings) : Incoming
     data class Snap(val snap: WireSnap) : Incoming
 }
 

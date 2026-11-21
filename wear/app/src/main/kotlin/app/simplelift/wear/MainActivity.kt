@@ -91,7 +91,7 @@ class MainActivity : ComponentActivity() {
                         Screen.Settings -> SettingsScreen(ui.autoOn, { controller.toggleAuto(it) }, { controller.unpair() }, { controller.backFromSettings() })
                     }
                     val bpm = ui.bpm
-                    if (ui.screen == Screen.Workout && bpm != null) {
+                    if (ui.screen == Screen.Workout && ui.showHr && bpm != null) {
                         HeartChip(bpm, Modifier.align(Alignment.TopCenter).padding(top = 6.dp))
                     }
                 }

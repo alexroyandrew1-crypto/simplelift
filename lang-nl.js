@@ -353,6 +353,8 @@ I18N.add('nl',{
 "cm.rest": "Rust starten",
 "cm.exDone": "Markeer {name} klaar",
 "bt.connected": "Verbonden met je horloge via Bluetooth.",
+"link.connected": "Verbonden",
+"link.offline": "Niet verbonden",
 "bt.looking": "Horloge zoeken via Bluetooth. Je kunt de code nog invoeren als het niet verbindt.",
 "t.addFirst": "Voeg eerst oefeningen aan deze dag toe",
 "pr.prev": "Vorige week",
