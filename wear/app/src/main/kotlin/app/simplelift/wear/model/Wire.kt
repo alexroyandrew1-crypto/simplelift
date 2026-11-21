@@ -14,7 +14,13 @@ import kotlinx.serialization.json.longOrNull
 private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true; explicitNulls = false }
 
 @Serializable
-data class WireSet(val w: Double = 0.0, val r: Double = 0.0, val d: Int = 0)
+data class WireSet(
+    val w: Double = 0.0,
+    val r: Double = 0.0,
+    val d: Int = 0,
+    val u: String? = null,
+    val v: Double? = null
+)
 
 @Serializable
 data class WireEx(val n: String = "", val rest: Int = 0, val s: List<WireSet> = emptyList())

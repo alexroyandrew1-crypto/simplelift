@@ -785,6 +785,13 @@ I18N.add('es',{
 "h.exCount": "{n} registros",
 "sug.perHand": "por mano",
 "timer.remain": "Descanso: quedan {t}",
+"sec.errors": "Errores",
+"errlog.title": "Registro de errores",
+"errlog.hint": "Los problemas de este teléfono se quedan aquí. Si has iniciado sesión, también se envía una copia a tu cuenta. Ningún otro servicio la ve.",
+"errlog.empty": "No hay errores guardados.",
+"errlog.export": "Exportar registro de errores",
+"errlog.clear": "Borrar registro de errores",
+"errlog.cleared": "Registro de errores borrado",
 "__ex": {
 "Barbell Bench Press": "Press de banca con barra",
 "Incline Barbell Bench Press": "Press de banca inclinado con barra",

@@ -869,6 +869,13 @@ I18N.add('ar',{
 "h.exCount": "{n} سجلات",
 "sug.perHand": "لكل يد",
 "timer.remain": "الراحة: متبقٍ {t}",
+"sec.errors": "الأخطاء",
+"errlog.title": "سجل الأخطاء",
+"errlog.hint": "تبقى مشاكل هذا الهاتف هنا. إذا كنت مسجّل الدخول، تُرسل نسخة أيضًا إلى حسابك. لا تراها أي خدمة أخرى.",
+"errlog.empty": "لا توجد أخطاء محفوظة.",
+"errlog.export": "تصدير سجل الأخطاء",
+"errlog.clear": "مسح سجل الأخطاء",
+"errlog.cleared": "تم مسح سجل الأخطاء",
 "__ex": {
 "Barbell Bench Press": "ضغط البنش بالبار",
 "Incline Barbell Bench Press": "ضغط البنش المائل بالبار",

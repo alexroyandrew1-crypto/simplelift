@@ -764,6 +764,13 @@ I18N.add('zh',{
 "h.exCount": "{n} 条记录",
 "sug.perHand": "每手",
 "timer.remain": "休息还剩 {t}",
+"sec.errors": "错误",
+"errlog.title": "错误记录",
+"errlog.hint": "这台手机上的问题留在这里。登录后，一份副本也会发到你的账户。其他服务看不到。",
+"errlog.empty": "没有已保存的错误。",
+"errlog.export": "导出错误记录",
+"errlog.clear": "清除错误记录",
+"errlog.cleared": "错误记录已清除",
 "__ex": {
 "Barbell Bench Press": "杠铃平板卧推",
 "Incline Barbell Bench Press": "杠铃上斜卧推",

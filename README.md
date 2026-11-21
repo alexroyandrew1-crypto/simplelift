@@ -14,11 +14,11 @@ A free, simple workout tracker. Static PWA with no build step and no CDN. The on
 - `parser.js`: `parseTextPlan(text)` is **the paste-parser hook**. Rule-based for now: it reads day headings ("Day 1 - Push", "Monday: Legs"), rest days, and lines like "4x8-10", "3 sets of 8-12" or "3 sets × 10–12 reps, rest 60s". Leftover text becomes notes. Warm-up, cool-down and tips sections are skipped, and lines it can't read are reported. Replace it with an AI call and keep the same return shape.
 - `config.js`: `DONATE_URL`. Currently https://paypal.me/simplelift. Leave it empty to hide the optional Donate button in Settings → Support (only the message shows).
 - `changes.js`: `requestPlanChanges(plan,text)` / `applyChangeRequest` is **the change-request hook** (swap X for Y, remove X, add X to day N, more/less chest, add abs, shorter/longer, more/fewer sets, heavier/lighter). Replace it with an AI call and keep the same return shape: `{plan, changes, notUnderstood}`.
-- `oldimport.js`: imports the original workout app's history (`wlog_v1`) and plan (`wplan_v1`, or `../workout/plan.json`) from the same origin. It only reads those keys, never writes them, and skips anything already imported.
-- `app.js`: screens (Home, Plans/editor, Build with AI, Workout, History, Progress, Settings)
+- `app-shell.js`, `app-views.js`, `app-workout.js`, `app-session.js`, `app-actions.js`, `app-boot.js`: the screens (Home, Plans/editor, Build with AI, Workout, History, Settings), split by area. They are classic scripts, not modules.
+- `errors.js`: a local error log in Settings. A copy is sent to `/errors` only when an account is signed in.
 - `ocr.js`: `imageToText(file,onProgress)` is **the picture-reading hook**. It runs tesseract.js on the device after shrinking the image and boosting contrast (dark screenshots get inverted). Swap in an AI vision model later and keep the same return value (plain text).
 - `ocr/`: self-hosted tesseract.js v5 (worker, WASM cores, English model `eng.traineddata.gz`, about 13 MB, Apache-2.0). It downloads only the first time someone reads a picture, then stays cached for offline use.
-- `sw.js`: network-first for app files, so updates show up as soon as you are online, with a cache fallback offline. `ocr/` is cache-first in its own cache. Uses `skipWaiting` + `clients.claim`. Bump `C` (and `APP_VERSION` in config.js) on each release.
+- `sw.js`: cache-first for app files, so the app opens offline. A new cache name shows "Update available". `ocr/` is cache-first in its own cache. Uses `skipWaiting` + `clients.claim`. Bump `C` (and `APP_VERSION` in config.js) on each release.
 - `manifest.json`, `icon.svg`, `icon-192.png`, `icon-512.png`
 
 ## Data shape

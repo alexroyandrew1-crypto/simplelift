@@ -764,6 +764,13 @@ I18N.add('ko',{
 "h.exCount": "{n}회 기록",
 "sug.perHand": "한 손당",
 "timer.remain": "휴식 {t} 남음",
+"sec.errors": "오류",
+"errlog.title": "오류 기록",
+"errlog.hint": "이 휴대폰의 문제는 여기에 남습니다. 로그인한 경우 계정으로도 사본이 전송됩니다. 다른 서비스는 보지 않습니다.",
+"errlog.empty": "저장된 오류가 없습니다.",
+"errlog.export": "오류 기록 내보내기",
+"errlog.clear": "오류 기록 지우기",
+"errlog.cleared": "오류 기록을 지웠습니다",
 "__ex": {
 "Barbell Bench Press": "바벨 벤치프레스",
 "Incline Barbell Bench Press": "인클라인 바벨 벤치프레스",

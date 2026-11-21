@@ -29,7 +29,7 @@ const active = {
 };
 const snap = LiveSnap.fromActive(active, 'kg');
 check(snap.src === 'p' && snap.mode === 'exercise' && snap.rest === 200, 'snapshot carries mode and rest');
-check(snap.ex[0].s[0].w === 220 && snap.ex[0].s[0].d === 1 && snap.ex[0].s[1].d === 0, 'done flag and kg weight');
+check(snap.ex[0].s[0].w === 220 && snap.ex[0].s[0].u === 'kg' && snap.ex[0].s[0].v === 100 && snap.ex[0].s[0].d === 1 && snap.ex[0].s[1].d === 0, 'legacy pounds plus exact kg');
 check(LiveSnap.wins(active, { ...snap, rev: 2 }, 'p') === false, 'own echo is ignored');
 check(LiveSnap.wins(active, { ...snap, src: 'w', rev: 3 }, 'p') === true, 'higher rev from the watch wins');
 check(LiveSnap.wins(active, { ...snap, src: 'w', id: 'other', rev: 1, at: 50 }, 'p') === false, 'older other workout does not replace');
@@ -51,6 +51,25 @@ check(Live.settings && Live.settings.rev === 1731801600000, 'settings rev keeps 
 check(Live.settings.chime === false && Live.settings.autoDetectSets === true && Live.settings.showHr === false && Live.settings.restAlert === 2, 'data-layer settings use the watchSettings fields');
 Live.keepSettings({ t: 'settings', rev: 1731801500000, chime: true, autoDetectSets: false, showHr: true, restAlert: 0 });
 check(Live.settings.rev === 1731801600000 && Live.settings.chime === false && Live.settings.autoDetectSets === true, 'an older settings rev does not replace');
+
+const precise = {
+  id: 'kg1', rev: 1, revAt: 1, checkMode: 'set', dayIndex: 0, dayName: 'Legs', planId: 'p',
+  focus: 0, started: 1000,
+  exercises: [{ name: 'Squat', rest: 120, sets: [{ w: 61.25, r: 5, done: true }, { w: 1.25, r: 12, done: false }] }]
+};
+const wire = LiveSnap.fromActive(precise, 'kg');
+check(wire.ex[0].s[0].u === 'kg' && wire.ex[0].s[0].v === 61.25 && wire.ex[0].s[1].v === 1.25, '61.25 kg and 1.25 kg are sent exactly');
+check(LiveSnap.decode(wire.ex[0].s[0], 'kg') === 61.25 && LiveSnap.decode(wire.ex[0].s[1], 'kg') === 1.25, '61.25 kg round-trips exactly');
+const logged = LiveSnap.historyFrom(Object.assign({}, wire, { fin: 1 }), 'kg');
+check(logged.exercises[0].sets[0].w === 61.25 && logged.exercises[0].sets[1].w === 1.25, 'a finished log keeps the hundredths');
+const echoed = LiveSnap.fromActive({
+  id: 'kg1', rev: 2, checkMode: 'set', dayIndex: 0, dayName: 'Legs', planId: 'p', focus: 0, started: 1000,
+  exercises: [{ name: 'Squat', rest: 120, sets: [{ w: logged.exercises[0].sets[0].w, r: 5, done: true }] }]
+}, 'kg');
+check(echoed.ex[0].s[0].v === 61.25, 'a second send of the round-tripped weight is still 61.25');
+const legacy = { t: 'snap', id: 'old', fin: 1, src: 'w', ex: [{ n: 'Squat', s: [{ w: 135, r: 5, d: 1 }] }] };
+check(LiveSnap.historyFrom(legacy, 'kg').exercises[0].sets[0].w === 60, 'an old whole-pound snapshot still plate-rounds');
+check(LiveSnap.decode({ w: 135, u: 'kg', v: 61.25 }, 'kg') === 61.25, 'exact fields win over the legacy pounds');
 
 if (failed) process.exit(1);
 console.log('live-snap: all checks passed');

@@ -22,7 +22,8 @@ class LiftModel {
     var focus as Number = 0;    // the ONE highlighted control: FOCUS_NONE / FOCUS_WT / FOCUS_REPS (never two at once)
     var flashTimer as Timer.Timer?; // bright tap feedback for ~0.5 s (the normal highlight stays while focused)
     var done as Array;          // done[i][s] = true/false
-    var weights as Array;       // weights[i][s] in lb
+    var weights as Array;       // weights[i][s] in whole pounds (what the screen shows)
+    var exact as Array;         // exact[i][s] is {:on,:u,:v}; u/v echo the phone's original unit so 61.25 kg is not lost
     var restLeft as Number = 0;
     var restTotal as Number = 0;
     var restEx as Number = -1;  // set that is resting (dot turns green when rest ends)
@@ -89,6 +90,7 @@ class LiftModel {
             weights.add((e[:w] as Array).slice(0, null));
             order.add(i);
         }
+        exact = blankExact();
         // Restore saved progress if it belongs to the same workout code
         var st = Storage.getValue("state");
         if (st instanceof Dictionary && (w[:code] as String).equals(st["code"])) {
@@ -104,6 +106,8 @@ class LiftModel {
                 if (ok) {
                     done = sd; weights = sw;
                     if (sr instanceof Array && sr.size() == ex.size()) { for (var i = 0; i < ex.size(); i++) { var ed = ex[i] as Dictionary; ed[:reps] = sr[i]; } }
+                    var sx = st["exact"];
+                    exact = exactFits(sx) ? sx as Array : blankExact();
                 }
             }
             var sa = st["start"];
@@ -236,10 +240,45 @@ class LiftModel {
         if (liveId.length() == 0) { liveId = "w" + Time.now().value(); }
         var rs = [];
         for (var i = 0; i < ex.size(); i++) { rs.add((ex[i] as Dictionary)[:reps]); }
-        Storage.setValue("state", { "code" => w[:code], "done" => done, "weights" => weights, "reps" => rs, "idx" => idx, "start" => startedAt, "order" => order, "skipped" => skipped, "liveId" => liveId, "liveRev" => liveRev, "logKind" => logKind, "liveDay" => liveDay });
+        Storage.setValue("state", { "code" => w[:code], "done" => done, "weights" => weights, "exact" => exact, "reps" => rs, "idx" => idx, "start" => startedAt, "order" => order, "skipped" => skipped, "liveId" => liveId, "liveRev" => liveRev, "logKind" => logKind, "liveDay" => liveDay });
         if (!applying) { LiveLink.send(snapshot(0, 0)); }
     }
     function publish() as Void { if (!applying && !finished) { save(); } }
+    // One blank exact cell per set. :on is false until the phone (or a local pound edit) fills u/v.
+    function blankExact() as Array {
+        var out = [];
+        for (var i = 0; i < weights.size(); i++) {
+            var n = (weights[i] as Array).size();
+            var row = [];
+            for (var s = 0; s < n; s++) { row.add({ :on => false }); }
+            out.add(row);
+        }
+        return out;
+    }
+    function exactFits(sx) as Boolean {
+        if (!(sx instanceof Array)) { return false; }
+        var ax = sx as Array;
+        if (ax.size() != weights.size()) { return false; }
+        for (var i = 0; i < ax.size(); i++) {
+            if (!(ax[i] instanceof Array)) { return false; }
+            if ((ax[i] as Array).size() != (weights[i] as Array).size()) { return false; }
+        }
+        return true;
+    }
+    // JSON may hand back a Float for 61.25 and a Number for a whole value. Keep the fraction.
+    function asFloat(v) as Float? {
+        if (v instanceof Float) { return v as Float; }
+        if (v instanceof Number) { return (v as Number).toFloat(); }
+        if (v instanceof Long) { return (v as Long).toFloat(); }
+        return null;
+    }
+    function rememberExact(i as Number, s as Number, u as String, v as Float) as Void {
+        if (i < 0 || i >= exact.size()) { return; }
+        var row = exact[i] as Array;
+        if (s < 0 || s >= row.size()) { return; }
+        if (u.length() == 0) { row[s] = { :on => false }; return; }
+        row[s] = { :on => true, :u => u, :v => v };
+    }
     function snapshot(fin as Number, drop as Number) as Dictionary {
         var rows = [];
         for (var i = 0; i < ex.size(); i++) {
@@ -248,7 +287,18 @@ class LiftModel {
             var ws = weights[i] as Array;
             var ds = done[i] as Array;
             var restS = (ex[i] as Dictionary)[:rest];
-            for (var s = 0; s < reps.size(); s++) { sets.add({ "w" => ws[s], "r" => reps[s], "d" => (ds[s] == true ? 1 : 0) }); }
+            var cells = exact.size() > i ? exact[i] as Array : [] as Array;
+            for (var s = 0; s < reps.size(); s++) {
+                var one = { "w" => ws[s], "r" => reps[s], "d" => (ds[s] == true ? 1 : 0) };
+                if (s < cells.size() && cells[s] instanceof Dictionary) {
+                    var cell = cells[s] as Dictionary;
+                    if (cell[:on] == true && cell[:u] instanceof String) {
+                        one["u"] = cell[:u];
+                        one["v"] = cell[:v];
+                    }
+                }
+                sets.add(one);
+            }
             rows.add({ "n" => (ex[i] as Dictionary)[:name], "rest" => restS, "s" => sets });
         }
         return {
@@ -508,7 +558,7 @@ class LiftModel {
         var ws = weights[idx] as Array;
         var v = (ws[sel] as Number) + delta;
         if (v < 0) { v = 0; }
-        for (var k = sel; k < ws.size(); k++) { ws[k] = v; }
+        for (var k = sel; k < ws.size(); k++) { ws[k] = v; rememberExact(idx, k, "lb", v.toFloat()); }
         save();
         WatchUi.requestUpdate();
     }
@@ -597,6 +647,13 @@ class LiftModel {
                     if (!(one instanceof Dictionary)) { continue; }
                     var od = one as Dictionary;
                     if (od["w"] instanceof Number) { ws[s] = od["w"] as Number; }
+                    var eu = od["u"];
+                    var fv = asFloat(od["v"]);
+                    if (eu instanceof String && fv != null) {
+                        var us = eu as String;
+                        if (us.equals("kg") || us.equals("lb")) { rememberExact(i, s, us, fv as Float); }
+                        else { rememberExact(i, s, "", 0.0); }
+                    } else { rememberExact(i, s, "", 0.0); }
                     if (od["r"] instanceof Number) { reps[s] = od["r"] as Number; }
                     var bit = od["d"];
                     ds[s] = bit instanceof Number && (bit as Number) != 0;

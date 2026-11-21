@@ -86,7 +86,6 @@ const Sync={
       this.set({lastSync:Date.now(),err:'',held:''})}
     catch(e){if(stale())return;if(e.code==='unverified')this.set({verified:false,err:'',held:''});else if(e.status===401){localStorage.removeItem(AUTH_KEY);toast(t('sy.out'))}else this.set({err:navigator.onLine===false?t('sy.offline'):e.message,held:''})}
     finally{if(this.busy===me)this.busy=0;if(epoch!==this.epoch)return;if(typeof updateNet==='function')updateNet();if(typeof route!=='undefined'&&route.v==='settings')render();if(this.again){this.again=false;this.soon(500)}}},
-  async pair(){return this.req('POST','/pair/start',{},this.a.token)}, // leftover for older clients; v31 phone uses pairClaim
   async pairClaim(code){return this.req('POST','/pair/claim',{code},this.a.token)},
   // Live workout channel. Separate from `active` so a second phone cannot revive a finished session.
   // 404 means this server build does not have the route yet; the caller backs off.

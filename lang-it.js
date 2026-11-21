@@ -785,6 +785,13 @@ I18N.add('it',{
 "h.exCount": "{n} registri",
 "sug.perHand": "per mano",
 "timer.remain": "Recupero: restano {t}",
+"sec.errors": "Errori",
+"errlog.title": "Registro errori",
+"errlog.hint": "I problemi su questo telefono restano qui. Se hai effettuato l'accesso, una copia va anche al tuo account. Nessun altro servizio la vede.",
+"errlog.empty": "Nessun errore salvato.",
+"errlog.export": "Esporta registro errori",
+"errlog.clear": "Cancella registro errori",
+"errlog.cleared": "Registro errori cancellato",
 "__ex": {
 "Barbell Bench Press": "Panca piana con bilanciere",
 "Incline Barbell Bench Press": "Panca inclinata con bilanciere",

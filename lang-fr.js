@@ -785,6 +785,13 @@ I18N.add('fr',{
 "h.exCount": "{n} séances",
 "sug.perHand": "par main",
 "timer.remain": "Repos : {t} restantes",
+"sec.errors": "Erreurs",
+"errlog.title": "Journal des erreurs",
+"errlog.hint": "Les problèmes sur ce téléphone restent ici. Si vous êtes connecté, une copie part aussi vers votre compte. Aucun autre service ne la voit.",
+"errlog.empty": "Aucune erreur enregistrée.",
+"errlog.export": "Exporter le journal",
+"errlog.clear": "Effacer le journal",
+"errlog.cleared": "Journal effacé",
 "__ex": {
 "Barbell Bench Press": "Développé couché barre",
 "Incline Barbell Bench Press": "Développé incliné barre",

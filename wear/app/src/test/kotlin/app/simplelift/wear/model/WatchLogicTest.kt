@@ -157,6 +157,36 @@ class WatchLogicTest {
     }
 
     @Test
+    fun kilogramsRoundTripExactly() {
+        val raw = """{"t":"snap","id":"w1","rev":3,"src":"p","at":100,"mode":"set","name":"Legs","ex":[{"n":"Squat","rest":90,"s":[{"w":135,"r":5,"d":1,"u":"kg","v":61.25},{"w":3,"r":12,"d":0,"u":"kg","v":1.25}]}]}"""
+        val snap = WireSnap.parse(raw)
+        assertNotNull(snap)
+        snap!!
+        assertEquals(61.25, snap.ex[0].s[0].v!!, 0.0)
+        val applied = session().applyWire(snap, "w", NOW)
+        assertNotNull(applied)
+        applied!!
+        assertEquals("kg", applied.exercises[0].sets[0].unit)
+        assertEquals(61.25, applied.exercises[0].sets[0].exact!!, 0.0)
+        assertEquals(1.25, applied.exercises[0].sets[1].exact!!, 0.0)
+        assertEquals(135, applied.exercises[0].sets[0].weightLb)
+        val back = applied.toWire(NOW, false)
+        assertEquals("kg", back.ex[0].s[0].u)
+        assertEquals(61.25, back.ex[0].s[0].v!!, 0.0)
+        assertEquals(1.25, back.ex[0].s[1].v!!, 0.0)
+        val again = WireSnap.parse(back.text())!!
+        assertEquals(61.25, again.ex[0].s[0].v!!, 0.0)
+        assertEquals("kg", again.ex[0].s[0].u)
+        val old = WireSnap.parse("""{"t":"snap","id":"w1","rev":4,"src":"p","at":200,"mode":"set","ex":[{"n":"Squat","rest":90,"s":[{"w":135,"r":5,"d":0}]}]}""")!!
+        assertNull(old.ex[0].s[0].u)
+        val legacy = session().applyWire(old, "w", NOW)!!
+        assertNull(legacy.exercises[0].sets[0].unit)
+        assertNull(legacy.exercises[0].sets[0].exact)
+        assertEquals(135, legacy.exercises[0].sets[0].weightLb)
+        assertNull(legacy.toWire(NOW, false).ex[0].s[0].v)
+    }
+
+    @Test
     fun milliGAtRestIsAboutOneThousand() {
         val g = RepDetector.milliG(0f, 0f, 9.80665f)
         assertEquals(1000f, g, 1f)

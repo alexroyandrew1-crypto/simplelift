@@ -785,6 +785,13 @@ I18N.add('pt',{
 "h.exCount": "{n} registros",
 "sug.perHand": "por mão",
 "timer.remain": "Descanso: faltam {t}",
+"sec.errors": "Erros",
+"errlog.title": "Registro de erros",
+"errlog.hint": "Os problemas neste telefone ficam aqui. Se você estiver conectado, uma cópia também vai para a sua conta. Nenhum outro serviço vê isso.",
+"errlog.empty": "Nenhum erro salvo.",
+"errlog.export": "Exportar registro de erros",
+"errlog.clear": "Limpar registro de erros",
+"errlog.cleared": "Registro de erros limpo",
 "__ex": {
 "Barbell Bench Press": "Supino reto com barra",
 "Incline Barbell Bench Press": "Supino inclinado com barra",
