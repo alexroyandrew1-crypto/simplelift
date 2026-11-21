@@ -72,6 +72,21 @@ export async function readSnap(db, userId) {
   try { return JSON.parse(row.snap); } catch (e) { return null; }
 }
 
+export async function readAutoDetect(db, userId) {
+  const row = await db.prepare('SELECT data FROM user_data WHERE user_id = ?').bind(userId).first();
+  if (!row || !row.data) return null;
+  try {
+    const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
+    const value = data && data.settings && data.settings.autoDetectSets;
+    return typeof value === 'boolean' ? value : null;
+  } catch (e) { return null; }
+}
+
+function withAuto(body, auto) {
+  if (typeof auto === 'boolean') body.autoDetectSets = auto;
+  return body;
+}
+
 export async function readCheckMode(db, userId) {
   // The account blob is the source of the default. Column name in the existing
   // users/data table may be `data` (JSON). Adjust this query to match.
@@ -105,12 +120,14 @@ export async function liveRoutes(request, env, auth) {
   if (request.method === 'GET') {
     const snap = await readSnap(db, userId);
     const checkMode = normMode(await readCheckMode(db, userId) || (snap && snap.mode));
-    return json({ snap, checkMode });
+    const auto = await readAutoDetect(db, userId);
+    return json(withAuto({ snap, checkMode }, auto));
   }
   let body = {};
   try { body = await request.json(); } catch (e) { body = {}; }
   const snap = body && body.snap;
   if (!snap || typeof snap !== 'object') return json({ error: 'Missing snap' }, 400);
   const saved = await saveSnap(db, userId, snap);
-  return json({ snap: saved, checkMode: normMode(saved && saved.mode) });
+  const auto = await readAutoDetect(db, userId);
+  return json(withAuto({ snap: saved, checkMode: normMode(saved && saved.mode) }, auto));
 }

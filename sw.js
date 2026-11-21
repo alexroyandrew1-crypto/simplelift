@@ -5,7 +5,7 @@
 // Language files (lang-xx.js) are cached on first use in the versioned cache. On each update the new version
 // re-downloads the languages the old cache had, so a non-English phone stays translated offline after updating.
 // OCR files (big, rarely change) are cache-first in their own cache and cached on first use.
-const C='simplelift-v36',OCR='simplelift-ocr-1';
+const C='simplelift-v37',OCR='simplelift-ocr-1';
 const FILES=['./','index.html','config.js','legal.js','i18n.js','style.css','library.js','store.js','generator.js','parser.js','changes.js','oldimport.js','ocr.js','watch.js','sync.js','live.js','app.js','manifest.json','icon.svg','icon-192.png','icon-512.png','icon-512-maskable.png','apple-touch-icon.png','favicon.ico','favicon-32.png','favicon-16.png'];
 self.addEventListener('install',e=>{e.waitUntil((async()=>{const c=await caches.open(C);await c.addAll(FILES.map(f=>new Request(f,{cache:'reload'})));
   const langs=new Set();for(const k of await caches.keys())if(k!==C&&/^simplelift-v\d+$/.test(k))for(const r of await (await caches.open(k)).keys()){const m=new URL(r.url).pathname.match(/lang-([a-z]{2})\.js$/);if(m)langs.add(m[1])}

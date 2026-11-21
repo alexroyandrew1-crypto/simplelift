@@ -353,6 +353,8 @@ I18N.add('de',{
 "cm.rest": "Pause starten",
 "cm.exDone": "{name} als erledigt markieren",
 "bt.connected": "Per Bluetooth mit der Uhr verbunden.",
+"link.connected": "Verbunden",
+"link.offline": "Nicht verbunden",
 "bt.looking": "Suche die Uhr über Bluetooth. Den Code kannst du weiter eingeben, wenn sie nicht verbindet.",
 "t.addFirst": "Füge diesem Tag zuerst Übungen hinzu",
 "pr.prev": "Vorherige Woche",

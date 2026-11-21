@@ -343,6 +343,8 @@ I18N.add('ja',{
 "cm.rest": "休憩を開始",
 "cm.exDone": "{name}を完了にする",
 "bt.connected": "Bluetoothでウォッチに接続しました。",
+"link.connected": "接続中",
+"link.offline": "未接続",
 "bt.looking": "Bluetoothでウォッチを探しています。つながらないときはコードを入力できます。",
 "t.addFirst": "まずこの日に種目を追加してください",
 "pr.prev": "前の週",

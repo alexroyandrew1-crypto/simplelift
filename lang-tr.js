@@ -353,6 +353,8 @@ I18N.add('tr',{
 "cm.rest": "Dinlenmeyi başlat",
 "cm.exDone": "{name} tamamlandı",
 "bt.connected": "Saate Bluetooth ile bağlanıldı.",
+"link.connected": "Bağlı",
+"link.offline": "Bağlı değil",
 "bt.looking": "Saat Bluetooth ile aranıyor. Bağlanmazsa kodu yine girebilirsin.",
 "t.addFirst": "Önce bu güne egzersiz ekle",
 "pr.prev": "Önceki hafta",
