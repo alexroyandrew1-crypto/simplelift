@@ -1,0 +1,17 @@
+{
+  "name": "simplelift-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test watch-settings.test.mjs watch-plans.test.mjs && node test/auth.test.mjs && node test/ai.test.mjs && node test/delete.test.mjs && node test/geo.test.mjs && node test/isolation.test.mjs && node test/legal.test.mjs && node test/watches.test.mjs && node test/live.test.mjs && node test/pairing.test.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "sql.js": "^1.15.2",
+    "wrangler": "^3.114.17"
+  }
+}

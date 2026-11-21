@@ -10,13 +10,14 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import {fileURLToPath} from 'url';
+import {artifactDir, chromePath} from './browser-env.mjs';
 
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const ART = '/opt/cursor/artifacts';
+const ART = artifactDir('session');
 const PORT = 8766;
-const CHROME = process.env.CHROME || '/usr/local/bin/google-chrome';
+const CHROME = chromePath();
 
 const server = http.createServer((req, res) => {
   let u = decodeURIComponent(req.url.split('?')[0]);
@@ -80,7 +81,7 @@ async function openApp(browser) {
   await page.evaluateOnNewDocument(bootScript());
   await page.goto('http://127.0.0.1:'+PORT+'/', {waitUntil:'domcontentloaded'});
   await page.evaluate(plan => {
-    localStorage.setItem('simplelift_terms', JSON.stringify({v:'2026-11-11', at:new Date().toISOString()}));
+    localStorage.setItem('simplelift_terms', JSON.stringify({v: LEGAL.v, at: new Date().toISOString()}));
     localStorage.setItem('simplelift_lang', 'en');
     localStorage.setItem('simplelift_lang_toast', 'en');
     const db = {version:1, settings:{units:'lb', unitsChosen:true}, plans:[plan], activePlanId:plan.id, history:[], active:null, updatedAt:1};
@@ -105,8 +106,18 @@ async function startAndLog(page) {
     r.dispatchEvent(new Event('input', {bubbles:true}));
   });
   await page.click('[data-act="setDone"][data-j="0"][data-k="0"]');
-  await page.click('[data-act="stp"][data-j="1"][data-k="0"][data-f="w"][data-d="1"]');
-  await sleep(100);
+  await page.waitForSelector('#timer');
+  // The + button steps on pointerdown, then ignores the click that follows.
+  // Dispatch that event on the button itself so a headless browser that misses
+  // the scrolled coordinate still hits the same handler.
+  const stepped = await page.evaluate(() => {
+    const b = document.querySelector('[data-act="stp"][data-j="1"][data-k="0"][data-f="w"][data-d="1"]');
+    if (!b) return false;
+    b.dispatchEvent(new PointerEvent('pointerdown', {bubbles: true, cancelable: true, button: 0, pointerId: 1, pointerType: 'mouse'}));
+    document.dispatchEvent(new PointerEvent('pointerup', {bubbles: true, cancelable: true, button: 0, pointerId: 1, pointerType: 'mouse'}));
+    return true;
+  });
+  if (!stepped) throw new Error('weight stepper was not on the workout screen');
 }
 
 async function main() {

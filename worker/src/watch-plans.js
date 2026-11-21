@@ -106,8 +106,8 @@ export async function watchPlanRoutes(request, env, auth) {
   if (!token) return json({ error: 'Not signed in' }, 401);
   const userId = await auth.userIdFromWatch(token);
   if (!userId) return json({ error: 'Not signed in' }, 401);
-  const row = await env.DB.prepare('SELECT data FROM user_data WHERE user_id = ?').bind(userId).first();
+  const row = await env.DB.prepare('SELECT blob FROM data WHERE user_id = ?').bind(userId).first();
   let data = null;
-  try { data = row && row.data ? JSON.parse(row.data) : null; } catch (e) { data = null; }
+  try { data = row && row.blob ? JSON.parse(row.blob) : null; } catch (e) { data = null; }
   return json(plansFromData(data));
 }
