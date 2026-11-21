@@ -72,7 +72,7 @@ class MainActivity : ComponentActivity() {
                         Screen.Plans -> PlansScreen(ui.days, ui.syncNote, { controller.openDay(it) }, { controller.showSettings() })
                         Screen.Workout -> ui.session?.let { session ->
                             WorkoutScreen(
-                                session, ui.nowSec, ui.phoneNear,
+                                session, ui.nowSec,
                                 { controller.cycleMode() },
                                 { controller.toggleSet(it) },
                                 { controller.toggleExercise() },
@@ -92,7 +92,7 @@ class MainActivity : ComponentActivity() {
                     }
                     val bpm = ui.bpm
                     if (ui.screen == Screen.Workout && ui.showHr && bpm != null) {
-                        HeartChip(bpm, Modifier.align(Alignment.TopCenter).padding(top = 6.dp))
+                        HeartChip(bpm, Modifier.align(Alignment.TopCenter).padding(top = 4.dp))
                     }
                 }
             }

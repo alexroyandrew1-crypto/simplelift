@@ -36,14 +36,10 @@ import androidx.wear.compose.foundation.ExperimentalWearFoundationApi
 import androidx.wear.compose.foundation.LocalReduceMotion
 import androidx.wear.compose.foundation.ReduceMotion
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
-import androidx.wear.compose.foundation.lazy.itemsIndexed
+import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.foundation.rotary.RotaryScrollableDefaults
 import androidx.wear.compose.foundation.rotary.rotaryScrollable
-import androidx.wear.compose.material.Button
-import androidx.wear.compose.material.ButtonDefaults
-import androidx.wear.compose.material.Chip
-import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.Text
 import app.simplelift.wear.DrainBorder
 import app.simplelift.wear.model.CheckMode
@@ -54,7 +50,7 @@ import app.simplelift.wear.model.Session
 @Composable
 fun HeartChip(bpm: Int, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        Canvas(Modifier.padding(end = 3.dp).size(width = 11.dp, height = 10.dp)) {
+        Canvas(Modifier.padding(end = 2.dp).size(width = 9.dp, height = 8.dp)) {
             val w = size.width
             val h = size.height
             val path = Path().apply {
@@ -65,56 +61,46 @@ fun HeartChip(bpm: Int, modifier: Modifier = Modifier) {
             }
             drawPath(path, Color(0xFFFF8D8D), style = Fill)
         }
-        Text("$bpm", fontSize = 11.sp, color = Txt)
+        Text("$bpm", fontSize = 10.sp, color = Txt)
     }
 }
 
 @Composable
 fun PairScreen(code: String?, note: String, onRetry: () -> Unit, onSkip: () -> Unit) {
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 22.dp),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("CONFIRM ON PHONE", fontSize = 10.sp, color = Acc)
+        Text("CONFIRM ON PHONE", fontSize = 9.sp, color = Acc)
         val shown = if (code != null && code.length == 6) code.take(3) + " " + code.drop(3) else "······"
-        Text(shown, fontSize = 28.sp, color = Txt, textAlign = TextAlign.Center)
-        Text(note, fontSize = 11.sp, color = Mut, textAlign = TextAlign.Center)
-        Text("Settings → Watch → Samsung Galaxy Watch", fontSize = 10.sp, color = Mut, textAlign = TextAlign.Center)
-        Chip(
-            onClick = if (code == null) onRetry else onSkip,
-            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-            colors = ChipDefaults.primaryChipColors(),
-            label = { Text(if (code == null) "Retry" else "Not now", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
-        )
+        Text(shown, fontSize = 22.sp, color = Txt, textAlign = TextAlign.Center)
+        Text(note, fontSize = 10.sp, color = Mut, textAlign = TextAlign.Center)
+        Text("Settings → Watch → Samsung Galaxy Watch", fontSize = 9.sp, color = Mut, textAlign = TextAlign.Center)
+        Box(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+            SetRow(if (code == null) "Retry" else "Not now", true, if (code == null) onRetry else onSkip)
+        }
     }
 }
 
 @Composable
 fun PlansScreen(days: List<PlanDay>, note: String, onOpen: (Int) -> Unit, onSettings: () -> Unit) {
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(3.dp)
     ) {
-        Text("Simple Lift", color = Acc, fontSize = 12.sp)
+        Text("Simple Lift", color = Acc, fontSize = 11.sp)
         if (days.isEmpty()) {
-            Text("No workout yet", color = Txt, fontSize = 14.sp, textAlign = TextAlign.Center)
-            Text("Sign in on your phone, then pair this watch.", color = Mut, fontSize = 11.sp, textAlign = TextAlign.Center)
+            Text("No workout yet", color = Txt, fontSize = 12.sp, textAlign = TextAlign.Center)
+            Text("Sign in on your phone, then pair this watch.", color = Mut, fontSize = 10.sp, textAlign = TextAlign.Center)
         }
         days.forEachIndexed { index, day ->
             if (day.rest) return@forEachIndexed
-            Button(
-                onClick = { onOpen(index) },
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                colors = ButtonDefaults.buttonColors(backgroundColor = if (day.today) Acc else Card2)
-            ) {
-                Text((if (day.today) "Today · " else "") + day.name, fontSize = 13.sp, color = if (day.today) Ink else Txt)
-            }
+            SetRow((if (day.today) "Today · " else "") + day.name, day.today) { onOpen(index) }
         }
-        if (note.isNotBlank()) Text(note, fontSize = 10.sp, color = Mut, textAlign = TextAlign.Center)
-        Button(onClick = onSettings, modifier = Modifier.padding(top = 6.dp), colors = ButtonDefaults.buttonColors(backgroundColor = Card2)) {
-            Text("Settings", fontSize = 12.sp)
-        }
+        if (note.isNotBlank()) Text(note, fontSize = 9.sp, color = Mut, textAlign = TextAlign.Center)
+        SetRow("Settings", false, onSettings)
     }
 }
 
@@ -123,7 +109,6 @@ fun PlansScreen(days: List<PlanDay>, note: String, onOpen: (Int) -> Unit, onSett
 fun WorkoutScreen(
     session: Session,
     nowSec: Long,
-    connected: Boolean,
     onMode: () -> Unit,
     onSet: (Int) -> Unit,
     onExercise: () -> Unit,
@@ -152,33 +137,38 @@ fun WorkoutScreen(
                 .rotaryScrollable(RotaryScrollableDefaults.behavior(listState), focusRequester)
                 .focusRequester(focusRequester),
             state = listState,
-            contentPadding = PaddingValues(top = 26.dp, bottom = 18.dp, start = 16.dp, end = 16.dp),
+            contentPadding = PaddingValues(top = 18.dp, bottom = 12.dp, start = 20.dp, end = 20.dp),
             autoCentering = null,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             item {
-                Text(if (connected) "Connected" else "Not connected", fontSize = 10.sp, color = if (connected) Acc else Mut)
-            }
-            item {
-                Text(session.mode.label(), fontSize = 11.sp, color = Acc, modifier = Modifier.clickable(onClick = onMode))
+                Text(session.mode.label(), fontSize = 10.sp, color = Acc, modifier = Modifier.clickable(onClick = onMode))
             }
             item {
                 Text(
                     ex?.name ?: session.title,
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                     color = Txt,
                     textAlign = TextAlign.Center,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    lineHeight = 16.sp
+                    lineHeight = 14.sp
                 )
             }
-            if (ex != null) item { Text(Codes.repLine(ex), fontSize = 11.sp, color = Mut, textAlign = TextAlign.Center) }
+            if (ex != null) item { Text(Codes.repLine(ex), fontSize = 10.sp, color = Mut, textAlign = TextAlign.Center) }
             if (ex != null && session.mode == CheckMode.Set) {
-                itemsIndexed(ex.sets) { index, row ->
-                    val mark = if (row.done) "✓ " else ""
-                    SetRow("$mark${index + 1}  ${row.weightLb} lb × ${row.reps}", row.done) { onSet(index) }
+                items(ex.sets.indices.chunked(2)) { indexes ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        indexes.forEach { index ->
+                            val row = ex.sets[index]
+                            val mark = if (row.done) "✓ " else ""
+                            Box(Modifier.weight(1f)) {
+                                SetRow("$mark${row.reps}×${row.weightLb}", row.done) { onSet(index) }
+                            }
+                        }
+                        if (indexes.size == 1) Box(Modifier.weight(1f)) {}
+                    }
                 }
             }
             if (ex != null && session.mode == CheckMode.Exercise) {
@@ -198,8 +188,8 @@ fun WorkoutScreen(
         }
         }
         if (session.undo != null) {
-            Button(onClick = onUndo, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp)) {
-                Text("Undo", fontSize = 12.sp)
+            Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp).fillMaxWidth(0.46f)) {
+                SetRow("Undo", true, onUndo)
             }
         }
     }
@@ -213,49 +203,41 @@ private fun SetRow(label: String, done: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
             .fillMaxWidth()
-            .height(28.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .height(22.dp)
+            .clip(RoundedCornerShape(11.dp))
             .background(if (done) Acc else Card2)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Text(label, fontSize = 12.sp, color = if (done) Ink else Txt, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(label, fontSize = 11.sp, color = if (done) Ink else Txt, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
 @Composable
 fun DoneScreen(title: String, note: String, onPlans: () -> Unit) {
     Column(
-        Modifier.fillMaxSize().padding(16.dp),
+        Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("Done", fontSize = 20.sp, color = Acc)
-        Text(title, fontSize = 13.sp, color = Txt, textAlign = TextAlign.Center)
-        Text(note, fontSize = 11.sp, color = Mut, textAlign = TextAlign.Center)
-        Button(onClick = onPlans, modifier = Modifier.padding(top = 8.dp)) { Text("Plans") }
+        Text("Done", fontSize = 16.sp, color = Acc)
+        Text(title, fontSize = 12.sp, color = Txt, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(note, fontSize = 10.sp, color = Mut, textAlign = TextAlign.Center)
+        Box(Modifier.fillMaxWidth().padding(top = 4.dp)) { SetRow("Plans", true, onPlans) }
     }
 }
 
 @Composable
 fun SettingsScreen(autoOn: Boolean, onToggle: (Boolean) -> Unit, onUnpair: () -> Unit, onBack: () -> Unit) {
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 22.dp),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)
     ) {
-        Text("Settings", color = Acc, fontSize = 12.sp)
-        Button(
-            onClick = { onToggle(!autoOn) },
-            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-            colors = ButtonDefaults.buttonColors(backgroundColor = if (autoOn) Acc else Card2)
-        ) {
-            Text("Auto-detect sets: " + if (autoOn) "On" else "Off", fontSize = 12.sp, color = if (autoOn) Ink else Txt)
-        }
-        Text("Off by default. Check each set logs a set after 3 reps and a short stillness.", fontSize = 10.sp, color = Mut, textAlign = TextAlign.Center)
-        Button(onClick = onUnpair, modifier = Modifier.padding(top = 6.dp), colors = ButtonDefaults.buttonColors(backgroundColor = Card2)) {
-            Text("Unpair", color = Txt)
-        }
-        Button(onClick = onBack, modifier = Modifier.padding(top = 4.dp)) { Text("Back") }
+        Text("Settings", color = Acc, fontSize = 11.sp)
+        SetRow("Auto-detect sets: " + if (autoOn) "On" else "Off", autoOn) { onToggle(!autoOn) }
+        Text("Off by default. Logs a set after 3 reps and a short stillness.", fontSize = 9.sp, color = Mut, textAlign = TextAlign.Center)
+        SetRow("Unpair", false, onUnpair)
+        SetRow("Back", true, onBack)
     }
 }

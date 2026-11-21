@@ -12,8 +12,8 @@ android {
         applicationId = "app.simplelift.wear"
         minSdk = 30
         targetSdk = 35
-        versionCode = 36
-        versionName = "36"
+        versionCode = 37
+        versionName = "37"
     }
     buildTypes {
         release {

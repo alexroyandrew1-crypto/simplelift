@@ -146,7 +146,7 @@ class WearController(
             return
         }
         noteAuto(remote.autoDetect, 0)
-        publish(ui.copy(screen = Screen.Plans, days = remote.days, syncNote = if (link.phoneNear) "Phone linked" else ""))
+        publish(ui.copy(screen = Screen.Plans, days = remote.days, syncNote = ""))
         flushPending(token)
         pullLive(token)
     }
@@ -450,7 +450,7 @@ class WearController(
         publish(ui.copy(autoOn = next.autoDetectSets, showHr = next.showHr))
     }
 
-    private fun linkNote(fallback: String) = if (ui.phoneNear) "Connected" else fallback
+    private fun linkNote(fallback: String) = fallback
 
     private fun publish(next: UiState) {
         ui = next
