@@ -28,6 +28,7 @@ data class UiState(
     val nowMs: Long = 0,
     val bpm: Int? = null,
     val autoOn: Boolean = false,
+    val phoneNear: Boolean = false,
     val syncNote: String = ""
 )
 
@@ -417,7 +418,7 @@ class WearController(
     }
 
     companion object {
-        const val PREVIEW = "SL1~Push~Dumbbell Bench Press,2,8,30,90~#set"
+        const val PREVIEW = "SL1~Push~Skullcrushers or Overhead Rope Extensions,3,8/10/12,75,60~#set"
         fun modelName(): String {
             val model = Build.MODEL ?: ""
             return if (model.isBlank() || model.contains("sdk", true) || model.contains("generic", true)) "Galaxy Watch" else model

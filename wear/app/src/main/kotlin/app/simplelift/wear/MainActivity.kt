@@ -72,7 +72,7 @@ class MainActivity : ComponentActivity() {
                         Screen.Plans -> PlansScreen(ui.days, ui.syncNote, { controller.openDay(it) }, { controller.showSettings() })
                         Screen.Workout -> ui.session?.let { session ->
                             WorkoutScreen(
-                                session, ui.nowSec,
+                                session, ui.nowSec, ui.phoneNear,
                                 { controller.cycleMode() },
                                 { controller.toggleSet(it) },
                                 { controller.toggleExercise() },

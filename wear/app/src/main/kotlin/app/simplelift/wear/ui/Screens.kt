@@ -1,26 +1,42 @@
 package app.simplelift.wear.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.wear.compose.foundation.ExperimentalWearFoundationApi
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.itemsIndexed
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
+import androidx.wear.compose.foundation.rotary.RotaryScrollableDefaults
+import androidx.wear.compose.foundation.rotary.rotaryScrollable
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.ButtonDefaults
 import androidx.wear.compose.material.Chip
@@ -99,10 +115,12 @@ fun PlansScreen(days: List<PlanDay>, note: String, onOpen: (Int) -> Unit, onSett
     }
 }
 
+@OptIn(ExperimentalWearFoundationApi::class)
 @Composable
 fun WorkoutScreen(
     session: Session,
     nowSec: Long,
+    connected: Boolean,
     onMode: () -> Unit,
     onSet: (Int) -> Unit,
     onExercise: () -> Unit,
@@ -114,49 +132,83 @@ fun WorkoutScreen(
 ) {
     val ex = session.current()
     val left = session.restLeft(nowSec)
+    val listState = rememberScalingLazyListState()
+    val focusRequester = remember { FocusRequester() }
     Box(Modifier.fillMaxSize()) {
         DrainBorder(left, session.restTotal)
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 26.dp),
+        ScalingLazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .rotaryScrollable(RotaryScrollableDefaults.behavior(listState), focusRequester)
+                .focusRequester(focusRequester),
+            state = listState,
+            contentPadding = PaddingValues(top = 26.dp, bottom = 18.dp, start = 16.dp, end = 16.dp),
+            autoCentering = null,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(session.mode.label(), fontSize = 11.sp, color = Acc, modifier = Modifier.clickable(onClick = onMode))
-            Text(ex?.name ?: session.title, fontSize = 15.sp, color = Txt, textAlign = TextAlign.Center)
-            if (ex != null) Text(Codes.repLine(ex), fontSize = 11.sp, color = Mut, textAlign = TextAlign.Center)
+            item {
+                Text(if (connected) "Connected" else "Not connected", fontSize = 10.sp, color = if (connected) Acc else Mut)
+            }
+            item {
+                Text(session.mode.label(), fontSize = 11.sp, color = Acc, modifier = Modifier.clickable(onClick = onMode))
+            }
+            item {
+                Text(
+                    ex?.name ?: session.title,
+                    fontSize = 13.sp,
+                    color = Txt,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 16.sp
+                )
+            }
+            if (ex != null) item { Text(Codes.repLine(ex), fontSize = 11.sp, color = Mut, textAlign = TextAlign.Center) }
             if (ex != null && session.mode == CheckMode.Set) {
-                ex.sets.forEachIndexed { index, row ->
-                    Button(
-                        onClick = { onSet(index) },
-                        modifier = Modifier.fillMaxWidth().padding(top = 3.dp),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = if (row.done) Acc else Card2)
-                    ) {
-                        val mark = if (row.done) "✓ " else ""
-                        Text("$mark${index + 1}  ${row.weightLb} lb × ${row.reps}", fontSize = 12.sp, color = if (row.done) Ink else Txt)
-                    }
+                itemsIndexed(ex.sets) { index, row ->
+                    val mark = if (row.done) "✓ " else ""
+                    SetRow("$mark${index + 1}  ${row.weightLb} lb × ${row.reps}", row.done) { onSet(index) }
                 }
             }
             if (ex != null && session.mode == CheckMode.Exercise) {
-                val all = ex.sets.all { it.done }
-                Button(onClick = onExercise, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                    Text(if (all) "Exercise done" else "Check exercise")
+                item {
+                    val all = ex.sets.all { it.done }
+                    SetRow(if (all) "Exercise done" else "Check exercise", all, onExercise)
                 }
             }
-            if (session.mode != CheckMode.Set) {
-                Button(onClick = onRest, modifier = Modifier.padding(top = 4.dp), colors = ButtonDefaults.buttonColors(backgroundColor = Card2)) {
-                    Text("Start rest", color = Txt)
+            if (session.mode != CheckMode.Set) item { SetRow("Start rest", false, onRest) }
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(Modifier.weight(1f)) { SetRow("Prev", false, onPrev) }
+                    Box(Modifier.weight(1f)) { SetRow("Next", false, onNext) }
                 }
             }
-            Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Button(onClick = onPrev, colors = ButtonDefaults.buttonColors(backgroundColor = Card2)) { Text("Prev", fontSize = 11.sp) }
-                Button(onClick = onNext, colors = ButtonDefaults.buttonColors(backgroundColor = Card2)) { Text("Next", fontSize = 11.sp) }
-            }
-            Button(onClick = onFinish, modifier = Modifier.padding(top = 4.dp)) { Text("Finish") }
+            item { SetRow("Finish", true, onFinish) }
         }
         if (session.undo != null) {
             Button(onClick = onUndo, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp)) {
                 Text("Undo", fontSize = 12.sp)
             }
         }
+    }
+    LaunchedEffect(Unit) {
+        try { focusRequester.requestFocus() } catch (e: Exception) { }
+    }
+}
+
+@Composable
+private fun SetRow(label: String, done: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(28.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (done) Acc else Card2)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, fontSize = 12.sp, color = if (done) Ink else Txt, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
