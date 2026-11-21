@@ -827,6 +827,13 @@ I18N.add('pl',{
 "h.exCount": "{n} wpisów",
 "sug.perHand": "na rękę",
 "timer.remain": "Przerwa: zostało {t}",
+"sec.errors": "Błędy",
+"errlog.title": "Dziennik błędów",
+"errlog.hint": "Problemy na tym telefonie zostają tutaj. Po zalogowaniu kopia trafia też na konto. Żadna inna usługa jej nie widzi.",
+"errlog.empty": "Brak zapisanych błędów.",
+"errlog.export": "Eksportuj dziennik błędów",
+"errlog.clear": "Wyczyść dziennik błędów",
+"errlog.cleared": "Dziennik błędów wyczyszczony",
 "__ex": {
 "Barbell Bench Press": "Wyciskanie sztangi na ławce płaskiej",
 "Incline Barbell Bench Press": "Wyciskanie sztangi na ławce skośnej",

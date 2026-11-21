@@ -785,6 +785,13 @@ I18N.add('de',{
 "h.exCount": "{n} Einträge",
 "sug.perHand": "pro Hand",
 "timer.remain": "Pause: noch {t}",
+"sec.errors": "Fehler",
+"errlog.title": "Fehlerprotokoll",
+"errlog.hint": "Probleme auf diesem Telefon bleiben hier. Wenn du angemeldet bist, geht eine Kopie auch an dein Konto. Kein anderer Dienst sieht sie.",
+"errlog.empty": "Keine Fehler gespeichert.",
+"errlog.export": "Fehlerprotokoll exportieren",
+"errlog.clear": "Fehlerprotokoll löschen",
+"errlog.cleared": "Fehlerprotokoll gelöscht",
 "__ex": {
 "Barbell Bench Press": "Bankdrücken mit der Langhantel",
 "Incline Barbell Bench Press": "Schrägbankdrücken mit der Langhantel",

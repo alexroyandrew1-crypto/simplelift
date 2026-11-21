@@ -6,13 +6,14 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import {fileURLToPath} from 'url';
+import {artifactDir, chromePath, legalVersion} from './browser-env.mjs';
 
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
-const SHOTS = path.join(ROOT, 'docs/screenshots/pair');
-const CHROME = process.env.CHROME || '/usr/local/bin/google-chrome';
+const SHOTS = artifactDir('pair');
+const CHROME = chromePath();
 
 let failed = 0;
 function check(cond, msg) {
@@ -41,8 +42,8 @@ async function openApp(browser, port) {
   const page = await browser.newPage();
   await page.setViewport({width:390, height:844, deviceScaleFactor:2});
   page.on('pageerror', e => console.log('PAGEERROR', e.message));
-  await page.evaluateOnNewDocument(() => {
-    localStorage.setItem('simplelift_terms', JSON.stringify({v:'2026-11-11', at:new Date().toISOString()}));
+  await page.evaluateOnNewDocument(termsV => {
+    localStorage.setItem('simplelift_terms', JSON.stringify({v: termsV, at: new Date().toISOString()}));
     localStorage.setItem('simplelift_lang', 'en');
     localStorage.setItem('simplelift_lang_toast', 'en');
     localStorage.setItem('simplelift_auth', JSON.stringify({token:'tok', email:'alex@example.com', verified:true, plan:'free'}));
@@ -58,7 +59,7 @@ async function openApp(browser, port) {
       if (u.includes('/geo')) return json({country:'US'});
       return json({});
     };
-  });
+  }, legalVersion(ROOT));
   await page.goto('http://127.0.0.1:' + port + '/', {waitUntil:'domcontentloaded'});
   await page.waitForSelector('#tabs button[data-tab="settings"]');
   await sleep(250);

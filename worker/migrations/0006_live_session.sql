@@ -1,6 +1,6 @@
--- Live workout snapshot. One row per account, separate from the account blob's `active`
--- field so a second phone cannot revive a finished session. Not applied by this repo;
--- run it on the Worker's D1 database when the live routes are merged. Do not deploy from here.
+-- v34: live in-progress workout snapshot shared by the phone and the watch.
+-- Run once: npx wrangler d1 execute simplelift --remote --file migrations/0006_live_session.sql
+-- Safe to re-run (IF NOT EXISTS). Does not change existing tables.
 CREATE TABLE IF NOT EXISTS live_session (
   user_id TEXT PRIMARY KEY,
   rev INTEGER NOT NULL,

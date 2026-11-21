@@ -785,6 +785,13 @@ I18N.add('nl',{
 "h.exCount": "{n} logs",
 "sug.perHand": "per hand",
 "timer.remain": "Rust: nog {t}",
+"sec.errors": "Fouten",
+"errlog.title": "Foutenlog",
+"errlog.hint": "Problemen op deze telefoon blijven hier. Als je bent aangemeld, gaat er ook een kopie naar je account. Geen andere dienst ziet die.",
+"errlog.empty": "Geen fouten opgeslagen.",
+"errlog.export": "Foutenlog exporteren",
+"errlog.clear": "Foutenlog wissen",
+"errlog.cleared": "Foutenlog gewist",
 "__ex": {
 "Barbell Bench Press": "Bankdrukken met halterstang",
 "Incline Barbell Bench Press": "Schuin bankdrukken met halterstang",

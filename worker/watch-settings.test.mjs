@@ -9,7 +9,7 @@ import {
   attachWatchSettings,
   enrichWorkout,
   defaultWatchSettings
-} from './watch-settings.mjs';
+} from './src/watch-settings.mjs';
 
 function memoryDb() {
   const rows = new Map();

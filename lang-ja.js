@@ -764,6 +764,13 @@ I18N.add('ja',{
 "h.exCount": "{n} 件",
 "sug.perHand": "片手",
 "timer.remain": "休息 残り {t}",
+"sec.errors": "エラー",
+"errlog.title": "エラー記録",
+"errlog.hint": "この端末の問題はここに残ります。サインイン中はアカウントにもコピーが送られます。他のサービスには送られません。",
+"errlog.empty": "保存されたエラーはありません。",
+"errlog.export": "エラー記録を書き出す",
+"errlog.clear": "エラー記録を消去",
+"errlog.cleared": "エラー記録を消去しました",
 "__ex": {
 "Barbell Bench Press": "バーベルベンチプレス",
 "Incline Barbell Bench Press": "インクラインバーベルベンチプレス",

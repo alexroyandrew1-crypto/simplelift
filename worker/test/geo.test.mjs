@@ -1,0 +1,22 @@
+// node test/geo.test.mjs — GET /geo returns only the 2-letter country (from request.cf or CF-IPCountry), CORS for allowed origins, no DB use.
+import path from 'node:path'; import { fileURLToPath, pathToFileURL } from 'node:url';
+import { stageWorker } from './load-worker.mjs';
+const dir = path.dirname(fileURLToPath(import.meta.url)), b = stageWorker(path.join(dir, '.build'));
+const W = (await import(pathToFileURL(path.join(b, 'index.mjs')).href)).default;
+const AI = await import(pathToFileURL(path.join(b, 'ai.js')).href);
+let n = 0, fail = 0; const ok = (c, m) => { if (c) { n++; console.log('  ✓', m); } else { fail++; console.log('  ✗', m); } };
+const env = { ALLOWED_ORIGIN: 'https://alexroyandrew1-crypto.github.io,https://localhost', DB: new Proxy({}, { get() { throw new Error('DB touched'); } }) };
+const get = async (headers = {}, cf) => { const q = new Request('https://a/geo', { headers }); if (cf) Object.defineProperty(q, 'cf', { value: cf });
+  const r = await W.fetch(q, env); return { s: r.status, h: r.headers, j: await r.json() }; };
+let r = await get({ 'CF-IPCountry': 'mx', Origin: 'https://localhost' });
+ok(r.s === 200 && r.j.country === 'MX' && Object.keys(r.j).join() === 'country', 'header -> {country:"MX"} only');
+ok(r.h.get('Access-Control-Allow-Origin') === 'https://localhost' && r.h.get('Cache-Control') === 'no-store', 'CORS for https://localhost, no-store');
+r = await get({ Origin: 'https://alexroyandrew1-crypto.github.io' }, { country: 'JP' }); ok(r.j.country === 'JP' && r.h.get('Access-Control-Allow-Origin') === 'https://alexroyandrew1-crypto.github.io', 'request.cf.country used, site origin allowed');
+r = await get({ Origin: 'https://evil.example', 'CF-IPCountry': 'DE' }); ok(r.j.country === 'DE' && !r.h.get('Access-Control-Allow-Origin'), 'other origins get no CORS header');
+r = await get({ 'CF-IPCountry': 'XX' }); ok(r.j.country === null, 'unknown (XX) -> null'); r = await get({ 'CF-IPCountry': '<script>' }); ok(r.j.country === null, 'junk -> null');
+r = await get(); ok(r.s === 200 && r.j.country === null, 'no info -> null');
+const o = await W.fetch(new Request('https://a/geo', { method: 'OPTIONS', headers: { Origin: 'https://localhost' } }), env); ok(o.status === 204, 'preflight ok');
+ok(AI.aiLang('es') === 'es' && AI.aiLang('xx') === 'en' && AI.aiLang(undefined) === 'en' && AI.aiLang('__proto__') === 'en', 'lang allowlist');
+const m = AI.messages('plan', {}, 'ja'); ok(/Japanese/.test(m[0].content) && !/LANGUAGE/.test(AI.messages('plan', {})[0].content) && /Spanish/.test(AI.messages('parse', 'x', 'es')[0].content) && /Arabic/.test(AI.messages('image', 'data:', 'ar')[0].content), 'prompts get language line, default English unchanged');
+const pr = await (await W.fetch(new Request('https://a/privacy'), env)).text(); ok(/does not store or log it/.test(pr), 'privacy page mentions the country lookup');
+console.log(`${n} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

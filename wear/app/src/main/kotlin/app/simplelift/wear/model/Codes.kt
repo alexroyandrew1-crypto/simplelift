@@ -1,7 +1,17 @@
 package app.simplelift.wear.model
 
-/** One set as the watch stores it. Weights are whole pounds, matching SL1 and the phone. */
-data class LiftSet(val weightLb: Int, val reps: Int, val done: Boolean)
+/**
+ * One set as the watch stores it.
+ * `weightLb` is the legacy whole-pound field from SL1 and from snapshot `w`.
+ * `unit` and `exact` are the snapshot's `u` and `v` when the phone sent them, so 61.25 kg survives the echo.
+ */
+data class LiftSet(
+    val weightLb: Int,
+    val reps: Int,
+    val done: Boolean,
+    val unit: String? = null,
+    val exact: Double? = null
+)
 
 data class LiftEx(val name: String, val restSec: Int, val sets: List<LiftSet>)
 

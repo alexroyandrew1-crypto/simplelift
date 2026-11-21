@@ -127,7 +127,7 @@ data class Session(
                 WireEx(
                     n = ex.name,
                     rest = ex.restSec,
-                    s = ex.sets.map { WireSet(it.weightLb.toDouble(), it.reps.toDouble(), if (it.done) 1 else 0) }
+                    s = ex.sets.map { WireSet(it.weightLb.toDouble(), it.reps.toDouble(), if (it.done) 1 else 0, it.unit, it.exact) }
                 )
             }
         )
@@ -140,7 +140,7 @@ data class Session(
             LiftEx(
                 name = ex.n,
                 restSec = ex.rest,
-                sets = ex.s.map { LiftSet(it.w.toInt(), it.r.toInt(), it.d != 0) }
+                sets = ex.s.map { setOf(it) }
             )
         }
         if (rows.isEmpty()) return null
@@ -193,6 +193,16 @@ data class Session(
 
     private fun bump(): Session = copy(rev = rev + 1)
 
+    /** Plan download: the SL1 code is still whole pounds. `u`/`v` keep 61.25 kg on every set of that exercise. */
+    fun withExact(loads: List<ExactLoad>): Session {
+        if (loads.isEmpty()) return this
+        val next = exercises.map { ex ->
+            val hit = loads.find { it.name.equals(ex.name, ignoreCase = true) } ?: return@map ex
+            ex.copy(sets = ex.sets.map { it.copy(unit = hit.unit, exact = hit.value) })
+        }
+        return copy(exercises = next)
+    }
+
     companion object {
         fun fromParsed(parsed: ParsedWorkout, planId: String, day: Int, id: String, nowSec: Long, mode: CheckMode? = null): Session {
             return Session(
@@ -213,6 +223,13 @@ data class Session(
                 autoBlockUntilMs = 0,
                 result = ""
             )
+        }
+
+        /** Keep `u`/`v` when the phone sent them. An older snapshot has only whole pounds in `w`. */
+        fun setOf(set: WireSet): LiftSet {
+            val unit = if (set.u == "kg" || set.u == "lb") set.u else null
+            val exact = if (unit != null && set.v != null && !set.v.isNaN()) set.v else null
+            return LiftSet(set.w.toInt(), set.r.toInt(), set.d != 0, unit, exact)
         }
 
         /** Last-rev wins, matching live.js LiveSnap.wins. A missing session accepts a non-drop snap. */

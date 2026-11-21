@@ -805,6 +805,13 @@ const D={en:{
 "ws.waiting": "The watch has not reported its settings yet. Saving sends these values.",
 "ws.updated": "Updated {d}",
 "ws.retry": "Try again",
+"sec.errors": "Errors",
+"errlog.title": "Error log",
+"errlog.hint": "Problems on this phone stay here. If you are signed in, a copy is also sent to your account. No other service sees it.",
+"errlog.empty": "No errors saved.",
+"errlog.export": "Export error log",
+"errlog.clear": "Clear error log",
+"errlog.cleared": "Error log cleared",
 }};
 let cur='en';
 const ls={get(k){try{return G.localStorage?G.localStorage.getItem(k):null}catch(e){return null}},

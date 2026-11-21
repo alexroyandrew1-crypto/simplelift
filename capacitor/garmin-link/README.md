@@ -1,5 +1,7 @@
 # GarminLink (Capacitor plugin)
 
+Wired. `live.js` calls `Capacitor.Plugins.GarminLink` when that plugin exists (`start`, `send`, and the `message` / `status` listeners). The static PWA has no Capacitor runtime, so the calls no-op in the browser and the phone uses `/live` instead. The Android wrapper is not in this repository; add this module there as below. Do not delete it: the Wear OS data layer and the Garmin Bluetooth path both go through it.
+
 Android Bluetooth path for a live Simple Lift workout. The watch app id is `b724187045624031be108c6b6e5c76b6`. The plugin talks to it through the [Connect IQ Mobile SDK](https://developer.garmin.com/connect-iq/core-topics/mobile-sdk-for-android/) (`ConnectIQ`, `IQApp`, `sendMessage`, `registerForAppEvents`). Garmin Connect on the phone owns the Bluetooth link to the watch. This repo does not contain the APK project or a signing key. Add the module to that wrapper.
 
 The web app calls `Capacitor.Plugins.GarminLink` when it is there and otherwise uses the server. Pairing is a `hello` from the phone and the watch's 6-digit code sent back over this link, which the phone claims. The code screen stays for when Bluetooth is not available.

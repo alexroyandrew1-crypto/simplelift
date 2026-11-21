@@ -785,6 +785,13 @@ I18N.add('tr',{
 "h.exCount": "{n} kayıt",
 "sug.perHand": "el başına",
 "timer.remain": "Dinlenme: {t} kaldı",
+"sec.errors": "Hatalar",
+"errlog.title": "Hata günlüğü",
+"errlog.hint": "Bu telefondaki sorunlar burada kalır. Oturum açtıysanız bir kopya hesabınıza da gider. Başka bir hizmet bunu görmez.",
+"errlog.empty": "Kayıtlı hata yok.",
+"errlog.export": "Hata günlüğünü dışa aktar",
+"errlog.clear": "Hata günlüğünü temizle",
+"errlog.cleared": "Hata günlüğü temizlendi",
 "__ex": {
 "Barbell Bench Press": "Barbell bench press",
 "Incline Barbell Bench Press": "Eğimli barbell bench press",

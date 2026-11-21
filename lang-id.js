@@ -764,6 +764,13 @@ I18N.add('id',{
 "h.exCount": "{n} catatan",
 "sug.perHand": "per tangan",
 "timer.remain": "Istirahat tersisa {t}",
+"sec.errors": "Kesalahan",
+"errlog.title": "Catatan kesalahan",
+"errlog.hint": "Masalah di ponsel ini tetap di sini. Jika Anda masuk, salinannya juga dikirim ke akun Anda. Layanan lain tidak melihatnya.",
+"errlog.empty": "Tidak ada kesalahan tersimpan.",
+"errlog.export": "Ekspor catatan kesalahan",
+"errlog.clear": "Hapus catatan kesalahan",
+"errlog.cleared": "Catatan kesalahan dihapus",
 "__ex": {
 "Barbell Bench Press": "Bench press barbel",
 "Incline Barbell Bench Press": "Bench press barbel miring",

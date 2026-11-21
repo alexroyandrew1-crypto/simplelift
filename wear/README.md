@@ -14,7 +14,7 @@ The phone flow is unchanged: sign in, choose Samsung Galaxy Watch, then enter th
 
 When the Android wrapper is installed and includes `capacitor/garmin-link`, live snapshots, watch settings, and pairing travel over the Wear OS data layer (`MessageClient` plus a data item at `/simplelift/live`). If the phone app is open and the watch is paired to that phone, the watch sends its code over that link and the phone claims it. After a token is stored, opening either app, rebooting, or coming back in range sends hello again and does not show a new code. Unpair is the only way back to the code screen. The workout list shows Connected or Not connected. The server is used when that phone node is not reachable.
 
-`worker/live-routes.js`, `worker/watch-plans.js`, and `worker/migrations/0006_live_session.sql` are not deployed from this repo.
+The live, plans, and watch-settings routes are in `worker/`. They are not on the production Worker until `migrations/0006_live_session.sql` and `migrations/0007_watch_settings.sql` are applied and the Worker is deployed. Play Console text for this app is in `docs/galaxy-play-store.md`.
 
 ## Build
 

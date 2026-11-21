@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dayCode, plansFromData, todayIndex, toLb } from './watch-plans.js';
+import { dayCode, plansFromData, todayIndex, toLb } from './src/watch-plans.js';
 
 test('pounds stay whole and kilograms convert', () => {
   assert.equal(toLb(30, 'lb'), 30);
@@ -28,6 +28,18 @@ test('today skips a leading rest day on the active plan', () => {
   assert.equal(body.autoDetectSets, false);
   assert.equal(body.today.day, 1);
   assert.match(body.today.code, /^SL1~Pull~Row,2,10,50,60~#exercise$/);
+});
+
+test('61.25 kg stays exact beside the legacy whole-pound code', () => {
+  const body = plansFromData({
+    settings: { units: 'kg' },
+    activePlanId: 'p',
+    plans: [{ id: 'p', name: 'Legs', next: 0, days: [{ name: 'Squat day', exercises: [{ name: 'Squat', sets: 3, repMin: 5, weight: 61.25, rest: 120 }] }] }]
+  });
+  assert.equal(body.today.u, 'kg');
+  assert.equal(body.today.ex[0].v, 61.25);
+  assert.equal(body.today.ex[0].u, 'kg');
+  assert.match(body.today.code, /^SL1~Squat day~Squat,3,5,135,120~#set$/);
 });
 
 test('top-level autoDetectSets is omitted when the account blob has no boolean', () => {

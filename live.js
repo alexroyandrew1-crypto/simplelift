@@ -1,11 +1,34 @@
-// Live workout sync (v34). One compact snapshot is the whole protocol, on Bluetooth and on the server.
-// Weights are whole pounds, the same unit the watch stores. rev is a counter; a higher rev from the other device wins.
+// Live workout sync (v40). One compact snapshot is the whole protocol, on Bluetooth and on the server.
+// Each set still carries legacy whole pounds in `w` so an older watch can read it. `u` is "kg" or "lb"
+// and `v` is the exact value in that unit, to the hundredth, so 61.25 kg is not plate-rounded on the way back.
+// rev is a counter; a higher rev from the other device wins.
 // `active` is still never published in the account blob, so a second phone cannot revive a finished session from /data.
 var LiveSnap = {
   MODES: ['set', 'exercise', 'none'],
   norm(m) { return this.MODES.indexOf(m) >= 0 ? m : 'set'; },
+  // Legacy whole pounds. Older watches read only `w`.
   toLb(v, units) { return Math.round(units === 'kg' ? (+v || 0) / 0.4536 : (+v || 0)); },
   fromLb(v, units) { return units === 'kg' ? Math.round((+v || 0) * 0.4536 / 2.5) * 2.5 : (+v || 0); },
+  hundredths(n) { n = +n || 0; return Math.round(n * 100) / 100; },
+  // Exact weight for a new snapshot. `w` stays the legacy whole-pound value.
+  encode(value, units) {
+    const u = units === 'kg' ? 'kg' : 'lb';
+    const v = this.hundredths(value);
+    return { w: this.toLb(v, u), u, v };
+  },
+  // Prefer `u`+`v`. A snapshot from an older build has only whole pounds in `w`.
+  decode(set, units) {
+    const to = units === 'kg' ? 'kg' : 'lb';
+    const u = set && set.u;
+    if ((u === 'kg' || u === 'lb') && set.v != null && set.v !== '' && isFinite(+set.v)) return this.convert(+set.v, u, to);
+    return this.fromLb(set && set.w, to);
+  },
+  convert(v, from, to) {
+    const n = this.hundredths(v);
+    if (from === to) return n;
+    const kgPerLb = 0.45359237;
+    return this.hundredths(from === 'kg' ? n / kgPerLb : n * kgPerLb);
+  },
   fromActive(a, units) {
     const now = Math.floor(Date.now() / 1000);
     return {
@@ -15,7 +38,7 @@ var LiveSnap = {
       rest: a.restEnd ? Math.floor(a.restEnd / 1000) : 0, fin: a.finPending ? 1 : 0, drop: a.dropPending ? 1 : 0,
       ex: (a.exercises || []).map(e => ({
         n: e.name, rest: +e.rest || 0,
-        s: (e.sets || []).map(s => ({ w: this.toLb(s.w, units), r: +s.r || 0, d: s.done ? 1 : 0 }))
+        s: (e.sets || []).map(s => Object.assign(this.encode(s.w, units), { r: +s.r || 0, d: s.done ? 1 : 0 }))
       }))
     };
   },
@@ -35,7 +58,7 @@ var LiveSnap = {
   historyFrom(snap, units) {
     const rows = (snap.ex || []).map(e => ({
       name: e.n,
-      sets: (e.s || []).filter(s => snap.fin || s.d).map(s => ({ w: this.fromLb(s.w, units), r: +s.r || 0 }))
+      sets: (e.s || []).filter(s => snap.fin || s.d).map(s => ({ w: this.decode(s, units), r: +s.r || 0 }))
     })).filter(e => e.sets.length);
     return {
       id: snap.id, date: Date.now(), planId: snap.plan || '', planName: '', dayName: snap.name || 'Workout',
@@ -217,7 +240,7 @@ var Live = {
       restTotal: (snap.restTotal | 0) > 0 ? snap.restTotal * 1000 : null,
       exercises: (snap.ex || []).map(ex => ({
         name: ex.n, rest: +ex.rest || 0, repMin: ex.s && ex.s[0] ? +ex.s[0].r || 8 : 8, repMax: ex.s && ex.s[0] ? +ex.s[0].r || 8 : 8,
-        sets: (ex.s || []).map(s => ({ w: LiveSnap.fromLb(s.w, units), r: +s.r || 0, done: !!s.d, ws: s.d ? 'm' : 's' }))
+        sets: (ex.s || []).map(s => ({ w: LiveSnap.decode(s, units), r: +s.r || 0, done: !!s.d, ws: s.d ? 'm' : 's' }))
       }))
     };
   },
@@ -231,7 +254,7 @@ var Live = {
       if (!le) return;
       (ex.s || []).forEach((s, k) => {
         if (!le.sets[k]) le.sets[k] = { w: '', r: '', done: false, ws: 'm' };
-        le.sets[k].w = LiveSnap.fromLb(s.w, units);
+        le.sets[k].w = LiveSnap.decode(s, units);
         le.sets[k].r = +s.r || 0;
         le.sets[k].done = !!s.d;
         if (s.d) le.sets[k].ws = 'm';

@@ -6,11 +6,11 @@ Do not request a merge. The owner reviews before anything is published.
 
 ## Service worker
 
-Flag any change to a file the site ships (`index.html`, `style.css`, `app.js`, `sw.js`, `config.js`, `i18n.js`, `lang-*.js`, `store.js`, `manifest.json`, icons, and the rest of the `FILES` array in `sw.js`) when `C` in `sw.js` and `APP_VERSION` in `config.js` were not both incremented. A new shipped file that is missing from `FILES` is a bug: offline installs will not get it. Agent files (`AGENTS.md`, `.cursor/**`) are not shipped app files and do not need a cache bump. Do not suggest adding them to `FILES`.
+Flag any change to a file the site ships (`index.html`, `style.css`, `app-shell.js`, `app-views.js`, `app-workout.js`, `app-session.js`, `app-actions.js`, `app-boot.js`, `errors.js`, `sw.js`, `config.js`, `i18n.js`, `lang-*.js`, `store.js`, `manifest.json`, icons, and the rest of the `FILES` array in `sw.js`) when `C` in `sw.js` and `APP_VERSION` in `config.js` were not both incremented. A new shipped file that is missing from `FILES` is a bug: offline installs will not get it. Agent files (`AGENTS.md`, `.cursor/**`) are not shipped app files and do not need a cache bump. Do not suggest adding them to `FILES`.
 
 ## Translations
 
-Any new or changed user-facing string must exist in English (`i18n.js`) and in every `lang-*.js` file: es, fr, de, pt, it, nl, ru, tr, pl, zh, ja, ko, ar, hi, id. A key left in English only is a review failure. Arabic must stay RTL (`dir` from `i18n.js`). Do not hardcode a new English sentence in `app.js` or `index.html`.
+Any new or changed user-facing string must exist in English (`i18n.js`) and in every `lang-*.js` file: es, fr, de, pt, it, nl, ru, tr, pl, zh, ja, ko, ar, hi, id. A key left in English only is a review failure. Arabic must stay RTL (`dir` from `i18n.js`). Do not hardcode a new English sentence in the app scripts or `index.html`.
 
 ## Secrets
 
