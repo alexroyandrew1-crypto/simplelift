@@ -45,4 +45,7 @@ data class WatchSettings(
     fun text(): String {
         return """{"t":"settings","rev":$rev,"chime":$chime,"vibration":$vibration,"autoDetectSets":$autoDetectSets,"showHr":$showHr,"repDetect":$repDetect,"saveActivity":$saveActivity,"restAlert":$restAlert,"src":"w"}"""
     }
+
+    /** POST /watch/settings patch. The watch only changes auto-detect, so the other phone fields stay. */
+    fun autoPatch(): String = """{"watchSettings":{"autoDetectSets":$autoDetectSets}}"""
 }

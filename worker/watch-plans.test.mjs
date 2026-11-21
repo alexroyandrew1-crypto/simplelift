@@ -30,7 +30,7 @@ test('today skips a leading rest day on the active plan', () => {
   assert.match(body.today.code, /^SL1~Pull~Row,2,10,50,60~#exercise$/);
 });
 
-test('auto-detect is omitted when the phone has no such setting', () => {
+test('top-level autoDetectSets is omitted when the account blob has no boolean', () => {
   const body = plansFromData({ settings: { units: 'lb' }, plans: [] });
   assert.equal(Object.hasOwn(body, 'autoDetectSets'), false);
 });

@@ -79,7 +79,29 @@ class WatchLogicTest {
         val many = Payloads.plans("""{"plans":[{"id":"p","name":"PPL","days":[{"name":"Push","code":"SL1~Push~Bench,1,8,30,90","today":true},{"name":"Rest","code":"SL1~Rest~Walk,1,1,0,0","rest":true}]}],"autoDetectSets":false}""")
         assertEquals(2, many.days.size)
         assertEquals(false, many.autoDetect)
+        assertNull(many.watchSettings)
         assertTrue(many.days[0].today)
+    }
+
+    @Test
+    fun workoutCarriesThePhoneWatchSettingsObject() {
+        val body = """{"code":"SL1~Push~Bench,2,8,30,90","checkMode":"set","restAlert":2,"autoDetectSets":false,"watchSettings":{"chime":false,"vibration":true,"autoDetectSets":true,"showHr":false,"repDetect":true,"saveActivity":false,"restAlert":2,"rev":6000}}"""
+        val parsed = Payloads.plans(body)
+        val settings = parsed.watchSettings
+        assertNotNull(settings)
+        settings!!
+        assertEquals(6000L, settings.rev)
+        assertFalse(settings.chime)
+        assertTrue(settings.vibration)
+        assertTrue(settings.autoDetectSets)
+        assertFalse(settings.showHr)
+        assertTrue(settings.repDetect)
+        assertFalse(settings.saveActivity)
+        assertEquals(2, settings.restAlert)
+        assertEquals(true, parsed.autoDetect)
+        val wrapped = Payloads.settingsOf("""{"watchSettings":{"chime":false,"vibration":true,"autoDetectSets":true,"showHr":false,"repDetect":true,"saveActivity":false,"restAlert":2,"rev":6000}}""")
+        assertEquals(settings, wrapped)
+        assertNull(Payloads.settingsOf("""{"code":"SL1~Push~Bench,1,8,30,90","autoDetectSets":false}"""))
     }
 
     @Test

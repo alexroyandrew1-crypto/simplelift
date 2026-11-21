@@ -29,6 +29,8 @@ class ApiClient(private val base: String = API) {
 
     fun postResult(token: String, code: String): HttpResult = call("POST", "/watch/result", """{"code":${json(code)}}""", token)
 
+    fun postSettings(token: String, body: String): HttpResult = call("POST", "/watch/settings", body, token)
+
     private fun call(method: String, path: String, body: String?, token: String?): HttpResult {
         if (Looper.myLooper() == Looper.getMainLooper()) {
             return io.submit<HttpResult> { open(method, path, body, token) }.get(20, TimeUnit.SECONDS)

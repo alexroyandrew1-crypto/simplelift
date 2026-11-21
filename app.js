@@ -802,6 +802,7 @@ async function pushWatchSettings(next){
     const got=watchSettingsFrom(j&&j.watchSettings);
     watchSet={state:'ready',settings:got,err:''};
     toast(watchSettingsSame(got,next)?t('ws.saved'):t('ws.newer'));
+    if(typeof Live!=='undefined'&&Live.keepSettings){Live.keepSettings(Object.assign({t:'settings',src:'p'},got));if(Live.pushSettings)Live.pushSettings()}
   }catch(e){
     if(seq!==watchSetSeq)return;
     watchSet={state:'ready',settings:prev,err:''};

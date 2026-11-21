@@ -64,7 +64,8 @@ data class PlanDay(
 data class RemoteWorkout(
     val days: List<PlanDay>,
     val checkMode: CheckMode?,
-    val autoDetect: Boolean?
+    val autoDetect: Boolean?,
+    val watchSettings: WatchSettings? = null
 )
 
 data class PairTicket(val code: String, val expiresIn: Int)
@@ -164,7 +165,15 @@ object Payloads {
                 )
             )
         }
-        return RemoteWorkout(days, mode(obj), bool(obj, "autoDetectSets"))
+        val settings = nestedSettings(obj)
+        val auto = settings?.autoDetectSets ?: bool(obj, "autoDetectSets")
+        return RemoteWorkout(days, mode(obj), auto, settings)
+    }
+
+    /** Nested watchSettings from GET /watch/workout, GET /watch/plans, or POST /watch/settings. */
+    fun settingsOf(body: String): WatchSettings? {
+        val obj = objectOf(body) ?: return null
+        return nestedSettings(obj)
     }
 
     fun message(raw: String): Incoming? {
@@ -192,6 +201,12 @@ object Payloads {
     private fun long(obj: JsonObject, key: String): Long? = obj[key]?.jsonPrimitive?.longOrNull
 
     private fun bool(obj: JsonObject, key: String): Boolean? = obj[key]?.jsonPrimitive?.booleanOrNull
+
+    private fun nestedSettings(obj: JsonObject): WatchSettings? {
+        val nested = obj["watchSettings"] ?: return null
+        if (nested !is JsonObject) return null
+        return watchSettings(nested)
+    }
 
     private fun watchSettings(obj: JsonObject): WatchSettings {
         return WatchSettings(

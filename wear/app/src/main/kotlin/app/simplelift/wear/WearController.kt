@@ -145,9 +145,11 @@ class WearController(
             publish(ui.copy(screen = Screen.Plans, syncNote = "Saved on watch"))
             return
         }
-        noteAuto(remote.autoDetect, 0)
+        val saved = remote.watchSettings
+        if (saved != null) applySettings(saved) else noteAuto(remote.autoDetect, 0)
         publish(ui.copy(screen = Screen.Plans, days = remote.days, syncNote = ""))
         flushPending(token)
+        pullSettings(token)
         pullLive(token)
     }
 
@@ -210,8 +212,8 @@ class WearController(
     }
 
     fun toggleAuto(on: Boolean) {
-        settings = settings.copy(autoDetectSets = on, rev = clock())
-        store.setAuto(on, settings.rev)
+        settings = settings.copy(autoDetectSets = on)
+        store.setAuto(on, clock())
         auto.enabled = on
         publish(ui.copy(autoOn = on))
         queuedSettings = settings
@@ -320,11 +322,12 @@ class WearController(
 
     private suspend fun tick() {
         refreshLink()
-        queuedSettings?.let {
-            queuedSettings = null
-            try { link.send(it.text()) } catch (e: Exception) { }
-        }
         val nowSec = clock() / 1000
+        if (nowSec % 15L == 0L) {
+            val token = store.token()
+            if (token != null) pullSettings(token)
+        }
+        flushSettings()
         val nowMs = clock()
         val session = ui.session ?: return
         if (session.finished) return
@@ -369,6 +372,42 @@ class WearController(
         } catch (e: Exception) {
             publish(ui.copy(syncNote = "Saved on watch"))
         }
+    }
+
+    private suspend fun flushSettings() {
+        val pending = queuedSettings ?: return
+        if (pending.rev < settings.rev) {
+            queuedSettings = null
+            return
+        }
+        try { link.send(pending.text()) } catch (e: Exception) { }
+        val token = store.token()
+        if (token == null) {
+            queuedSettings = null
+            return
+        }
+        try {
+            val res = api.postSettings(token, pending.autoPatch())
+            when (res.code) {
+                200 -> if (queuedSettings === pending) {
+                    queuedSettings = null
+                    Payloads.settingsOf(res.body)?.let { applySettings(it) }
+                }
+                401 -> {
+                    queuedSettings = null
+                    unpair()
+                }
+                404, 405 -> if (queuedSettings === pending) queuedSettings = null
+            }
+        } catch (e: Exception) { }
+    }
+
+    private suspend fun pullSettings(token: String) {
+        try {
+            val res = api.workout(token)
+            if (res.code == 401) unpair()
+            else if (res.code == 200) Payloads.settingsOf(res.body)?.let { applySettings(it) }
+        } catch (e: Exception) { }
     }
 
     private suspend fun pullLive(token: String) {
@@ -445,6 +484,8 @@ class WearController(
         val next = settings.apply(remote)
         if (next == settings) return
         settings = next
+        val pending = queuedSettings
+        if (pending != null && pending.rev <= next.rev) queuedSettings = null
         store.setAuto(next.autoDetectSets, next.rev)
         auto.enabled = next.autoDetectSets
         publish(ui.copy(autoOn = next.autoDetectSets, showHr = next.showHr))

@@ -128,9 +128,11 @@ var Live = {
   keepSettings(s) {
     if (!s || typeof s !== 'object') return;
     const prev = this.settings || {};
-    if ((s.rev | 0) < (prev.rev | 0)) return;
+    const rev = Number.isFinite(+s.rev) ? Math.trunc(+s.rev) : 0;
+    const prevRev = Number.isFinite(+prev.rev) ? Math.trunc(+prev.rev) : 0;
+    if (rev < prevRev) return;
     this.settings = {
-      t: 'settings', rev: s.rev | 0, src: s.src || 'w',
+      t: 'settings', rev, src: s.src || 'w',
       chime: s.chime !== false, vibration: s.vibration !== false,
       autoDetectSets: !!s.autoDetectSets, showHr: s.showHr !== false,
       repDetect: s.repDetect !== false, saveActivity: s.saveActivity !== false,

@@ -9,7 +9,7 @@ const sandbox = {};
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(file, 'utf8'), sandbox);
-const {LiveSnap} = sandbox;
+const {LiveSnap, Live} = sandbox;
 if (!LiveSnap) { console.error('FAIL: LiveSnap missing'); process.exit(1); }
 
 let failed = 0;
@@ -40,6 +40,17 @@ const hist = LiveSnap.historyFrom({ ...snap, fin: 1, src: 'w' }, 'lb');
 check(hist.id === 's1' && hist.exercises[0].sets.length === 2 && hist.fromWatch === true, 'finish logs every set in the snapshot');
 const partial = LiveSnap.historyFrom({ ...snap, fin: 0 }, 'lb');
 check(partial.exercises[0].sets.length === 1, 'an open snapshot only counts checked sets');
+
+const phoneSettings = {
+  t: 'settings', rev: 1731801600000, src: 'w',
+  chime: false, vibration: true, autoDetectSets: true, showHr: false,
+  repDetect: true, saveActivity: true, restAlert: 2
+};
+Live.keepSettings(phoneSettings);
+check(Live.settings && Live.settings.rev === 1731801600000, 'settings rev keeps the server millisecond stamp: ' + (Live.settings && Live.settings.rev));
+check(Live.settings.chime === false && Live.settings.autoDetectSets === true && Live.settings.showHr === false && Live.settings.restAlert === 2, 'data-layer settings use the watchSettings fields');
+Live.keepSettings({ t: 'settings', rev: 1731801500000, chime: true, autoDetectSets: false, showHr: true, restAlert: 0 });
+check(Live.settings.rev === 1731801600000 && Live.settings.chime === false && Live.settings.autoDetectSets === true, 'an older settings rev does not replace');
 
 if (failed) process.exit(1);
 console.log('live-snap: all checks passed');
