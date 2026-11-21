@@ -2,9 +2,11 @@ package app.simplelift.wear.model
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -57,6 +59,8 @@ data class WireSnap(
     }
 }
 
+data class ExactLoad(val name: String, val unit: String, val value: Double)
+
 data class PlanDay(
     val name: String,
     val code: String,
@@ -64,7 +68,8 @@ data class PlanDay(
     val today: Boolean,
     val planId: String,
     val day: Int,
-    val planName: String
+    val planName: String,
+    val exact: List<ExactLoad> = emptyList()
 )
 
 data class RemoteWorkout(
@@ -134,7 +139,8 @@ object Payloads {
                         today = bool(day, "today") == true,
                         planId = text(day, "planId") ?: planId,
                         day = int(day, "day") ?: index,
-                        planName = planName
+                        planName = planName,
+                        exact = exactLoads(day)
                     )
                 )
             }
@@ -151,7 +157,8 @@ object Payloads {
                         today = true,
                         planId = text(today, "planId").orEmpty(),
                         day = int(today, "day") ?: 0,
-                        planName = ""
+                        planName = "",
+                        exact = exactLoads(today)
                     )
                 )
             }
@@ -225,6 +232,22 @@ object Payloads {
             saveActivity = bool(obj, "saveActivity") ?: true,
             restAlert = int(obj, "restAlert") ?: 0
         )
+    }
+
+    private fun exactLoads(day: JsonObject): List<ExactLoad> {
+        val fallback = text(day, "u")
+        val rows = day["ex"] as? JsonArray ?: return emptyList()
+        val out = ArrayList<ExactLoad>()
+        rows.forEach { el ->
+            if (el !is JsonObject) return@forEach
+            val name = text(el, "n").orEmpty()
+            val unit = text(el, "u") ?: fallback
+            val value = el["v"]?.jsonPrimitive?.doubleOrNull
+            if (name.isNotBlank() && (unit == "kg" || unit == "lb") && value != null && !value.isNaN()) {
+                out.add(ExactLoad(name, unit, value))
+            }
+        }
+        return out
     }
 
     private fun mode(obj: JsonObject): CheckMode? {

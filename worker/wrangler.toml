@@ -1,0 +1,39 @@
+name = "simplelift-api"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+workers_dev = true
+
+[vars]
+# Only this origin may call the API from a browser (no wildcard).
+ALLOWED_ORIGIN = "https://alexroyandrew1-crypto.github.io,https://localhost"
+# Password hashing = PBKDF2_PASSES x 100,000 PBKDF2-SHA256 iterations (Workers caps one call at 100k). 2 = 200k.
+PBKDF2_PASSES = "2"
+AI_MODEL = "grok-4.3"
+# Model for reading workout photos (must accept image input)
+AI_VISION_MODEL = "grok-4.3"
+# Plan given to NEW accounts. "paid" = everyone gets AI for now; set back to "free" and redeploy to stop.
+DEFAULT_PLAN = "paid"
+AI_DAILY_LIMIT = "5"
+AI_GLOBAL_DAILY_LIMIT = "300"
+AI_SPEND_CAP_USD = "20"
+AI_PRICE_IN = "1.25"
+AI_PRICE_OUT = "2.50"
+AI_PRICE_CACHED = "0.20"
+# ADMIN_EMAILS and OWNER_ALERT_EMAIL are intentionally not set in this file.
+# The repository is public. Set them as Worker secrets or as deploy-time vars, never as committed values:
+#   npx wrangler secret put ADMIN_EMAILS          # comma-separated verified emails allowed to open /admin
+#   npx wrangler secret put OWNER_ALERT_EMAIL     # mailbox for xAI credit / spend alerts (max 1 per reason per 24h)
+# If they are unset, nobody is an admin and owner alerts are skipped.
+# `wrangler deploy --var ADMIN_EMAILS:you@example.com --var OWNER_ALERT_EMAIL:you@example.com` is the other option.
+
+[[d1_databases]]
+binding = "DB"
+database_name = "simplelift"
+# Replace with the id printed by: npx wrangler d1 create simplelift
+database_id = "f3166958-f537-43ef-a3a4-3ad0e2a2bfdd"
+
+# Email (v15): set as SECRETS, not here — see README "Mail settings".
+#   MAIL_PROVIDER (gmail|resend, default gmail), MAIL_FROM, GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN, RESEND_API_KEY
+
+# AI plan features (v16). The key is a SECRET, never here:  npx wrangler secret put XAI_API_KEY
+# Optional secret ADMIN_TOKEN enables GET /ai/budget. Prices are USD per 1M tokens (grok-4.3).

@@ -157,7 +157,7 @@ class WearController(
         val day = ui.days.getOrNull(index) ?: return
         val parsed = Codes.parse(day.code) ?: return
         val now = clock() / 1000
-        val session = Session.fromParsed(parsed, day.planId, day.day, "w$now", now)
+        val session = Session.fromParsed(parsed, day.planId, day.day, "w$now", now).withExact(day.exact)
         publish(ui.copy(screen = Screen.Workout, session = session))
         onWorkout(true)
         auto.resetLive()

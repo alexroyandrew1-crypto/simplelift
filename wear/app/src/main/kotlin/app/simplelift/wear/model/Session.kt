@@ -193,6 +193,16 @@ data class Session(
 
     private fun bump(): Session = copy(rev = rev + 1)
 
+    /** Plan download: the SL1 code is still whole pounds. `u`/`v` keep 61.25 kg on every set of that exercise. */
+    fun withExact(loads: List<ExactLoad>): Session {
+        if (loads.isEmpty()) return this
+        val next = exercises.map { ex ->
+            val hit = loads.find { it.name.equals(ex.name, ignoreCase = true) } ?: return@map ex
+            ex.copy(sets = ex.sets.map { it.copy(unit = hit.unit, exact = hit.value) })
+        }
+        return copy(exercises = next)
+    }
+
     companion object {
         fun fromParsed(parsed: ParsedWorkout, planId: String, day: Int, id: String, nowSec: Long, mode: CheckMode? = null): Session {
             return Session(

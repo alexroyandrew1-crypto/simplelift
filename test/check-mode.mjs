@@ -1,5 +1,5 @@
 // Check-off modes: picker, each layout, rest, and the sets that land in history.
-// Also writes the mobile screenshots under docs/screenshots/check-mode/.
+// Screenshots go to ARTIFACTS_DIR/check-mode (or the system temp directory).
 import {createRequire} from 'module';
 import http from 'http';
 import fs from 'fs';
@@ -7,14 +7,15 @@ import path from 'path';
 import os from 'os';
 import {execFileSync} from 'child_process';
 import {fileURLToPath} from 'url';
+import {artifactDir, chromePath} from './browser-env.mjs';
 
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
-const SHOTS = path.join(ROOT, 'docs/screenshots/check-mode');
-const CHROME = process.env.CHROME || '/usr/local/bin/google-chrome';
-const BEFORE = '/tmp/sl-v33-before';
+const SHOTS = artifactDir('check-mode');
+const CHROME = chromePath();
+const BEFORE = process.env.CHECK_MODE_BEFORE || path.join(os.tmpdir(), 'simplelift-check-mode-before');
 
 const PLAN = {
   id:'p1', name:'Test Plan', created:1, next:0,
@@ -53,7 +54,7 @@ async function openApp(browser, port, lang) {
   page.on('pageerror', e => console.log('PAGEERROR', e.message));
   await page.goto('http://127.0.0.1:' + port + '/', {waitUntil: 'domcontentloaded'});
   await page.evaluate((plan, lang) => {
-    localStorage.setItem('simplelift_terms', JSON.stringify({v: '2026-11-11', at: new Date().toISOString()}));
+    localStorage.setItem('simplelift_terms', JSON.stringify({v: LEGAL.v, at: new Date().toISOString()}));
     localStorage.setItem('simplelift_lang', lang);
     localStorage.setItem('simplelift_lang_toast', lang);
     const db = {version:1, settings:{units:'lb', unitsChosen:true}, plans:[plan], activePlanId:plan.id, history:[], active:null, updatedAt:1};

@@ -157,6 +157,21 @@ class WatchLogicTest {
     }
 
     @Test
+    fun planPayloadKeepsExactKilograms() {
+        val body = """{"plans":[{"id":"p","name":"Legs","days":[{"name":"Squat day","code":"SL1~Squat day~Squat,3,5,135,120~#set","u":"kg","ex":[{"n":"Squat","u":"kg","v":61.25}],"today":true}]}],"checkMode":"set"}"""
+        val parsed = Payloads.plans(body)
+        assertEquals(1, parsed.days.size)
+        assertEquals("kg", parsed.days[0].exact[0].unit)
+        assertEquals(61.25, parsed.days[0].exact[0].value, 0.0)
+        val session = Session.fromParsed(Codes.parse(parsed.days[0].code)!!, "p", 0, "w1", NOW)
+            .withExact(parsed.days[0].exact)
+        assertEquals(135, session.exercises[0].sets[0].weightLb)
+        assertEquals(61.25, session.exercises[0].sets[0].exact!!, 0.0)
+        assertEquals("kg", session.toWire(NOW, false).ex[0].s[0].u)
+        assertEquals(61.25, session.toWire(NOW, false).ex[0].s[0].v!!, 0.0)
+    }
+
+    @Test
     fun kilogramsRoundTripExactly() {
         val raw = """{"t":"snap","id":"w1","rev":3,"src":"p","at":100,"mode":"set","name":"Legs","ex":[{"n":"Squat","rest":90,"s":[{"w":135,"r":5,"d":1,"u":"kg","v":61.25},{"w":3,"r":12,"d":0,"u":"kg","v":1.25}]}]}"""
         val snap = WireSnap.parse(raw)

@@ -124,6 +124,7 @@ class LiftModel {
             var si = st["idx"];
             if (si instanceof Number && si < ex.size()) { idx = si; }
         }
+        applySyncedExact();
         sel = firstOpen(idx);
         if (sel < 0) { sel = 0; }
         if (liveId.length() == 0) { logKind = CheckMode.current(); }
@@ -271,6 +272,33 @@ class LiftModel {
         if (v instanceof Number) { return (v as Number).toFloat(); }
         if (v instanceof Long) { return (v as Long).toFloat(); }
         return null;
+    }
+    // A downloaded plan still has whole pounds in SL1. Overlay u/v when this workout is that plan
+    // and the set was not already given an exact value by a saved edit or a live snapshot.
+    function applySyncedExact() as Void {
+        var pack = Storage.getValue("syncedExact");
+        if (!(pack instanceof Dictionary)) { return; }
+        var pd = pack as Dictionary;
+        var pc = pd["code"];
+        if (!(pc instanceof String) || !(pc as String).equals(w[:code] as String)) { return; }
+        var eu = pd["u"];
+        var rows = pd["ex"];
+        if (!(eu instanceof String) || !(rows instanceof Array)) { return; }
+        var us = eu as String;
+        if (!us.equals("kg") && !us.equals("lb")) { return; }
+        var ra = rows as Array;
+        for (var i = 0; i < ra.size() && i < exact.size(); i++) {
+            var row = ra[i];
+            if (!(row instanceof Dictionary)) { continue; }
+            var fv = asFloat((row as Dictionary)["v"]);
+            if (fv == null) { continue; }
+            var n = (weights[i] as Array).size();
+            for (var s = 0; s < n; s++) {
+                var cell = (exact[i] as Array)[s];
+                if (cell instanceof Dictionary && (cell as Dictionary)[:on] == true) { continue; }
+                rememberExact(i, s, us, fv as Float);
+            }
+        }
     }
     function rememberExact(i as Number, s as Number, u as String, v as Float) as Void {
         if (i < 0 || i >= exact.size()) { return; }

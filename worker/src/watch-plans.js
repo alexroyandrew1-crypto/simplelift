@@ -18,6 +18,34 @@ export function toLb(value, units) {
   return Math.round(units === 'kg' ? n / 0.4536 : n);
 }
 
+export function hundredths(value) {
+  const n = +value || 0;
+  return Math.round(n * 100) / 100;
+}
+
+/** Original unit and value. SL1 still carries whole pounds for an older watch. */
+export function exactExercises(day, units) {
+  const u = units === 'kg' ? 'kg' : 'lb';
+  return (day && day.exercises || []).filter(ex => ex && String(ex.name || '').trim()).map(ex => ({
+    n: clean(ex.name),
+    u,
+    v: hundredths(ex.weight)
+  }));
+}
+
+/** Exact loads for the same training day fallbackCode / todayIndex would pick. */
+export function activeDayExact(data) {
+  const blob = data && typeof data === 'object' ? data : {};
+  const units = blob.settings && blob.settings.units === 'kg' ? 'kg' : 'lb';
+  const plan = (blob.plans || []).find(p => p.id === blob.activePlanId) || (blob.plans || [])[0];
+  if (!plan) return null;
+  const index = todayIndex(plan);
+  if (index < 0) return null;
+  const ex = exactExercises(plan.days[index], units);
+  if (!ex.length) return null;
+  return { u: units, ex };
+}
+
 export function clean(value) {
   return String(value || '').replace(/[~,@/]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
 }
@@ -59,7 +87,7 @@ export function plansFromData(data) {
       name: plan.name || '',
       days: (plan.days || []).map((day, index) => {
         const code = dayCode(day, units, mode);
-        return {
+        const row = {
           name: day.name || 'Workout',
           rest: !!day.rest,
           today: !!(active && index === today),
@@ -67,13 +95,18 @@ export function plansFromData(data) {
           planId: plan.id || '',
           code: code || ''
         };
+        if (code) {
+          row.u = units;
+          row.ex = exactExercises(day, units);
+        }
+        return row;
       }).filter(day => day.rest || day.code)
     };
   });
   let today = null;
   for (const plan of plans) {
     const day = plan.days.find(item => item.today && item.code);
-    if (day) { today = { name: day.name, code: day.code, planId: day.planId, day: day.day }; break; }
+    if (day) { today = { name: day.name, code: day.code, planId: day.planId, day: day.day, u: day.u, ex: day.ex }; break; }
   }
   const body = { plans, today, checkMode: mode };
   if (typeof auto === 'boolean') body.autoDetectSets = auto;
@@ -106,8 +139,8 @@ export async function watchPlanRoutes(request, env, auth) {
   if (!token) return json({ error: 'Not signed in' }, 401);
   const userId = await auth.userIdFromWatch(token);
   if (!userId) return json({ error: 'Not signed in' }, 401);
-  const row = await env.DB.prepare('SELECT data FROM user_data WHERE user_id = ?').bind(userId).first();
+  const row = await env.DB.prepare('SELECT blob FROM data WHERE user_id = ?').bind(userId).first();
   let data = null;
-  try { data = row && row.data ? JSON.parse(row.data) : null; } catch (e) { data = null; }
+  try { data = row && row.blob ? JSON.parse(row.blob) : null; } catch (e) { data = null; }
   return json(plansFromData(data));
 }

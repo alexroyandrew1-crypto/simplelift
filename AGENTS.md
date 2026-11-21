@@ -10,7 +10,7 @@ Do not merge to `main`, deploy, or upload a store build without the owner's revi
 
 Vanilla JavaScript, one HTML shell, and one stylesheet. Scripts are classic globals, not ES modules. `app.js` is split by area into `app-shell.js`, `app-views.js`, `app-workout.js`, `app-session.js`, `app-actions.js`, and `app-boot.js`, loaded in that order from `index.html`. They stay classic scripts because `live.js` and `sync.js` call the same globals and there is no bundler. Data stays in `localStorage` (`simplelift_v1`) through `Store` in `store.js`. The app works offline.
 
-The service worker in `sw.js` precaches the shell (`C`, currently `simplelift-v40`) and keeps OCR files in a separate cache (`simplelift-ocr-1`). `APP_VERSION` in `config.js` is `40` and must stay in step with `C`.
+The service worker in `sw.js` precaches the shell (`C`, currently `simplelift-v41`) and keeps OCR files in a separate cache (`simplelift-ocr-1`). `APP_VERSION` in `config.js` is `41` and must stay in step with `C`. `delete.html` is the account-deletion page and is in that precache list.
 
 English strings live in `i18n.js`. The other languages are `lang-es.js`, `lang-fr.js`, `lang-de.js`, `lang-pt.js`, `lang-it.js`, `lang-nl.js`, `lang-ru.js`, `lang-tr.js`, `lang-pl.js`, `lang-zh.js`, `lang-ja.js`, `lang-ko.js`, `lang-ar.js`, `lang-hi.js`, and `lang-id.js`. Arabic is RTL.
 
@@ -44,7 +44,7 @@ A separate Android APK wraps this PWA. It is not in this repository. Do not add 
 
 Optional accounts and sync. `API_URL` in `config.js` points at the public Worker. With an empty `API_URL` the client never contacts a server. `localStorage` stays the source of truth, including while offline.
 
-`worker/` in this repo holds modules to merge into that Worker (live session routes, watch plans, watch settings). It is not a second product. Do not put Worker secrets, D1 credentials, or API keys in this repo. The client already ships the public Worker URL, the PayPal donate link, and the support email; those are not secrets. Do not add new ones.
+`worker/` is the Cloudflare Worker source (`src/index.js` and the modules it imports). It is not deployed from a pull request. Do not put Worker secrets, D1 credentials, or API keys in this repo. `wrangler.toml` may contain the public database id; that id is not a secret. The client already ships the public Worker URL, the PayPal donate link, and the support email. Do not add new ones.
 
 The account backup is still one JSON blob per user, re-uploaded on each change, with tombstones capped at 2000 in `store.js`. The replacement is planned in `docs/SYNC-REDESIGN.md` and is not built yet.
 

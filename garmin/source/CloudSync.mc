@@ -196,6 +196,13 @@ class CloudSync {
             var c = data["code"] as String;
             var changed = !c.equals(Storage.getValue("syncedCode"));
             Storage.setValue("syncedCode", c);
+            var eu = data["u"];
+            var rows = data["ex"];
+            if (eu instanceof String && rows instanceof Array) {
+                Storage.setValue("syncedExact", { "u" => eu, "ex" => rows, "code" => c });
+            } else {
+                Storage.deleteValue("syncedExact");
+            }
             var ra = RestAlert.fromAny(data["restAlert"]);
             if (ra != null) { Storage.setValue("restAlertServer", ra); }
             var parsed = Workout.parse(c);
