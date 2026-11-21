@@ -61,7 +61,7 @@ var Live = {
     if (p && !this.btTried) {
       this.btTried = true;
       const onMsg = e => this.onBt(e);
-      const onStat = e => { this.bt = !!(e && e.connected); if (typeof render === 'function' && typeof route !== 'undefined' && route.v === 'pair') render(); };
+      const onStat = e => { this.wear = !!(e && e.wearConnected); this.bt = !!(e && (e.connected || e.wearConnected)); if (typeof render === 'function') render(); };
       try { const h = p.addListener && p.addListener('message', onMsg); if (h && h.catch) h.catch(() => {}); } catch (e) {}
       try { const h = p.addListener && p.addListener('status', onStat); if (h && h.catch) h.catch(() => {}); } catch (e) {}
       try { const s = p.start && p.start(); if (s && s.catch) s.catch(() => {}); } catch (e) {}
@@ -125,6 +125,25 @@ var Live = {
     if (Array.isArray(snap) && snap.length === 1) snap = snap[0];
     this.onIncoming(snap);
   },
+  keepSettings(s) {
+    if (!s || typeof s !== 'object') return;
+    const prev = this.settings || {};
+    if ((s.rev | 0) < (prev.rev | 0)) return;
+    this.settings = {
+      t: 'settings', rev: s.rev | 0, src: s.src || 'w',
+      chime: s.chime !== false, vibration: s.vibration !== false,
+      autoDetectSets: !!s.autoDetectSets, showHr: s.showHr !== false,
+      repDetect: s.repDetect !== false, saveActivity: s.saveActivity !== false,
+      restAlert: s.restAlert | 0
+    };
+    try { localStorage.setItem('simplelift_watch_settings', JSON.stringify(this.settings)); } catch (e) {}
+    if (typeof render === 'function') render();
+  },
+  pushSettings() {
+    const s = this.settings; if (!s) return;
+    const p = this.plugin();
+    if (p && p.send) { try { const r = p.send({ json: JSON.stringify(s) }); if (r && r.catch) r.catch(() => {}); } catch (e) {} }
+  },
   claim(code) {
     const c = String(code || '').replace(/\D/g, '');
     if (c.length !== 6 || this.claimed === c) return;
@@ -135,7 +154,8 @@ var Live = {
   onIncoming(snap) {
     if (!snap || typeof snap !== 'object') return;
     if (snap.t === 'pair') { this.claim(snap.code); return; }
-    if (snap.t === 'hello') { this.bt = true; if (db().active) this.push(); return; }
+    if (snap.t === 'settings') { this.keepSettings(snap); return; }
+    if (snap.t === 'hello') { if (snap.src !== 'p') { this.wear = true; this.bt = true; } if (db().active) this.push(); this.pushSettings(); return; }
     if (snap.t && snap.t !== 'snap') return;
     if (snap.id && this.closed[snap.id]) return;
     const a = db().active;

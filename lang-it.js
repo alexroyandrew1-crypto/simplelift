@@ -353,6 +353,8 @@ I18N.add('it',{
 "cm.rest": "Avvia recupero",
 "cm.exDone": "Segna {name} fatto",
 "bt.connected": "Connesso all'orologio via Bluetooth.",
+"link.connected": "Connesso",
+"link.offline": "Non connesso",
 "bt.looking": "Cerco l'orologio via Bluetooth. Puoi ancora inserire il codice se non si collega.",
 "t.addFirst": "Prima aggiungi esercizi a questo giorno",
 "pr.prev": "Settimana precedente",

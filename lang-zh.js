@@ -343,6 +343,8 @@ I18N.add('zh',{
 "cm.rest": "开始休息",
 "cm.exDone": "将{name}标为完成",
 "bt.connected": "已通过蓝牙连接手表。",
+"link.connected": "已连接",
+"link.offline": "未连接",
 "bt.looking": "正在通过蓝牙查找手表。如果连不上，仍可以输入配对码。",
 "t.addFirst": "请先给这天添加动作",
 "pr.prev": "上一周",

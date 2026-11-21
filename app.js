@@ -246,7 +246,7 @@ account(){const m=route.p.mode||'in',up=m==='up',a=Sync.a,em=esc(route.p.email||
   <div class="mut">${t('ac.stored')}${up?' '+t('ac.storedUp'):''} ${t('privacy.geo')}</div>`},
 legal(p){const k=LEGAL.docs[p.doc]?p.doc:'terms';
   return `<div class="card legal" lang="en" dir="ltr">${I18N.lang()!=='en'?`<div class="note mut" lang="${I18N.lang()}" dir="${I18N.isRTL()?'rtl':'ltr'}">${t('lg.enNote')}</div>`:''}${LEGAL.docs[k]}</div>${legalLinks(k)}`},
-pair(){if(!Sync.on())return `<div class="card" id="pairNeed"><h3>${t('watch.pair')}</h3><div class="mut">${t('pair.signIn')}</div>
+pair(){if(!Sync.on())return `<div class="card" id="pairNeed"><h3>${t('watch.pair')}</h3>${linkLine()}<div class="mut">${t('pair.signIn')}</div>
     <button class="btn acc full" data-act="account" data-mode="in" data-from="settings">${t('ac.signIn')}</button></div>`;
   const off=navigator.onLine===false?`<div class="card note">${t('pair.needNet')}</div>`:'';
   const type=route.p.type||'';
@@ -298,6 +298,7 @@ session(){
   const done=a.exercises.reduce((s,e)=>s+e.sets.filter(x=>x.done).length,0),tot=a.exercises.reduce((s,e)=>s+e.sets.length,0);
   const checks=mode==='set';
   return `<div class="between"><h2 class="m0">${esc(a.dayName)}</h2><span class="mut">${t('s.progress',{done,tot})}</span></div>
+  ${linkLine()}
   <div class="progress"><i style="width:${tot?done/tot*100:0}%"></i></div>
   ${modePicker()}
   ${a.exercises.map((e,j)=>{const all=e.sets.length&&e.sets.every(x=>x.done);const name=I18N.exName(e.name);
@@ -708,6 +709,7 @@ function renderTimer(){let el=$('#timer');
   const tl=el.querySelector('#tl');if(tl)tl.textContent=restTxt(left);
   el.setAttribute('aria-label',t('timer.remain',{t:restTxt(left)}));
   if(left<=0)restDone()}
+function linkLine(){if(typeof Live==='undefined')return '';const on=!!(Live.wear||Live.bt);return `<div class="mut" id="linkLine">${on?t('link.connected'):t('link.offline')}</div>`}
 function pairErr(x){if(!x||x.offline||x.code==='network')return t('pair.needNet');
   const c=String(x.code||'');
   if(x.status===401||c==='unauthorized')return t('pair.signIn');

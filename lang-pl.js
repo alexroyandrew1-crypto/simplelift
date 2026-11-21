@@ -373,6 +373,8 @@ I18N.add('pl',{
 "cm.rest": "Zacznij przerwę",
 "cm.exDone": "Oznacz {name} jako zrobione",
 "bt.connected": "Połączono z zegarkiem przez Bluetooth.",
+"link.connected": "Połączono",
+"link.offline": "Brak połączenia",
 "bt.looking": "Szukam zegarka przez Bluetooth. Kod możesz wpisać, jeśli się nie połączy.",
 "t.addFirst": "Najpierw dodaj ćwiczenia do tego dnia",
 "pr.prev": "Poprzedni tydzień",
